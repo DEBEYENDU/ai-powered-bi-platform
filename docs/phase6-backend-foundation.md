@@ -1,29 +1,32 @@
 # Phase 6 – Backend Foundation & Core Infrastructure
 
-> **Implementation Status (as of 2026-09-03):** Module-level foundations exist
-> (pipelines, repos, services, storage/registry abstractions). **Shared core
-> infrastructure is missing**: no `app/core`, `app/db`, `app/main.py`, no migrations,
-> no packaging/infra files. This is the highest-priority gap in the project.
+> **Implementation Status (as of 2026-09-03, foundation sprint):** Shared core
+> infrastructure is now implemented: `app/core` (config/security/logging),
+> `app/db` (Base/engine/session), `app/main.py` + `app/api/v1`, middleware,
+> dependencies, exceptions, shared repository/service bases, cache service,
+> Celery app, Alembic + initial migration, `pyproject.toml`, `requirements.txt`,
+> `.env.example`, `Dockerfile`, `docker-compose.yml`. Remaining: roles/permissions
+> tables, RLS, pgvector embeddings migration (follow-ups).
 
 ## Project Structure: Planned vs Actual
 
 | Planned (`app/...`) | Status | Notes |
 |---|---|---|
-| `core` (config, security, logger) | ❌ Missing | Highest priority – blocks env config, JWT reuse, logging |
-| `db` (engine, session, Base) | ❌ Missing | Models import `app.db.base` which does not exist – app cannot boot |
-| `api` (router aggregation) | ❌ Missing | 5 routers exist unmounted |
-| `main.py` (app entrypoint) | ❌ Missing | No runnable app |
-| `services/` (shared base) | ⚠️ Partial | Only `iam/services/auth_service.py` + `ai/services/ai_service.py`; no `BaseService` |
-| `repositories/` (shared base) | ⚠️ Partial | Only `iam/repositories/user_repo.py`; no `BaseRepository` |
+| `core` (config, security, logger) | ✅ Implemented | `config.py` (pydantic-settings + fallback), `security.py` (bcrypt/PBKDF2 + JWT), `logging.py` (structlog + fallback) |
+| `db` (engine, session, Base) | ✅ Implemented | `base.py` resolves all model imports; lazy engine + `get_db`/`check_connection` with retry |
+| `api` (router aggregation) | ✅ Implemented | `api/v1.py` mounts all 6 routers under `/api/v1` + legacy aliases |
+| `main.py` (app entrypoint) | ✅ Implemented | `uvicorn app.main:app`; CORS, middleware, handlers, `/health*` |
+| `services/` (shared base) | ✅ Implemented | `services/base.py` (`BaseService`, `ServiceError`) alongside module services |
+| `repositories/` (shared base) | ✅ Implemented | `repositories/base.py` (CRUD/pagination/soft-delete) alongside `user_repo.py` |
 | `schemas/` (shared) | ⚠️ Partial | Per-module schemas exist; no shared envelope/errors |
 | `models/` (shared) | ⚠️ Partial | Per-module models exist; no shared Base/mixins |
-| `middleware/` | ❌ Missing | No CORS, rate-limit, security headers, timing |
-| `dependencies/` | ❌ Missing | No `get_db`, current-user/org DI |
-| `exceptions/` | ❌ Missing | No handlers |
-| `cache/` | ✅ Partial | `analytics/cache.py` (Redis wrapper) + `ai/cache/caching.py` (TTL/LRU); no shared `CacheService` |
+| `middleware/` | ✅ Implemented | `RequestContextMiddleware` (ID + timing), `SecurityHeadersMiddleware`; CORS on app |
+| `dependencies/` | ✅ Implemented | `get_current_user` (JWT), `require_organization`; `get_db` in `db/session.py` |
+| `exceptions/` | ✅ Implemented | RFC7807 handlers (`AppError`, 404/401/403, `ServiceError`) |
+| `cache/` | ✅ Implemented | Shared `cache/service.py` (Redis + memory fallback) alongside module caches |
 | `storage/` | ✅ Partial | `dataset/storage/base.py` (`StorageProvider` + `LocalStorageProvider`); S3/MinIO future |
-| `workers/` (Celery) | ❌ Missing | No broker/worker wiring |
-| `migrations/` (Alembic) | ❌ Missing | No migrations |
+| `workers/` (Celery) | ✅ Implemented | `workers/celery_app.py` (Redis broker, beat schedule for due report schedules) |
+| `migrations/` (Alembic) | ✅ Implemented | `alembic.ini` + `env.py` + `0001_initial` (orgs/users/datasets/etl_jobs/reports suite) |
 
 Module-local equivalents that already follow the pattern: `etl/engine/pipeline.py`,
 `analytics/engine/pipeline.py`, `etl/stages/registry.py`, `ai/tools/registry.py`,
@@ -70,16 +73,16 @@ stubs; forecast/report tools return rule-based results inline.
 
 `/health` endpoints for app/db/redis/storage – only `GET /ai/health` (static) exists.
 
-## Docker (Missing)
+## Docker & Packaging (Implemented)
 
-`Dockerfile` + `docker-compose.yml` for api/db/redis/worker – not in repo. Same for
-`pyproject.toml`, `.env.example`, `.github/workflows`.
+`Dockerfile` (migrate + serve) + `docker-compose.yml` (api, pgvector PG16 db,
+redis, optional worker profile). `pyproject.toml` (poetry, canonical) +
+`requirements.txt` (pip mirror) + `.env.example`. Still missing: `.github/workflows` CI.
 
-## Next Steps (Priority Order)
+## Next Steps (Remaining)
 
-1. `app/core/config.py` + `app/core/security.py` + `app/db/base.py` + `app/db/session.py` (`get_db`).
-2. `app/main.py` + `app/api/__init__.py` mounting all routers + middleware + exception handlers.
-3. `pyproject.toml` (or `requirements.txt`) pinning FastAPI/SQLAlchemy/Pydantic/Redis/pytest + `.env.example`.
-4. Alembic init + initial migration (organizations, users, datasets, etl_jobs).
-5. `Dockerfile` + `docker-compose.yml` (api, db/postgres+pgvector, redis, worker).
-6. Shared `BaseRepository`/`BaseService`, health endpoints, CI workflow.
+1. Roles/permissions + audit-log tables (Phase 4 follow-up).
+2. pgvector extension + embeddings table migration.
+3. RLS policies per tenant.
+4. CI workflow (lint/test/build).
+5. Dashboard backend (Phase 11), ML model backend (Phase 12), frontend.

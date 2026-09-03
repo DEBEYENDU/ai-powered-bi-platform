@@ -19,14 +19,24 @@ Object Storage.
 
 ```
 backend/app/
+├── core/         # config, security, logging
+├── db/           # Base, lazy engine/session, get_db
+├── api/          # /api/v1 aggregation + legacy aliases
+├── main.py       # entrypoint (uvicorn app.main:app)
+├── middleware/ dependencies/ exceptions/ cache/ workers/
+├── repositories/ # BaseRepository
+├── services/     # BaseService
 ├── iam/          # 5 files – models, schemas, repo, service, router
 ├── dataset/      # 4 files – model, schemas, router, storage base
 ├── etl/          # 10 files – engine, models, stages, validators, router
 ├── analytics/    # 7 files – KPI definitions, calculators, schemas, router, cache
-└── ai/           # 64 files – orchestrator, agents, RAG, tools, memory, MCP, governance
+├── reports/      # 36 files – builder, templates, exporters, scheduler, routers
+└── ai/           # 64+ files – orchestrator, agents, RAG, tools, memory, MCP, governance
 ```
 
-* Total: ~90 Python files. No `app/core`, `app/db`, `app/api`, `app/main.py` yet.
+* Total: ~150 Python files. Shared foundation (`core`/`db`/`api`/`main.py`) landed.
+* Infra: `pyproject.toml`, `requirements.txt`, `.env.example`, Alembic + `0001_initial`,
+  `Dockerfile`, `docker-compose.yml` (pgvector PG16 + redis + worker).
 * No `frontend/` directory yet.
 * AI module is the most complete; it orchestrates the other four modules without
   duplicating their logic (`backend/app/ai/services/ai_service.py` facade,
