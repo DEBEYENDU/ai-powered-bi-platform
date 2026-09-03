@@ -19,6 +19,7 @@ All phases are complete:
 - ✅ **Phase 11** – Dashboard, Visualization & Executive Dashboard Engine
 - ✅ **Phase 12** – Machine Learning Platform
 - ✅ **Phase 13** – AI Business Assistant, LLM Orchestration, RAG & Natural Language Analytics Engine
+- ✅ **Phase 14** – Reporting, Document Generation & Report Automation Engine
 
 ## 📚 Documentation
 
@@ -38,6 +39,7 @@ All design artifacts are in the `docs/` folder:
 |10 | [Analytics & KPI Engine](docs/phase10-analytics.md) (auto‑generated) |
 |11 | [Dashboard & Visualization](docs/phase11-dashboard.md) (auto‑generated) |
 |13 | [AI Business Assistant](docs/phase13-ai-assistant.md) |
+|14 | [Reporting & Automation](docs/phase14-reporting.md) |
 
 ## 🛠 Tech Stack
 
