@@ -17,6 +17,8 @@ All phases are complete:
 - ✅ **Phase 9** – ETL Pipeline, Data Processing & Data Quality Engine
 - ✅ **Phase 10** – Business Analytics & KPI Engine
 - ✅ **Phase 11** – Dashboard, Visualization & Executive Dashboard Engine
+- ✅ **Phase 12** – Machine Learning Platform
+- ✅ **Phase 13** – AI Business Assistant, LLM Orchestration, RAG & Natural Language Analytics Engine
 
 ## 📚 Documentation
 
@@ -35,6 +37,7 @@ All design artifacts are in the `docs/` folder:
 | 9 | [ETL Pipeline](docs/phase9-etl.md) (auto‑generated) |
 |10 | [Analytics & KPI Engine](docs/phase10-analytics.md) (auto‑generated) |
 |11 | [Dashboard & Visualization](docs/phase11-dashboard.md) (auto‑generated) |
+|13 | [AI Business Assistant](docs/phase13-ai-assistant.md) |
 
 ## 🛠 Tech Stack
 
