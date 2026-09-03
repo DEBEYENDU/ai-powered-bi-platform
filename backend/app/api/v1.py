@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.admin.routers.admin import admin_router
 from app.ai.routers.ai_assistant import ai_router
 from app.analytics.routers.analytics import router as analytics_router
 from app.dataset.routers.dataset import router as dataset_router
@@ -13,11 +14,11 @@ from app.reports.routers.reports import reports_router
 
 api_router = APIRouter(prefix="/api/v1")
 for _router in (auth_router, dataset_router, etl_router,
-                analytics_router, ai_router, reports_router):
+                analytics_router, ai_router, reports_router, admin_router):
     api_router.include_router(_router)
 
 # Legacy aliases so existing clients keep working during migration.
 legacy_router = APIRouter()
 for _router in (auth_router, dataset_router, etl_router,
-                analytics_router, ai_router, reports_router):
+                analytics_router, ai_router, reports_router, admin_router):
     legacy_router.include_router(_router)
