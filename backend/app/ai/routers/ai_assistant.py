@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
-from pydantic import BaseModel, Field
+from typing import Any
 from uuid import UUID
 
+from fastapi import APIRouter, Body, Depends, Query
+
 from app.ai.orchestrator.orchestrator import Orchestrator
-from app.ai.orchestrator.intent_detector import IntentDetection
 from app.ai.tools.schemas import (
-    ChatRequest, ChatResponse,
-    NLQQuery, IntentDetection as IntentDetectionSchema,
-    RootCauseAnalysisRequest, RootCauseAnalysisResponse,
-    RecommendationRequest, RecommendationResponse,
+    ChatRequest,
+    NLQQuery,
+    RecommendationRequest,
+    RecommendationResponse,
+    RootCauseAnalysisRequest,
+    RootCauseAnalysisResponse,
 )
 
 ai_router = APIRouter(prefix="/ai", tags=["AI Assistant"])
@@ -23,7 +24,7 @@ def get_orchestrator() -> Orchestrator:
     return Orchestrator()
 
 
-@ai_router.post("/chat", response_model=Dict[str, Any])
+@ai_router.post("/chat", response_model=dict[str, Any])
 async def chat(
     request: ChatRequest = Body(...),
     orchestrator: Orchestrator = Depends(get_orchestrator),
@@ -31,7 +32,7 @@ async def chat(
     result = await orchestrator.process_query(
         query=request.message,
         user_id=request.session_id,
-        context=request.context if hasattr(request, 'context') else None,
+        context=request.context if hasattr(request, "context") else None,
     )
     return result
 
@@ -54,7 +55,7 @@ async def search_conversations(
 
 @ai_router.get("/suggested-questions")
 async def get_suggested_questions(
-    topic: Optional[str] = Query(None),
+    topic: str | None = Query(None),
 ):
     return {
         "questions": [
@@ -68,7 +69,7 @@ async def get_suggested_questions(
 
 @ai_router.post("/insights")
 async def get_business_insights(
-    category: Optional[str] = Body(None),
+    category: str | None = Body(None),
 ):
     return {"category": category, "insights": []}
 
@@ -76,7 +77,7 @@ async def get_business_insights(
 @ai_router.post("/executive-summary")
 async def get_executive_summary(
     time_range: str = Body(...),
-    focus_areas: Optional[List[str]] = Body(None),
+    focus_areas: list[str] | None = Body(None),
 ):
     return {"time_range": time_range, "summary": ""}
 
@@ -87,7 +88,7 @@ async def get_recommendations(
 ):
     return RecommendationResponse(
         recommendations=[],
-        generated_at=__import__('datetime').datetime.utcnow(),
+        generated_at=__import__("datetime").datetime.utcnow(),
         context=request.context,
     ).dict()
 
@@ -106,7 +107,7 @@ async def root_cause_analysis(
 
 @ai_router.get("/prompt-templates")
 async def get_prompt_templates(
-    category: Optional[str] = Query(None),
+    category: str | None = Query(None),
 ):
     return {"templates": []}
 
@@ -120,16 +121,16 @@ async def get_ai_health():
 async def submit_feedback(
     conversation_id: UUID = Body(...),
     rating: int = Body(...),
-    feedback: Optional[str] = Body(None),
+    feedback: str | None = Body(None),
 ):
     return {"conversation_id": conversation_id, "received": True}
 
 
 @ai_router.get("/usage-statistics")
 async def get_usage_statistics(
-    user_id: Optional[UUID] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    user_id: UUID | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
     return {"user_id": user_id, "total_queries": 0, "avg_response_time": 0}
 

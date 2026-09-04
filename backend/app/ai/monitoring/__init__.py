@@ -1,3 +1,3 @@
-from app.ai.monitoring.observability import AIMonitor, TokenUsage, LatencyMetric, AIMetric
+from app.ai.monitoring.observability import AIMetric, AIMonitor, LatencyMetric, TokenUsage
 
-__all__ = ["AIMonitor", "TokenUsage", "LatencyMetric", "AIMetric"]
+__all__ = ["AIMetric", "AIMonitor", "LatencyMetric", "TokenUsage"]

@@ -11,7 +11,6 @@ Design notes:
 
 from __future__ import annotations
 
-import enum
 import hashlib
 import json
 import uuid
@@ -23,14 +22,14 @@ try:
 
     try:
         from app.db.base import Base  # type: ignore
-    except Exception:  # pragma: no cover
+    except ImportError:  # pragma: no cover
         from sqlalchemy.orm import DeclarativeBase
 
         class Base(DeclarativeBase):  # type: ignore[no-redef]
             pass
 
     _HAS_SQLALCHEMY = True
-except Exception:  # pragma: no cover - minimal envs without sqlalchemy
+except ImportError:  # pragma: no cover - minimal envs without sqlalchemy
     _HAS_SQLALCHEMY = False
     Base = object  # type: ignore[assignment,misc]
 
@@ -45,7 +44,7 @@ except Exception:  # pragma: no cover - minimal envs without sqlalchemy
         def __init__(self, *args: object, **kwargs: object) -> None:
             pass
 
-        def __call__(self, *args: object, **kwargs: object) -> "_DummyType":
+        def __call__(self, *args: object, **kwargs: object) -> _DummyType:
             return _DummyType()
 
     JSON = Boolean = DateTime = Float = Integer = String = Text = _DummyType  # type: ignore[assignment]
@@ -61,8 +60,7 @@ class AuditLogRecord(Base):
 
     __tablename__ = "admin_audit_logs"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(_uuid()))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(_uuid()))
     organization_id: Mapped[str] = mapped_column(String(36), nullable=True, index=True)
     actor_id: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
@@ -74,11 +72,20 @@ class AuditLogRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     @staticmethod
-    def compute_hash(prev_hash: str, action: str, resource: str,
-                     details: dict, created_at: str) -> str:
+    def compute_hash(
+        prev_hash: str, action: str, resource: str, details: dict, created_at: str
+    ) -> str:
         payload = json.dumps(
-            {"prev": prev_hash, "action": action, "resource": resource,
-             "details": details, "at": created_at}, sort_keys=True, default=str)
+            {
+                "prev": prev_hash,
+                "action": action,
+                "resource": resource,
+                "details": details,
+                "at": created_at,
+            },
+            sort_keys=True,
+            default=str,
+        )
         return hashlib.sha256(payload.encode()).hexdigest()
 
 
@@ -132,8 +139,9 @@ class FeatureFlagRecord(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow,
-                                                 onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class SystemSettingRecord(Base):
@@ -142,8 +150,9 @@ class SystemSettingRecord(Base):
     key: Mapped[str] = mapped_column(String(150), primary_key=True)
     value: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_by: Mapped[str] = mapped_column(String(255), default="")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow,
-                                                 onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class AlertRuleRecord(Base):
@@ -206,8 +215,9 @@ class OrganizationQuotaRecord(Base):
     ai_requests_per_day: Mapped[int] = mapped_column(Integer, default=1000)
     api_requests_per_minute: Mapped[int] = mapped_column(Integer, default=120)
     suspended: Mapped[bool] = mapped_column(Boolean, default=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow,
-                                                 onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class MaintenanceWindowRecord(Base):

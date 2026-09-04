@@ -1,6 +1,5 @@
 """Tests for Conversation Memory."""
 
-import pytest
 from app.ai.memory.memory import ConversationMemory
 
 
@@ -24,6 +23,7 @@ class TestConversationMemory:
     def test_business_context(self):
         memory = ConversationMemory()
         entry = memory.add_business_context("org_123", "Test context", org_id="org_123")
+        assert entry.content == "Test context"
         assert memory.get_business_context("org_123") is not None
 
     def test_get_recent_queries(self):

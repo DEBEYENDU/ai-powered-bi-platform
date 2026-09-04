@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.ai.orchestrator.intent_detector import IntentDetector
 
@@ -24,7 +24,7 @@ class NLQEngine:
     def __init__(self) -> None:
         self.detector = IntentDetector()
 
-    def parse(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def parse(self, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         detection = self.detector.detect(query, context)
         return {
             "original_query": query,
@@ -35,7 +35,7 @@ class NLQEngine:
             "response_format": self._infer_format(query, detection.entities),
         }
 
-    def _infer_format(self, query: str, entities: Dict[str, Any]) -> str:
+    def _infer_format(self, query: str, entities: dict[str, Any]) -> str:
         q = query.lower()
         if any(w in q for w in ["chart", "graph", "plot", "visualize"]):
             return "chart"
@@ -47,5 +47,5 @@ class NLQEngine:
             return "forecast"
         return "text"
 
-    def suggested_questions(self) -> List[str]:
+    def suggested_questions(self) -> list[str]:
         return list(self.EXAMPLE_QUERIES)

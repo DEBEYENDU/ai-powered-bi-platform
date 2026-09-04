@@ -1,5 +1,8 @@
 from typing import Any
 
+from app.etl.engine.pipeline import PipelineStage
+
+
 class CleanStage(PipelineStage):
     name = "clean"
 

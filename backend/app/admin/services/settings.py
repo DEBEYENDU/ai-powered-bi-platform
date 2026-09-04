@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 VALIDATORS = {
     "rate_limit_per_minute": lambda v: isinstance(v, int) and v > 0,
@@ -20,7 +19,7 @@ VALIDATORS = {
     "maintenance_mode": lambda v: v in ("off", "readonly", "maintenance"),
 }
 
-DEFAULTS: Dict[str, Any] = {
+DEFAULTS: dict[str, Any] = {
     "rate_limit_per_minute": 120,
     "log_level": "INFO",
     "retention_days_audit": 365,
@@ -31,18 +30,22 @@ DEFAULTS: Dict[str, Any] = {
 
 class SettingsService:
     def __init__(self) -> None:
-        self._settings: Dict[str, Any] = dict(DEFAULTS)
-        self._updated_by: Dict[str, str] = {}
-        self._maintenance: Dict[str, Any] = {"mode": "off", "message": "",
-                                             "starts_at": None, "ends_at": None}
-        self._override_tokens: Dict[str, str] = {}
+        self._settings: dict[str, Any] = dict(DEFAULTS)
+        self._updated_by: dict[str, str] = {}
+        self._maintenance: dict[str, Any] = {
+            "mode": "off",
+            "message": "",
+            "starts_at": None,
+            "ends_at": None,
+        }
+        self._override_tokens: dict[str, str] = {}
 
     def get(self, key: str) -> Any:
         if key not in self._settings:
             raise ValueError(f"Unknown setting '{key}'")
         return self._settings[key]
 
-    def all(self) -> Dict[str, Any]:
+    def all(self) -> dict[str, Any]:
         return dict(self._settings)
 
     def update(self, key: str, value: Any, updated_by: str = "") -> Any:
@@ -56,20 +59,27 @@ class SettingsService:
         return value
 
     # -- maintenance --
-    def set_maintenance(self, mode: str, message: str = "",
-                        starts_at: Optional[datetime] = None,
-                        ends_at: Optional[datetime] = None,
-                        created_by: str = "") -> Dict[str, Any]:
+    def set_maintenance(
+        self,
+        mode: str,
+        message: str = "",
+        starts_at: datetime | None = None,
+        ends_at: datetime | None = None,
+        created_by: str = "",
+    ) -> dict[str, Any]:
         if mode not in ("off", "readonly", "maintenance"):
             raise ValueError(f"Unknown maintenance mode '{mode}'")
-        self._maintenance = {"mode": mode, "message": message,
-                             "starts_at": starts_at.isoformat() if starts_at else None,
-                             "ends_at": ends_at.isoformat() if ends_at else None,
-                             "created_by": created_by}
+        self._maintenance = {
+            "mode": mode,
+            "message": message,
+            "starts_at": starts_at.isoformat() if starts_at else None,
+            "ends_at": ends_at.isoformat() if ends_at else None,
+            "created_by": created_by,
+        }
         self._settings["maintenance_mode"] = mode
         return self._maintenance
 
-    def maintenance_status(self) -> Dict[str, Any]:
+    def maintenance_status(self) -> dict[str, Any]:
         return dict(self._maintenance)
 
     def is_write_blocked(self) -> bool:
@@ -80,8 +90,8 @@ class SettingsService:
         self._override_tokens[token] = admin_id
         return token
 
-    def check_override(self, token: Optional[str]) -> bool:
+    def check_override(self, token: str | None) -> bool:
         return bool(token) and token in self._override_tokens
 
-    def overrides(self) -> List[str]:
+    def overrides(self) -> list[str]:
         return list(self._override_tokens.values())

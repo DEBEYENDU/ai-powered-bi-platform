@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from app.ai.tools.schemas import (
-    KPICalculateRequest, KPICalculateResponse,
-    RevenueAnalyticsRequest, RevenueAnalyticsResponse,
-    SalesAnalyticsRequest, SalesAnalyticsResponse,
+    KPICalculateRequest,
+    KPICalculateResponse,
+    RevenueAnalyticsRequest,
+    RevenueAnalyticsResponse,
+    SalesAnalyticsRequest,
+    SalesAnalyticsResponse,
 )
 
 
-def calculate_kpi_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def calculate_kpi_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = KPICalculateRequest(**validated)
     kpi = validated.kpi
@@ -34,7 +40,9 @@ def _compute_kpi(kpi: str, dataset_id: UUID) -> float:
     return float(abs(hash(f"{kpi}_{dataset_id}"))) % 100000
 
 
-def revenue_analytics_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def revenue_analytics_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = RevenueAnalyticsRequest(**validated)
     return RevenueAnalyticsResponse(
@@ -46,7 +54,9 @@ def revenue_analytics_tool(validated: BaseModel, context: Optional[Dict[str, Any
     ).dict()
 
 
-def sales_analytics_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def sales_analytics_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = SalesAnalyticsRequest(**validated)
     return SalesAnalyticsResponse(

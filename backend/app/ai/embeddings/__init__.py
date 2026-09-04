@@ -1,3 +1,3 @@
-from app.ai.embeddings.manager import EmbeddingManager, EmbeddingConfig
+from app.ai.embeddings.manager import EmbeddingConfig, EmbeddingManager
 
-__all__ = ["EmbeddingManager", "EmbeddingConfig"]
+__all__ = ["EmbeddingConfig", "EmbeddingManager"]

@@ -1,5 +1,14 @@
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
+import uuid
+
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    verify_password,
+)
+from app.iam.models.user import User
 from app.iam.repositories.user_repo import UserRepository
+
 
 class AuthService:
     def __init__(self, repo: UserRepository):
@@ -12,7 +21,7 @@ class AuthService:
             id=str(uuid.uuid4()),
             email=data.email,
             password_hash=hash_password(data.password),
-            organization_id=data.organization_id
+            organization_id=data.organization_id,
         )
         return await self.repo.create(user)
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, validator
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class HallucinationRisk(BaseModel):
@@ -17,43 +18,53 @@ class HallucinationRisk(BaseModel):
 class HallucinationDetector:
     """Validates AI outputs to prevent hallucinations."""
 
-    def validate(self, execution_results: List[Any]) -> Dict[str, Any]:
-        risks: List[HallucinationRisk] = []
+    def validate(self, execution_results: list[Any]) -> dict[str, Any]:
+        risks: list[HallucinationRisk] = []
         total_risk_score = 0.0
 
         for result in execution_results:
             if not result.success:
-                risks.append(HallucinationRisk(
-                    tool_name=result.tool_name,
-                    risk_level="high",
-                    confidence=0.0,
-                    evidence_present=False,
-                    reason="Tool execution failed",
-                ))
+                risks.append(
+                    HallucinationRisk(
+                        tool_name=result.tool_name,
+                        risk_level="high",
+                        confidence=0.0,
+                        evidence_present=False,
+                        reason="Tool execution failed",
+                    )
+                )
                 total_risk_score += 1.0
                 continue
 
-            data = result.data if hasattr(result, 'data') and result.data is not None else None
+            data = result.data if hasattr(result, "data") and result.data is not None else None
             if data is None:
-                risks.append(HallucinationRisk(
-                    tool_name=result.tool_name,
-                    risk_level="medium",
-                    confidence=0.5,
-                    evidence_present=False,
-                    reason="No data returned from tool",
-                ))
+                risks.append(
+                    HallucinationRisk(
+                        tool_name=result.tool_name,
+                        risk_level="medium",
+                        confidence=0.5,
+                        evidence_present=False,
+                        reason="No data returned from tool",
+                    )
+                )
                 total_risk_score += 0.5
                 continue
 
             evidence_score = self._assess_evidence(data)
-            risks.append(HallucinationRisk(
-                tool_name=result.tool_name,
-                risk_level="low" if evidence_score > 0.7 else "medium" if evidence_score > 0.4 else "high",
-                confidence=evidence_score,
-                evidence_present=evidence_score > 0.5,
-                reason=f"Evidence confidence: {evidence_score:.2f}",
-            ))
-            total_risk_score += (1.0 - evidence_score)
+            risks.append(
+                HallucinationRisk(
+                    tool_name=result.tool_name,
+                    risk_level="low"
+                    if evidence_score > 0.7
+                    else "medium"
+                    if evidence_score > 0.4
+                    else "high",
+                    confidence=evidence_score,
+                    evidence_present=evidence_score > 0.5,
+                    reason=f"Evidence confidence: {evidence_score:.2f}",
+                )
+            )
+            total_risk_score += 1.0 - evidence_score
 
         overall_risk = min(1.0, total_risk_score / max(len(execution_results), 1))
 
@@ -82,7 +93,7 @@ class HallucinationDetector:
             return 0.3
         return 0.5
 
-    def _get_recommendation(self, risk: float, risks: List[HallucinationRisk]) -> str:
+    def _get_recommendation(self, risk: float, risks: list[HallucinationRisk]) -> str:
         if risk > 0.7:
             return "High hallucination risk. Fall back to data-driven response and flag for review."
         if risk > 0.4:

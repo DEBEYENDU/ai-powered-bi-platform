@@ -1,5 +1,8 @@
 from typing import Any
 
+from app.etl.engine.pipeline import PipelineStage
+
+
 class ProfileStage(PipelineStage):
     name = "profile"
 
@@ -9,7 +12,7 @@ class ProfileStage(PipelineStage):
         text = raw.decode("utf-8", errors="replace")
         lines = text.splitlines()
         rows = len(lines)
-        cols = max(len(l.split(",")) for l in lines) if lines else 0
+        cols = max(len(part.split(",")) for part in lines) if lines else 0
         context["profile"] = {
             "total_rows": rows,
             "total_columns": cols,

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
 from datetime import datetime
+from typing import Any
+from uuid import uuid4
+
+from pydantic import BaseModel
 
 from app.ai.tools.schemas import GenerateReportRequest, GenerateReportResponse
 
 
-def generate_report_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def generate_report_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = GenerateReportRequest(**validated)
     return GenerateReportResponse(
@@ -22,7 +25,9 @@ def generate_report_tool(validated: BaseModel, context: Optional[Dict[str, Any]]
     ).dict()
 
 
-def generate_executive_summary_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def generate_executive_summary_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {
         "summary": "Executive summary generated",
         "key_insights": ["Revenue growth 12%", "Customer retention stable"],

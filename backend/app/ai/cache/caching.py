@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import time
 import hashlib
 import json
-from typing import Any, Dict, Optional, Tuple
+from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
 
 
 class CacheEntry(BaseModel):
@@ -16,7 +16,7 @@ class CacheEntry(BaseModel):
     ttl: float = Field(..., description="Time to live in seconds")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     access_count: int = 0
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def is_expired(self) -> bool:
@@ -33,13 +33,13 @@ class AICache:
     """In-memory cache for AI assistant operations."""
 
     def __init__(self, default_ttl: float = 300.0, max_entries: int = 10000) -> None:
-        self._cache: Dict[str, CacheEntry] = {}
+        self._cache: dict[str, CacheEntry] = {}
         self._default_ttl = default_ttl
         self._max_entries = max_entries
         self._hit_count = 0
         self._miss_count = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         entry = self._cache.get(key)
         if entry is None:
             self._miss_count += 1
@@ -56,8 +56,8 @@ class AICache:
         self,
         key: str,
         value: Any,
-        ttl: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         if len(self._cache) >= self._max_entries:
             self._evict()
@@ -76,6 +76,7 @@ class AICache:
 
     def invalidate_pattern(self, pattern: str) -> int:
         import re
+
         regex = re.compile(pattern.replace("*", ".*"))
         count = 0
         keys_to_remove = [k for k in self._cache if regex.match(k)]
@@ -89,7 +90,7 @@ class AICache:
         self._hit_count = 0
         self._miss_count = 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         total = self._hit_count + self._miss_count
         hit_rate = self._hit_count / total if total > 0 else 0.0
         expired = sum(1 for e in self._cache.values() if e.is_expired)

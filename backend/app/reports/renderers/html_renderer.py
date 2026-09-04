@@ -8,14 +8,14 @@ from it when their optional dependencies are present.
 from __future__ import annotations
 
 import html as html_lib
-from typing import Any, Dict
+from typing import Any
 
 
 def _esc(value: Any) -> str:
     return html_lib.escape(str(value) if value is not None else "")
 
 
-def render_section(section: Dict[str, Any]) -> str:
+def render_section(section: dict[str, Any]) -> str:
     kind = section.get("kind", "text")
     title = _esc(section.get("title") or section.get("section_id", ""))
     data = section.get("data", {})
@@ -27,7 +27,7 @@ def render_section(section: Dict[str, Any]) -> str:
     elif kind in ("chart", "heatmap", "trend", "dashboard"):
         body = (
             "<div class='chart-placeholder'>"
-            f"<p>Chart ({_esc(kind)}) – rendered by dashboard visualization engine</p>"
+            f"<p>Chart ({_esc(kind)}) - rendered by dashboard visualization engine</p>"
             f"<pre>{_esc(payload)}</pre></div>"
         )
     elif kind in ("table", "pivot"):
@@ -43,8 +43,9 @@ def render_section(section: Dict[str, Any]) -> str:
     return f"<section class='report-section {kind}'><h2>{title}</h2>{body}</section>"
 
 
-def render_html(report: Dict[str, Any], layout: Dict[str, Any] | None = None,
-                theme_css: str = "") -> str:
+def render_html(
+    report: dict[str, Any], layout: dict[str, Any] | None = None, theme_css: str = ""
+) -> str:
     layout = layout or {}
     brand = layout.get("brand", {})
     company = _esc(brand.get("company", ""))

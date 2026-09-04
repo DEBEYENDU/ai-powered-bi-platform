@@ -32,5 +32,5 @@ try:
 
     # Ensure task modules register.
     import app.reports.jobs.tasks  # noqa: F401
-except Exception:  # pragma: no cover - celery optional in minimal envs
+except ImportError:  # pragma: no cover - celery optional in minimal envs
     celery_app = None  # type: ignore[assignment]

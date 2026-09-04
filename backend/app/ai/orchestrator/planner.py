@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -10,28 +11,28 @@ class PlanStep(BaseModel):
     step_id: str
     tool_name: str
     description: str
-    dependencies: List[str] = Field(default_factory=list)
-    input_source: Optional[str] = Field(None, description="Where to get input from")
-    parallel_group: Optional[str] = Field(None, description="Group for parallel execution")
+    dependencies: list[str] = Field(default_factory=list)
+    input_source: str | None = Field(None, description="Where to get input from")
+    parallel_group: str | None = Field(None, description="Group for parallel execution")
     timeout: float = 30.0
     retry_count: int = 0
 
 
 class ExecutionPlan(BaseModel):
     plan_id: str
-    steps: List[PlanStep]
+    steps: list[PlanStep]
     estimated_time: float
     confidence: float
 
-    def get_parallel_groups(self) -> Dict[str, List[PlanStep]]:
-        groups: Dict[str, List[PlanStep]] = {}
+    def get_parallel_groups(self) -> dict[str, list[PlanStep]]:
+        groups: dict[str, list[PlanStep]] = {}
         for step in self.steps:
             if step.parallel_group:
                 groups.setdefault(step.parallel_group, []).append(step)
         return groups
 
-    def get_ordered_steps(self) -> List[PlanStep]:
-        ordered: List[PlanStep] = []
+    def get_ordered_steps(self) -> list[PlanStep]:
+        ordered: list[PlanStep] = []
         seen: set = set()
         for step in self.steps:
             if step.step_id not in seen:
@@ -44,15 +45,16 @@ class Planner(BaseModel):
     def create_plan(
         self,
         intent_detection: Any,
-        available_tools: List[str],
-        context: Optional[Dict[str, Any]] = None,
+        available_tools: list[str],
+        context: dict[str, Any] | None = None,
     ) -> ExecutionPlan:
-        intent = intent_detection.intent if hasattr(intent_detection, 'intent') else str(intent_detection)
-        tools = intent_detection.suggested_tools if hasattr(intent_detection, 'suggested_tools') else []
-        entities = intent_detection.entities if hasattr(intent_detection, 'entities') else {}
-        confidence = intent_detection.confidence if hasattr(intent_detection, 'confidence') else 0.5
+        tools = (
+            intent_detection.suggested_tools if hasattr(intent_detection, "suggested_tools") else []
+        )
+        entities = intent_detection.entities if hasattr(intent_detection, "entities") else {}
+        confidence = intent_detection.confidence if hasattr(intent_detection, "confidence") else 0.5
 
-        steps: List[PlanStep] = []
+        steps: list[PlanStep] = []
         step_counter = 0
         parallel_group = f"group_{step_counter}"
 
@@ -60,13 +62,15 @@ class Planner(BaseModel):
             step_counter += 1
             step_id = f"step_{step_counter}"
             desc = self._describe_tool(tool_name, entities)
-            steps.append(PlanStep(
-                step_id=step_id,
-                tool_name=tool_name,
-                description=desc,
-                dependencies=[],
-                parallel_group=parallel_group,
-            ))
+            steps.append(
+                PlanStep(
+                    step_id=step_id,
+                    tool_name=tool_name,
+                    description=desc,
+                    dependencies=[],
+                    parallel_group=parallel_group,
+                )
+            )
 
         plan_id = f"plan_{hash(str(tools)) % 100000}"
         return ExecutionPlan(
@@ -76,5 +80,5 @@ class Planner(BaseModel):
             confidence=confidence,
         )
 
-    def _describe_tool(self, tool_name: str, entities: Dict[str, Any]) -> str:
+    def _describe_tool(self, tool_name: str, entities: dict[str, Any]) -> str:
         return f"Execute {tool_name} with entities: {entities}"

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import List
 
 try:
     from pydantic_settings import BaseSettings as _BaseSettings  # type: ignore
@@ -17,8 +16,7 @@ try:
     class _SettingsBase(_BaseSettings):
         model_config = {"env_file": ".env", "extra": "ignore"}  # type: ignore[attr-defined]
 
-except Exception:  # pragma: no cover - fallback without pydantic-settings
-
+except ImportError:  # pragma: no cover - fallback without pydantic-settings
     from pydantic import BaseModel as _SettingsBase  # type: ignore
 
 
@@ -28,10 +26,11 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     debug: bool = os.getenv("APP_DEBUG", "false").lower() == "true"
 
     database_url: str = os.getenv(
-        "DATABASE_URL", "postgresql+psycopg://bi:bi@localhost:5432/bi_platform")
+        "DATABASE_URL", "postgresql+psycopg://bi:bi@localhost:5432/bi_platform"
+    )
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    storage_path: str = os.getenv("STORAGE_PATH", "/tmp/storage")
-    reports_path: str = os.getenv("REPORTS_PATH", "/tmp/reports")
+    storage_path: str = os.getenv("STORAGE_PATH", "/tmp/storage")  # noqa: S108 -- env-overridable dev default; see .env.example
+    reports_path: str = os.getenv("REPORTS_PATH", "/tmp/reports")  # noqa: S108 -- env-overridable dev default; see .env.example
 
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
     jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
@@ -42,7 +41,7 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     rate_limit_per_minute: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
 
     @property
-    def cors_origin_list(self) -> List[str]:
+    def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property

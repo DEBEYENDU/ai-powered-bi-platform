@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class ForecastAgentConfig(BaseModel):
@@ -16,17 +17,17 @@ class ForecastAgentConfig(BaseModel):
 class ForecastAgent:
     """Agent specialized for forecasting and predictions."""
 
-    def __init__(self, config: Optional[ForecastAgentConfig] = None) -> None:
+    def __init__(self, config: ForecastAgentConfig | None = None) -> None:
         self.config = config or ForecastAgentConfig()
         self.name = self.config.name
 
     async def forecast(
         self,
         kpi: str,
-        historical_data: List[float],
+        historical_data: list[float],
         horizon: int = 30,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         forecast_values = self._generate_forecast(historical_data, horizon)
         trend = self._determine_trend(historical_data)
         return {
@@ -38,9 +39,7 @@ class ForecastAgent:
             "confidence": self._calculate_confidence(historical_data, horizon),
         }
 
-    def _generate_forecast(
-        self, data: List[float], horizon: int
-    ) -> List[float]:
+    def _generate_forecast(self, data: list[float], horizon: int) -> list[float]:
         if not data:
             return [0.0] * horizon
         avg = sum(data) / len(data)
@@ -51,7 +50,7 @@ class ForecastAgent:
             forecast.append(round(val, 2))
         return forecast
 
-    def _determine_trend(self, data: List[float]) -> str:
+    def _determine_trend(self, data: list[float]) -> str:
         if len(data) < 2:
             return "insufficient_data"
         if data[-1] > data[0]:
@@ -60,9 +59,7 @@ class ForecastAgent:
             return "downward"
         return "stable"
 
-    def _calculate_confidence(
-        self, data: List[float], horizon: int
-    ) -> float:
+    def _calculate_confidence(self, data: list[float], horizon: int) -> float:
         base = min(1.0, len(data) * 0.05)
         confidence = base * (1.0 - horizon * 0.01)
         return max(0.1, confidence)

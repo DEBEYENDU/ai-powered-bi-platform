@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 
 class PromptVersion(BaseModel):
@@ -13,13 +14,13 @@ class PromptVersion(BaseModel):
     prompt_id: str = Field(..., description="Unique prompt identifier")
     version_number: int = Field(..., description="Version number")
     template: str = Field(..., description="Prompt template string")
-    variables: List[str] = Field(default_factory=list, description="Template variables")
+    variables: list[str] = Field(default_factory=list, description="Template variables")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     approved: bool = False
-    approved_by: Optional[str] = Field(None)
-    approved_at: Optional[datetime] = Field(None)
+    approved_by: str | None = Field(None)
+    approved_at: datetime | None = Field(None)
     description: str = ""
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def is_active(self) -> bool:
@@ -31,13 +32,13 @@ class PromptTemplate(BaseModel):
     name: str = Field(..., description="Human-readable name")
     description: str = Field(default="", description="Description")
     current_version: int = Field(default=1)
-    versions: List[PromptVersion] = Field(default_factory=list)
+    versions: list[PromptVersion] = Field(default_factory=list)
     category: str = Field(default="general", description="Prompt category")
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    def get_active_version(self) -> Optional[PromptVersion]:
+    def get_active_version(self) -> PromptVersion | None:
         for v in reversed(self.versions):
             if v.approved:
                 return v
@@ -50,8 +51,8 @@ class PromptManager:
     """Manages prompt templates with versioning."""
 
     def __init__(self) -> None:
-        self._templates: Dict[str, PromptTemplate] = {}
-        self._default_prompts: Dict[str, str] = {}
+        self._templates: dict[str, PromptTemplate] = {}
+        self._default_prompts: dict[str, str] = {}
         self._load_defaults()
 
     def _load_defaults(self) -> None:
@@ -123,9 +124,7 @@ class PromptManager:
             ),
         }
 
-    def get_prompt(
-        self, prompt_id: str, **variables: Any
-    ) -> str:
+    def get_prompt(self, prompt_id: str, **variables: Any) -> str:
         if prompt_id in self._default_prompts:
             template = self._default_prompts[prompt_id]
         else:
@@ -143,9 +142,9 @@ class PromptManager:
         prompt_id: str,
         name: str,
         template: str,
-        variables: List[str],
+        variables: list[str],
         category: str = "general",
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
     ) -> PromptTemplate:
         if prompt_id in self._templates:
             template_obj = self._templates[prompt_id]
@@ -153,7 +152,8 @@ class PromptManager:
         else:
             version_num = 1
             template_obj = PromptTemplate(
-                prompt_id=prompt_id, name=name,
+                prompt_id=prompt_id,
+                name=name,
             )
         version = PromptVersion(
             prompt_id=prompt_id,
@@ -182,11 +182,11 @@ class PromptManager:
                 return True
         return False
 
-    def get_template(self, prompt_id: str) -> Optional[PromptTemplate]:
+    def get_template(self, prompt_id: str) -> PromptTemplate | None:
         return self._templates.get(prompt_id)
 
-    def list_templates(self) -> List[PromptTemplate]:
+    def list_templates(self) -> list[PromptTemplate]:
         return list(self._templates.values())
 
-    def get_default_prompt_ids(self) -> List[str]:
+    def get_default_prompt_ids(self) -> list[str]:
         return list(self._default_prompts.keys())

@@ -9,7 +9,7 @@ reimplementing data access.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,16 +19,21 @@ ModelT = TypeVar("ModelT")
 
 
 class BaseRepository(Generic[ModelT]):
-    def __init__(self, model: Type[ModelT], db: Session):
+    def __init__(self, model: type[ModelT], db: Session):
         self.model = model
         self.db = db
 
-    def get(self, id: UUID) -> Optional[ModelT]:
+    def get(self, id: UUID) -> ModelT | None:
         return self.db.get(self.model, id)
 
-    def list(self, *, filters: Optional[Dict[str, Any]] = None,
-             limit: int = 20, offset: int = 0,
-             include_deleted: bool = False) -> List[ModelT]:
+    def list(
+        self,
+        *,
+        filters: dict[str, Any] | None = None,
+        limit: int = 20,
+        offset: int = 0,
+        include_deleted: bool = False,
+    ) -> list[ModelT]:
         stmt = select(self.model)
         for key, value in (filters or {}).items():
             column = getattr(self.model, key, None)
@@ -50,14 +55,14 @@ class BaseRepository(Generic[ModelT]):
             if hasattr(obj, key):
                 setattr(obj, key, value)
         if hasattr(obj, "updated_at"):
-            setattr(obj, "updated_at", datetime.utcnow())
+            obj.updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(obj)
         return obj
 
     def soft_delete(self, obj: ModelT) -> ModelT:
         if hasattr(obj, "deleted_at"):
-            setattr(obj, "deleted_at", datetime.utcnow())
+            obj.deleted_at = datetime.utcnow()
             self.db.commit()
             self.db.refresh(obj)
         else:  # pragma: no cover - models without soft delete

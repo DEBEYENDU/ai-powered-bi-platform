@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from calendar import monthrange
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -24,33 +24,43 @@ class Schedule(BaseModel):
     cron_expression: str = ""
     timezone: str = "UTC"
     enabled: bool = True
-    next_run_at: Optional[datetime] = None
-    last_run_at: Optional[datetime] = None
+    next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
     retry_count: int = 0
     max_retries: int = 3
-    distribution: Dict[str, Any] = Field(default_factory=dict)
-    holidays: List[str] = Field(default_factory=list, description="YYYY-MM-DD dates to skip")
+    distribution: dict[str, Any] = Field(default_factory=dict)
+    holidays: list[str] = Field(default_factory=list, description="YYYY-MM-DD dates to skip")
 
 
 class Scheduler:
     def __init__(self) -> None:
-        self._schedules: Dict[str, Schedule] = {}
+        self._schedules: dict[str, Schedule] = {}
 
-    def create(self, report_id: str, frequency: str = "daily",
-               cron_expression: str = "", timezone: str = "UTC",
-               distribution: Optional[Dict[str, Any]] = None,
-               max_retries: int = 3, holidays: Optional[List[str]] = None,
-               now: Optional[datetime] = None) -> Schedule:
+    def create(
+        self,
+        report_id: str,
+        frequency: str = "daily",
+        cron_expression: str = "",
+        timezone: str = "UTC",
+        distribution: dict[str, Any] | None = None,
+        max_retries: int = 3,
+        holidays: list[str] | None = None,
+        now: datetime | None = None,
+    ) -> Schedule:
         sched = Schedule(
-            report_id=report_id, frequency=frequency, cron_expression=cron_expression,
-            timezone=timezone, distribution=distribution or {}, max_retries=max_retries,
+            report_id=report_id,
+            frequency=frequency,
+            cron_expression=cron_expression,
+            timezone=timezone,
+            distribution=distribution or {},
+            max_retries=max_retries,
             holidays=holidays or [],
         )
         sched.next_run_at = self.compute_next_run(sched, now)
         self._schedules[sched.schedule_id] = sched
         return sched
 
-    def get(self, schedule_id: str) -> Optional[Schedule]:
+    def get(self, schedule_id: str) -> Schedule | None:
         return self._schedules.get(schedule_id)
 
     def cancel(self, schedule_id: str) -> bool:
@@ -63,7 +73,7 @@ class Scheduler:
         sched.enabled = False
         return True
 
-    def resume(self, schedule_id: str, now: Optional[datetime] = None) -> bool:
+    def resume(self, schedule_id: str, now: datetime | None = None) -> bool:
         sched = self._schedules.get(schedule_id)
         if sched is None:
             return False
@@ -71,7 +81,9 @@ class Scheduler:
         sched.next_run_at = self.compute_next_run(sched, now)
         return True
 
-    def record_run(self, schedule_id: str, success: bool, now: Optional[datetime] = None) -> Optional[Schedule]:
+    def record_run(
+        self, schedule_id: str, success: bool, now: datetime | None = None
+    ) -> Schedule | None:
         sched = self._schedules.get(schedule_id)
         if sched is None:
             return None
@@ -88,12 +100,15 @@ class Scheduler:
                 sched.next_run_at = moment + timedelta(minutes=15 * sched.retry_count)
         return sched
 
-    def due_schedules(self, now: Optional[datetime] = None) -> List[Schedule]:
+    def due_schedules(self, now: datetime | None = None) -> list[Schedule]:
         moment = now or datetime.utcnow()
-        return [s for s in self._schedules.values()
-                if s.enabled and s.next_run_at and s.next_run_at <= moment]
+        return [
+            s
+            for s in self._schedules.values()
+            if s.enabled and s.next_run_at and s.next_run_at <= moment
+        ]
 
-    def compute_next_run(self, sched: Schedule, now: Optional[datetime] = None) -> Optional[datetime]:
+    def compute_next_run(self, sched: Schedule, now: datetime | None = None) -> datetime | None:
         base = now or self._now(sched.timezone)
         freq = sched.frequency
         if freq == "one_time":
@@ -116,7 +131,7 @@ class Scheduler:
             raise ValueError(f"Unknown frequency '{freq}'")
         return self._skip_holidays(nxt, sched.holidays)
 
-    def _skip_holidays(self, dt: datetime, holidays: List[str]) -> datetime:
+    def _skip_holidays(self, dt: datetime, holidays: list[str]) -> datetime:
         while dt.strftime("%Y-%m-%d") in holidays:
             dt += timedelta(days=1)
         return dt

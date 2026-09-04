@@ -9,8 +9,8 @@ use; ``get_db_session`` is a context manager for workers/jobs.
 from __future__ import annotations
 
 import time
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
-from typing import Generator, Iterator, Optional
 
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,17 +20,25 @@ from app.core.logging import get_logger
 
 log = get_logger(__name__)
 
-_engine: Optional[Engine] = None
-_SessionLocal: Optional[sessionmaker] = None
+_engine: Engine | None = None
+_SessionLocal: sessionmaker | None = None
 
 
 def get_engine() -> Engine:
     global _engine, _SessionLocal
     if _engine is None:
         settings = get_settings()
-        _engine = create_engine(settings.database_url, pool_pre_ping=True, future=True)
-        _SessionLocal = sessionmaker(bind=_engine, autoflush=False, autocommit=False,
-                                     class_=Session, expire_on_commit=False)
+        # Bound TCP connects: without connect_timeout a wedged database hangs
+        # workers (and health checks) indefinitely. Only valid for pg drivers.
+        connect_args: dict = (
+            {"connect_timeout": 5} if settings.database_url.startswith("postgresql") else {}
+        )
+        _engine = create_engine(
+            settings.database_url, pool_pre_ping=True, future=True, connect_args=connect_args
+        )
+        _SessionLocal = sessionmaker(
+            bind=_engine, autoflush=False, autocommit=False, class_=Session, expire_on_commit=False
+        )
     return _engine
 
 
@@ -43,12 +51,14 @@ class _LazyEngine:
 class _LazySession:
     def __call__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         get_engine()
-        assert _SessionLocal is not None
+        if _SessionLocal is None:
+            raise RuntimeError("Session factory not initialized")
         return _SessionLocal(*args, **kwargs)
 
     def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
         get_engine()
-        assert _SessionLocal is not None
+        if _SessionLocal is None:
+            raise RuntimeError("Session factory not initialized")
         return getattr(_SessionLocal, name)
 
 
@@ -66,13 +76,14 @@ def check_connection(retries: int = 10) -> None:
         except Exception as exc:
             last_error = exc
             log.warning("db_connect_retry", attempt=attempt, error=str(exc))
-            time.sleep(min(2 ** attempt, 30))
+            time.sleep(min(2**attempt, 30))
     raise RuntimeError(f"Could not connect to database: {last_error}")
 
 
 def get_db() -> Generator[Session, None, None]:
     get_engine()
-    assert _SessionLocal is not None
+    if _SessionLocal is None:
+        raise RuntimeError("Session factory not initialized")
     db = _SessionLocal()
     try:
         yield db
@@ -83,7 +94,8 @@ def get_db() -> Generator[Session, None, None]:
 @contextmanager
 def get_db_session() -> Iterator[Session]:
     get_engine()
-    assert _SessionLocal is not None
+    if _SessionLocal is None:
+        raise RuntimeError("Session factory not initialized")
     db = _SessionLocal()
     try:
         yield db

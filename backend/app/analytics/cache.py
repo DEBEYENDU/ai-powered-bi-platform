@@ -1,10 +1,20 @@
+"""Redis cache helpers for the analytics engine (module-level functions)."""
+
+from __future__ import annotations
+
 import redis
-from analytics.core.config import settings
 
-redis_client = redis.from_url(settings.REDIS_URL)
+from app.core.config import get_settings
 
-def cache_set(key: str, value: str, ttl: int = 300):
-    redis_client.setex(key, ttl, value)
+
+def _client() -> redis.Redis:
+    return redis.from_url(get_settings().redis_url, decode_responses=True)
+
+
+def cache_set(key: str, value: str, ttl: int = 300) -> None:
+    _client().setex(key, ttl, value)
+
 
 def cache_get(key: str) -> str | None:
-    return redis_client.get(key)
+    value = _client().get(key)
+    return str(value) if value is not None else None

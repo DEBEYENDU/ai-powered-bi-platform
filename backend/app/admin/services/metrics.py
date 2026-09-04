@@ -11,34 +11,43 @@ from __future__ import annotations
 import time
 from collections import defaultdict, deque
 from datetime import datetime
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 
 class MetricsCollector:
     def __init__(self, max_series: int = 5000, retention: int = 1000) -> None:
-        self._series: Dict[str, Deque[Dict[str, Any]]] = defaultdict(
-            lambda: deque(maxlen=retention))
+        self._series: dict[str, deque[dict[str, Any]]] = defaultdict(
+            lambda: deque(maxlen=retention)
+        )
         self._max_series = max_series
         self._started_at = time.time()
 
-    def record(self, name: str, value: float, labels: Optional[Dict[str, str]] = None,
-               timestamp: Optional[datetime] = None) -> None:
+    def record(
+        self,
+        name: str,
+        value: float,
+        labels: dict[str, str] | None = None,
+        timestamp: datetime | None = None,
+    ) -> None:
         if len(self._series) >= self._max_series and name not in self._series:
             oldest = next(iter(self._series))
             del self._series[oldest]
-        self._series[name].append({
-            "value": value, "labels": labels or {},
-            "timestamp": (timestamp or datetime.utcnow()).isoformat(),
-        })
+        self._series[name].append(
+            {
+                "value": value,
+                "labels": labels or {},
+                "timestamp": (timestamp or datetime.utcnow()).isoformat(),
+            }
+        )
 
-    def latest(self, name: str) -> Optional[Dict[str, Any]]:
+    def latest(self, name: str) -> dict[str, Any] | None:
         points = self._series.get(name)
         return points[-1] if points else None
 
-    def query(self, name: str, limit: int = 100) -> List[Dict[str, Any]]:
+    def query(self, name: str, limit: int = 100) -> list[dict[str, Any]]:
         return list(self._series.get(name, []))[-limit:]
 
-    def series_names(self) -> List[str]:
+    def series_names(self) -> list[str]:
         return sorted(self._series.keys())
 
     def render_prometheus(self) -> str:
@@ -49,38 +58,47 @@ class MetricsCollector:
                 continue
             safe = "bi_" + "".join(c if c.isalnum() else "_" for c in name)
             lines.append(f"# TYPE {safe} gauge")
-            by_labels: Dict[str, Dict[str, Any]] = {}
+            by_labels: dict[str, dict[str, Any]] = {}
             for p in points:
                 key = ",".join(f"{k}={v}" for k, v in sorted(p["labels"].items()))
                 by_labels[key] = p  # last wins per label set
-            for key, p in by_labels.items():
-                label_str = ("{" + ",".join(
-                    f'{k}="{v}"' for k, v in sorted(p["labels"].items())) + "}"
-                    if p["labels"] else "")
+            for p in by_labels.values():
+                label_str = (
+                    "{" + ",".join(f'{k}="{v}"' for k, v in sorted(p["labels"].items())) + "}"
+                    if p["labels"]
+                    else ""
+                )
                 lines.append(f"{safe}{label_str} {p['value']}")
         return "\n".join(lines) + "\n"
 
-    def system_snapshot(self) -> Dict[str, Any]:
-        snapshot: Dict[str, Any] = {"uptime_seconds": round(time.time() - self._started_at, 1)}
+    def system_snapshot(self) -> dict[str, Any]:
+        snapshot: dict[str, Any] = {"uptime_seconds": round(time.time() - self._started_at, 1)}
         try:
             import psutil  # type: ignore
 
-            snapshot.update({
-                "cpu_percent": psutil.cpu_percent(interval=0.1),
-                "memory_percent": psutil.virtual_memory().percent,
-                "disk_percent": psutil.disk_usage("/").percent,
-            })
+            snapshot.update(
+                {
+                    "cpu_percent": psutil.cpu_percent(interval=0.1),
+                    "memory_percent": psutil.virtual_memory().percent,
+                    "disk_percent": psutil.disk_usage("/").percent,
+                }
+            )
         except Exception:
             snapshot.update({"cpu_percent": None, "memory_percent": None, "disk_percent": None})
-        for name in ("api_latency_ms", "api_throughput_rpm", "cache_hit_rate",
-                     "db_connections", "job_queue_length"):
+        for name in (
+            "api_latency_ms",
+            "api_throughput_rpm",
+            "cache_hit_rate",
+            "db_connections",
+            "job_queue_length",
+        ):
             latest = self.latest(name)
             snapshot[name] = latest["value"] if latest else 0
         return snapshot
 
-    def platform_snapshot(self) -> Dict[str, Any]:
+    def platform_snapshot(self) -> dict[str, Any]:
         """Cross-module status reusing existing services (no duplicated logic)."""
-        snapshot: Dict[str, Any] = {}
+        snapshot: dict[str, Any] = {}
         try:
             from app.ai.monitoring.observability import AIMonitor  # type: ignore
 

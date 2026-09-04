@@ -15,36 +15,36 @@ import io
 import json
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
-
+from typing import Any
 
 SUPPORTED_FORMATS = ["pdf", "docx", "xlsx", "csv", "json", "html", "pptx", "png", "svg", "zip"]
 
 
-def _flatten_rows(report: Dict[str, Any]) -> Tuple[List[str], List[List[Any]]]:
+def _flatten_rows(report: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
     header = ["section_id", "kind", "title", "content"]
-    rows: List[List[Any]] = []
+    rows: list[list[Any]] = []
     for s in report.get("sections", []):
         d = s if isinstance(s, dict) else {}
         data = d.get("data", {})
         payload = data.get("payload", data) if isinstance(data, dict) else data
-        rows.append([d.get("section_id", ""), d.get("kind", ""),
-                     d.get("title", ""), str(payload)[:2000]])
+        rows.append(
+            [d.get("section_id", ""), d.get("kind", ""), d.get("title", ""), str(payload)[:2000]]
+        )
     return header, rows
 
 
-def export_html(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_html(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     path.write_text(html, encoding="utf-8")
     return {"format": "html", "degraded": False}
 
 
-def export_json(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_json(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     serializable = json.loads(json.dumps(report, default=str))
     path.write_text(json.dumps(serializable, indent=2), encoding="utf-8")
     return {"format": "json", "degraded": False}
 
 
-def export_csv(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_csv(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     header, rows = _flatten_rows(report)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -53,7 +53,7 @@ def export_csv(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
     return {"format": "csv", "degraded": False}
 
 
-def export_zip(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_zip(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     header, rows = _flatten_rows(report)
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -61,18 +61,20 @@ def export_zip(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
     writer.writerows(rows)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("report.html", html)
-        zf.writestr("report.json", json.dumps(json.loads(json.dumps(report, default=str)), indent=2))
+        zf.writestr(
+            "report.json", json.dumps(json.loads(json.dumps(report, default=str)), indent=2)
+        )
         zf.writestr("report.csv", buf.getvalue())
     return {"format": "zip", "degraded": False}
 
 
-def export_pdf(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_pdf(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     try:
         from reportlab.lib.pagesizes import A4  # type: ignore
         from reportlab.pdfgen import canvas  # type: ignore
 
         c = canvas.Canvas(str(path), pagesize=A4)
-        width, height = A4
+        _width, height = A4
         y = height - 60
         c.setFont("Helvetica-Bold", 16)
         c.drawString(40, y, str(report.get("title", "Report"))[:90])
@@ -80,8 +82,8 @@ def export_pdf(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
         c.setFont("Helvetica", 10)
         for s in report.get("sections", []):
             d = s if isinstance(s, dict) else {}
-            line = f"- {d.get('title') or d.get('section_id')}: {str((d.get('data') or {}))[:110]}"
-            for chunk in [line[i:i + 110] for i in range(0, len(line), 110)]:
+            line = f"- {d.get('title') or d.get('section_id')}: {str(d.get('data') or {})[:110]}"
+            for chunk in [line[i : i + 110] for i in range(0, len(line), 110)]:
                 if y < 60:
                     c.showPage()
                     y = height - 60
@@ -95,7 +97,7 @@ def export_pdf(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
         return {"format": "pdf", "degraded": True, "reason": f"reportlab unavailable: {exc}"}
 
 
-def export_docx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_docx(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     try:
         from docx import Document  # type: ignore
 
@@ -112,7 +114,7 @@ def export_docx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]
         return {"format": "docx", "degraded": True, "reason": f"python-docx unavailable: {exc}"}
 
 
-def export_xlsx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_xlsx(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     try:
         from openpyxl import Workbook  # type: ignore
 
@@ -130,7 +132,7 @@ def export_xlsx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]
         return {"format": "xlsx", "degraded": True, "reason": f"openpyxl unavailable: {exc}"}
 
 
-def export_pptx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_pptx(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     try:
         from pptx import Presentation  # type: ignore
 
@@ -141,7 +143,7 @@ def export_pptx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]
             d = s if isinstance(s, dict) else {}
             slide = prs.slides.add_slide(prs.slide_layouts[5])
             slide.shapes.title.text = str(d.get("title") or d.get("section_id", ""))[:100]
-            slide.placeholders[1].text = str((d.get("data") or {}))[:1000]
+            slide.placeholders[1].text = str(d.get("data") or {})[:1000]
         prs.save(str(path))
         return {"format": "pptx", "degraded": False}
     except Exception as exc:
@@ -149,12 +151,16 @@ def export_pptx(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]
         return {"format": "pptx", "degraded": True, "reason": f"python-pptx unavailable: {exc}"}
 
 
-def export_png(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_png(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     path.write_text(html, encoding="utf-8")
-    return {"format": "png", "degraded": True, "reason": "chart rasterization requires dashboard viz engine"}
+    return {
+        "format": "png",
+        "degraded": True,
+        "reason": "chart rasterization requires dashboard viz engine",
+    }
 
 
-def export_svg(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
+def export_svg(report: dict[str, Any], html: str, path: Path) -> dict[str, Any]:
     title = str(report.get("title", "Report")).replace("&", "&amp;").replace("<", "&lt;")
     path.write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200">'
@@ -162,17 +168,28 @@ def export_svg(report: Dict[str, Any], html: str, path: Path) -> Dict[str, Any]:
         f'<text x="20" y="100" font-size="14">{len(report.get("sections", []))} sections</text></svg>',
         encoding="utf-8",
     )
-    return {"format": "svg", "degraded": True, "reason": "summary SVG; full charts via dashboard engine"}
+    return {
+        "format": "svg",
+        "degraded": True,
+        "reason": "summary SVG; full charts via dashboard engine",
+    }
 
 
 EXPORTERS = {
-    "pdf": export_pdf, "docx": export_docx, "xlsx": export_xlsx, "csv": export_csv,
-    "json": export_json, "html": export_html, "pptx": export_pptx,
-    "png": export_png, "svg": export_svg, "zip": export_zip,
+    "pdf": export_pdf,
+    "docx": export_docx,
+    "xlsx": export_xlsx,
+    "csv": export_csv,
+    "json": export_json,
+    "html": export_html,
+    "pptx": export_pptx,
+    "png": export_png,
+    "svg": export_svg,
+    "zip": export_zip,
 }
 
 
-def export_report(report: Dict[str, Any], html: str, fmt: str, path: Path) -> Dict[str, Any]:
+def export_report(report: dict[str, Any], html: str, fmt: str, path: Path) -> dict[str, Any]:
     fmt = fmt.lower()
     if fmt not in EXPORTERS:
         raise ValueError(f"Unsupported format '{fmt}'. Supported: {SUPPORTED_FORMATS}")

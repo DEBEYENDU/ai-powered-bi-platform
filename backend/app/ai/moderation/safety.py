@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -11,7 +11,7 @@ class SafetyCheckResult(BaseModel):
     is_safe: bool
     blocked: bool = False
     risk_level: str = "low"
-    flagged_patterns: List[str] = Field(default_factory=list)
+    flagged_patterns: list[str] = Field(default_factory=list)
     sanitized_text: str = ""
 
 
@@ -40,8 +40,15 @@ class SafetyChecker:
     ]
 
     MALICIOUS_KEYWORDS = [
-        "hack", "exploit", "bypass", "crack", "inject",
-        "sql injection", "xss", "csrf", "ddos",
+        "hack",
+        "exploit",
+        "bypass",
+        "crack",
+        "inject",
+        "sql injection",
+        "xss",
+        "csrf",
+        "ddos",
     ]
 
     SENSITIVE_PATTERNS = [
@@ -59,10 +66,7 @@ class SafetyChecker:
         for pattern in self._injection_regexes:
             if pattern.search(text):
                 return False
-        for keyword in self.MALICIOUS_KEYWORDS:
-            if keyword in text_lower:
-                return False
-        return True
+        return all(keyword not in text_lower for keyword in self.MALICIOUS_KEYWORDS)
 
     def sanitize_input(self, text: str) -> str:
         sanitized = text.strip()
@@ -74,7 +78,7 @@ class SafetyChecker:
     def check_safety(self, text: str) -> SafetyCheckResult:
         sanitized = self.sanitize_input(text)
         is_safe = self.is_safe(sanitized)
-        flagged: List[str] = []
+        flagged: list[str] = []
         risk_level = "low"
 
         for pattern in self._injection_regexes:

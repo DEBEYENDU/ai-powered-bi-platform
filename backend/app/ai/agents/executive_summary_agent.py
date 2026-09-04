@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class ExecutiveSummaryAgentConfig(BaseModel):
@@ -16,17 +17,17 @@ class ExecutiveSummaryAgentConfig(BaseModel):
 class ExecutiveSummaryAgent:
     """Agent specialized in executive summaries."""
 
-    def __init__(self, config: Optional[ExecutiveSummaryAgentConfig] = None) -> None:
+    def __init__(self, config: ExecutiveSummaryAgentConfig | None = None) -> None:
         self.config = config or ExecutiveSummaryAgentConfig()
         self.name = self.config.name
 
     async def generate_summary(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         time_range: str,
-        focus_areas: Optional[List[str]] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        focus_areas: list[str] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         summary = self._generate_executive_summary(data, time_range, focus_areas)
         return {
             "agent": self.name,
@@ -37,7 +38,7 @@ class ExecutiveSummaryAgent:
         }
 
     def _generate_executive_summary(
-        self, data: Dict[str, Any], time_range: str, focus_areas: Optional[List[str]]
+        self, data: dict[str, Any], time_range: str, focus_areas: list[str] | None
     ) -> str:
         parts = [f"Executive Summary for {time_range}"]
         if focus_areas:
@@ -45,7 +46,7 @@ class ExecutiveSummaryAgent:
         parts.append(f"Analyzed {len(data)} data points")
         return ". ".join(parts)
 
-    def _extract_key_insights(self, data: Dict[str, Any]) -> List[str]:
+    def _extract_key_insights(self, data: dict[str, Any]) -> list[str]:
         insights = []
         numeric = {k: v for k, v in data.items() if isinstance(v, (int, float))}
         if numeric:
@@ -53,7 +54,7 @@ class ExecutiveSummaryAgent:
             insights.append(f"Highest metric: {max_key}")
         return insights if insights else ["No specific insights"]
 
-    def _generate_recommendations(self, data: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, data: dict[str, Any]) -> list[str]:
         return [
             "Review key metrics for improvement opportunities",
             "Consider data-driven strategies based on trends",

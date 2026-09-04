@@ -1,5 +1,8 @@
 from typing import Any
 
+from app.etl.engine.pipeline import PipelineStage
+
+
 class TransformStage(PipelineStage):
     name = "transform"
 

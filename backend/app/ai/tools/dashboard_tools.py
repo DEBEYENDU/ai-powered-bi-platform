@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-from pydantic import BaseModel, Field
-from uuid import UUID
-from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel
 
 from app.ai.tools.schemas import (
-    GetDashboardRequest, GetDashboardResponse,
-    GetDashboardSummaryRequest, GetDashboardSummaryResponse,
+    GetDashboardRequest,
+    GetDashboardResponse,
+    GetDashboardSummaryRequest,
+    GetDashboardSummaryResponse,
 )
 
 
-def get_dashboard_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def get_dashboard_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = GetDashboardRequest(**validated)
     return GetDashboardResponse(
@@ -25,7 +28,9 @@ def get_dashboard_tool(validated: BaseModel, context: Optional[Dict[str, Any]] =
     ).dict()
 
 
-def get_dashboard_summary_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def get_dashboard_summary_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = GetDashboardSummaryRequest(**validated)
     return GetDashboardSummaryResponse(

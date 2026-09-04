@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class RecommendationEngine:
@@ -20,22 +20,22 @@ class RecommendationEngine:
         ("Retrain forecast model", "Model drift detected", "high"),
     ]
 
-    def generate(
-        self, context: str, category: Optional[str] = None, limit: int = 5
-    ) -> Dict[str, Any]:
+    def generate(self, context: str, category: str | None = None, limit: int = 5) -> dict[str, Any]:
         recs = []
         for i, (title, desc, effort) in enumerate(self.TEMPLATES[:limit]):
-            recs.append({
-                "title": title,
-                "description": f"{desc} (context: {context[:80]})",
-                "expected_impact": "high" if i < 2 else "medium",
-                "effort": effort,
-                "confidence": round(0.9 - i * 0.05, 2),
-                "actionable_steps": [
-                    f"Step 1: Analyze {title.lower()} requirements",
-                    f"Step 2: Execute {title.lower()} plan",
-                ],
-            })
+            recs.append(
+                {
+                    "title": title,
+                    "description": f"{desc} (context: {context[:80]})",
+                    "expected_impact": "high" if i < 2 else "medium",
+                    "effort": effort,
+                    "confidence": round(0.9 - i * 0.05, 2),
+                    "actionable_steps": [
+                        f"Step 1: Analyze {title.lower()} requirements",
+                        f"Step 2: Execute {title.lower()} plan",
+                    ],
+                }
+            )
         return {
             "recommendations": recs,
             "generated_at": datetime.utcnow().isoformat(),

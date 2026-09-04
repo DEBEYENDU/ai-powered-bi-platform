@@ -7,38 +7,46 @@ are probed lazily so a down dependency reports 'degraded' instead of raising.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 
 class HealthService:
     def __init__(self) -> None:
-        self._checks: Dict[str, Callable[[], Dict[str, Any]]] = {}
+        self._checks: dict[str, Callable[[], dict[str, Any]]] = {}
         self._register_builtin()
 
-    def register(self, name: str, fn: Callable[[], Dict[str, Any]]) -> None:
+    def register(self, name: str, fn: Callable[[], dict[str, Any]]) -> None:
         self._checks[name] = fn
 
-    def check_all(self) -> Dict[str, Any]:
-        results: List[Dict[str, Any]] = []
+    def check_all(self) -> dict[str, Any]:
+        results: list[dict[str, Any]] = []
         for name, fn in self._checks.items():
             start = time.time()
             try:
                 outcome = fn()
-                results.append({
-                    "service": name,
-                    "status": outcome.get("status", "ok"),
-                    "latency_ms": round((time.time() - start) * 1000, 2),
-                    "detail": outcome.get("detail", ""),
-                })
+                results.append(
+                    {
+                        "service": name,
+                        "status": outcome.get("status", "ok"),
+                        "latency_ms": round((time.time() - start) * 1000, 2),
+                        "detail": outcome.get("detail", ""),
+                    }
+                )
             except Exception as exc:
-                results.append({
-                    "service": name,
-                    "status": "down",
-                    "latency_ms": round((time.time() - start) * 1000, 2),
-                    "detail": str(exc)[:200],
-                })
-        overall = "ok" if all(r["status"] == "ok" for r in results) else (
-            "degraded" if not any(r["status"] == "down" for r in results) else "down")
+                results.append(
+                    {
+                        "service": name,
+                        "status": "down",
+                        "latency_ms": round((time.time() - start) * 1000, 2),
+                        "detail": str(exc)[:200],
+                    }
+                )
+        overall = (
+            "ok"
+            if all(r["status"] == "ok" for r in results)
+            else ("degraded" if not any(r["status"] == "down" for r in results) else "down")
+        )
         return {"overall": overall, "services": results}
 
     def _register_builtin(self) -> None:
@@ -54,7 +62,7 @@ class HealthService:
         self.register("workers", self._check_workers)
 
     @staticmethod
-    def _check_database() -> Dict[str, Any]:
+    def _check_database() -> dict[str, Any]:
         try:
             from sqlalchemy import text
 
@@ -67,21 +75,19 @@ class HealthService:
             return {"status": "down", "detail": str(exc)[:200]}
 
     @staticmethod
-    def _check_redis() -> Dict[str, Any]:
+    def _check_redis() -> dict[str, Any]:
         try:
             import redis  # type: ignore
 
             from app.core.config import get_settings
 
-            redis.Redis.from_url(
-                get_settings().redis_url, socket_connect_timeout=2).ping()
+            redis.Redis.from_url(get_settings().redis_url, socket_connect_timeout=2).ping()
             return {"status": "ok", "detail": "reachable"}
         except Exception as exc:
             return {"status": "down", "detail": str(exc)[:200]}
 
     @staticmethod
-    def _check_storage() -> Dict[str, Any]:
-        import tempfile
+    def _check_storage() -> dict[str, Any]:
         from pathlib import Path
 
         try:
@@ -97,33 +103,34 @@ class HealthService:
             return {"status": "down", "detail": str(exc)[:200]}
 
     @staticmethod
-    def _check_ai() -> Dict[str, Any]:
+    def _check_ai() -> dict[str, Any]:
         try:
             from app.ai.tools.registry import ToolRegistry
 
-            return {"status": "ok",
-                    "detail": f"{len(ToolRegistry().list_tools())} tools registered"}
+            return {
+                "status": "ok",
+                "detail": f"{len(ToolRegistry().list_tools())} tools registered",
+            }
         except Exception as exc:
             return {"status": "down", "detail": str(exc)[:200]}
 
     @staticmethod
-    def _check_reporting() -> Dict[str, Any]:
+    def _check_reporting() -> dict[str, Any]:
         try:
             from app.reports.exporters.exporters import SUPPORTED_FORMATS
 
-            return {"status": "ok",
-                    "detail": f"{len(SUPPORTED_FORMATS)} export formats"}
+            return {"status": "ok", "detail": f"{len(SUPPORTED_FORMATS)} export formats"}
         except Exception as exc:
             return {"status": "down", "detail": str(exc)[:200]}
 
     @staticmethod
-    def _check_workers() -> Dict[str, Any]:
+    def _check_workers() -> dict[str, Any]:
         try:
             from app.workers.celery_app import celery_app  # type: ignore
 
             if celery_app is None:
                 return {"status": "degraded", "detail": "celery not installed"}
-            inspect = celery_app.control.inspect()
+            inspect = celery_app.control.inspect(timeout=2.0)
             stats = inspect.stats() if inspect else None
             if not stats:
                 return {"status": "degraded", "detail": "no live workers"}

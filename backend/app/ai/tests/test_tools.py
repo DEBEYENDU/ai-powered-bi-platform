@@ -1,7 +1,6 @@
 """Tests for AI Tools."""
 
-import pytest
-from app.ai.tools.registry import ToolRegistry, ToolDefinition
+from app.ai.tools.registry import ToolRegistry
 
 
 class TestToolRegistry:

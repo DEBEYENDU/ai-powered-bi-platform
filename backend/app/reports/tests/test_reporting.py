@@ -1,7 +1,5 @@
 """Tests for the Reporting Engine (stdlib-only paths)."""
 
-import pytest
-
 from app.reports.distributions.distribution import DistributionEngine
 from app.reports.events.events import EventBus
 from app.reports.exporters.exporters import SUPPORTED_FORMATS, export_report
@@ -20,12 +18,27 @@ def _definition():
         "report_type": "sales",
         "variables": {"region": "EMEA"},
         "sections": [
-            {"section_id": "kpi", "kind": "kpi", "title": "Revenue",
-             "config": {"kpi": "revenue"}, "order": 0},
-            {"section_id": "summary", "kind": "summary", "title": "Summary",
-             "config": {}, "order": 1},
-            {"section_id": "notes", "kind": "text", "title": "Notes",
-             "config": {"body": "Reviewed"}, "order": 2},
+            {
+                "section_id": "kpi",
+                "kind": "kpi",
+                "title": "Revenue",
+                "config": {"kpi": "revenue"},
+                "order": 0,
+            },
+            {
+                "section_id": "summary",
+                "kind": "summary",
+                "title": "Summary",
+                "config": {},
+                "order": 1,
+            },
+            {
+                "section_id": "notes",
+                "kind": "text",
+                "title": "Notes",
+                "config": {"body": "Reviewed"},
+                "order": 2,
+            },
         ],
     }
 
@@ -49,6 +62,7 @@ class TestTemplateEngine:
 class TestBuilder:
     def test_build_all_sections(self):
         import asyncio
+
         builder = ReportBuilder()
         built = asyncio.run(builder.build(_definition()))
         assert len(built.sections) == 3
@@ -56,38 +70,68 @@ class TestBuilder:
 
     def test_conditions(self):
         import asyncio
+
         builder = ReportBuilder()
         definition = _definition()
-        definition["sections"].append({
-            "section_id": "cond", "kind": "text", "title": "Hidden",
-            "config": {}, "conditions": {"region": "APAC"}, "order": 3})
+        definition["sections"].append(
+            {
+                "section_id": "cond",
+                "kind": "text",
+                "title": "Hidden",
+                "config": {},
+                "conditions": {"region": "APAC"},
+                "order": 3,
+            }
+        )
         built = asyncio.run(builder.build(definition, variables={"region": "EMEA"}))
         assert "cond" not in [s.section_id for s in built.sections]
 
 
 class TestRenderExport:
     def test_html_contains_sections(self):
-        html = render_html({"title": "T", "generated_at": "now",
-                            "sections": [{"section_id": "a", "kind": "text",
-                                          "title": "Hi", "data": {"payload": "body"}}]}, {})
+        html = render_html(
+            {
+                "title": "T",
+                "generated_at": "now",
+                "sections": [
+                    {"section_id": "a", "kind": "text", "title": "Hi", "data": {"payload": "body"}}
+                ],
+            },
+            {},
+        )
         assert "Hi" in html and "body" in html
 
     def test_stdlib_exports(self, tmp_path):
-        report = {"title": "T", "sections": [
-            {"section_id": "a", "kind": "text", "title": "Hi",
-             "data": {"payload": "body"}}]}
+        report = {
+            "title": "T",
+            "sections": [
+                {"section_id": "a", "kind": "text", "title": "Hi", "data": {"payload": "body"}}
+            ],
+        }
         for fmt in ["html", "csv", "json", "zip", "svg"]:
             meta = export_report(report, "<html></html>", fmt, tmp_path / f"r.{fmt}")
             assert meta["format"] == fmt
             assert (tmp_path / f"r.{fmt}").exists()
 
     def test_supported_formats(self):
-        assert set(SUPPORTED_FORMATS) >= {"pdf", "docx", "xlsx", "csv", "json", "html", "pptx", "png", "svg", "zip"}
+        assert set(SUPPORTED_FORMATS) >= {
+            "pdf",
+            "docx",
+            "xlsx",
+            "csv",
+            "json",
+            "html",
+            "pptx",
+            "png",
+            "svg",
+            "zip",
+        }
 
 
 class TestScheduler:
     def test_daily_next_run(self):
         from datetime import datetime
+
         sched = Scheduler()
         s = sched.create("r1", frequency="daily")
         assert s.next_run_at is not None and s.next_run_at > datetime(2000, 1, 1)
@@ -103,9 +147,11 @@ class TestScheduler:
 
     def test_holidays_skipped(self):
         from datetime import datetime
+
         sched = Scheduler()
-        s = sched.create("r1", frequency="daily", holidays=["2030-01-01"],
-                         now=datetime(2029, 12, 31, 12, 0))
+        s = sched.create(
+            "r1", frequency="daily", holidays=["2030-01-01"], now=datetime(2029, 12, 31, 12, 0)
+        )
         assert s.next_run_at.strftime("%Y-%m-%d") != "2030-01-01"
 
 
@@ -139,20 +185,31 @@ class TestDistributionEvents:
 class TestService:
     def test_generate_html_json(self, tmp_path):
         import asyncio
+
         service = ReportService(storage_root=tmp_path)
-        record = service.create_report({
-            "title": "Q1", "report_type": "sales",
-            "definition": _definition(), "tags": []}, owner_id="u1", organization_id="o1")
-        result = asyncio.run(service.generate(
-            report_id=record["id"], formats=["html", "json", "csv"],
-            include_ai=False, user_id="u1", organization_id="o1"))
+        record = service.create_report(
+            {"title": "Q1", "report_type": "sales", "definition": _definition(), "tags": []},
+            owner_id="u1",
+            organization_id="o1",
+        )
+        result = asyncio.run(
+            service.generate(
+                report_id=record["id"],
+                formats=["html", "json", "csv"],
+                include_ai=False,
+                user_id="u1",
+                organization_id="o1",
+            )
+        )
         assert result["version_number"] == 1
         assert len(result["artifacts"]) == 3
         assert len(service.repo.versions(record["id"])) == 1
 
     def test_repo_search_compare(self):
         repo = ReportRepository()
-        r = repo.create({"title": "Sales Q1", "report_type": "sales", "definition": {"sections": []}})
+        r = repo.create(
+            {"title": "Sales Q1", "report_type": "sales", "definition": {"sections": []}}
+        )
         assert repo.list(search="sales")
         repo.add_version(r["id"], {"definition_snapshot": {"sections": []}})
         repo.add_version(r["id"], {"definition_snapshot": {"sections": [{"section_id": "a"}]}})

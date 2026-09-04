@@ -15,10 +15,10 @@ request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 _HAS_STRUCTLOG = False
 try:
-    import structlog  # type: ignore
+    import structlog  # type: ignore # noqa: F401 -- availability probe; used via lazy import in functions below
 
     _HAS_STRUCTLOG = True
-except Exception:
+except ImportError:
     pass
 
 
@@ -34,13 +34,17 @@ def configure_logging(level: str = "INFO") -> None:
                 structlog.processors.JSONRenderer(),
             ],
             wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(logging, level.upper(), logging.INFO)),
+                getattr(logging, level.upper(), logging.INFO)
+            ),
         )
     else:
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter(
-            '{"time":"%(asctime)s","level":"%(levelname)s",'
-            '"logger":"%(name)s","msg":"%(message)s"}'))
+        handler.setFormatter(
+            logging.Formatter(
+                '{"time":"%(asctime)s","level":"%(levelname)s",'
+                '"logger":"%(name)s","msg":"%(message)s"}'
+            )
+        )
         root = logging.getLogger()
         root.handlers = [handler]
         root.setLevel(getattr(logging, level.upper(), logging.INFO))

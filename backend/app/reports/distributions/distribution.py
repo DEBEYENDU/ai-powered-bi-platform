@@ -10,9 +10,10 @@ from __future__ import annotations
 import hashlib
 import secrets
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -41,39 +42,43 @@ class SharedLink(BaseModel):
 
 
 class DistributionEngine:
-    def __init__(self, email_sender: Optional[Callable[..., Any]] = None,
-                 storage_root: Optional[Path] = None) -> None:
+    def __init__(
+        self, email_sender: Callable[..., Any] | None = None, storage_root: Path | None = None
+    ) -> None:
         self._email_sender = email_sender or self._default_email_sender
-        self._attempts: List[DeliveryAttempt] = []
-        self._links: Dict[str, SharedLink] = {}
-        self.storage_root = storage_root or Path("/tmp/reports")
+        self._attempts: list[DeliveryAttempt] = []
+        self._links: dict[str, SharedLink] = {}
+        self.storage_root = storage_root or Path("/tmp/reports")  # noqa: S108 -- env-overridable dev default  # noqa: S108 -- env-overridable dev default; see .env.example
 
     # -- channels --
-    def deliver_download(self, report_id: str, artifacts: List[Dict[str, Any]],
-                         user_id: str = "") -> DeliveryAttempt:
+    def deliver_download(
+        self, report_id: str, artifacts: list[dict[str, Any]], user_id: str = ""
+    ) -> DeliveryAttempt:
         start = time.time()
         attempt = DeliveryAttempt(report_id=report_id, channel="download", recipient=user_id)
         try:
-            urls = {a["format"]: self.secure_url(a.get("storage_path", "")) for a in artifacts}
+            for artifact in artifacts:
+                self.secure_url(artifact.get("storage_path", ""))
             attempt.status = "sent"
             attempt.error_message = ""
         except Exception as exc:
             attempt.status = "failed"
             attempt.error_message = str(exc)
-            urls = {}
         attempt.execution_time_ms = round((time.time() - start) * 1000, 2)
         self._attempts.append(attempt)
         return attempt
 
-    def deliver_email(self, report_id: str, artifacts: List[Dict[str, Any]],
-                      recipients: List[str]) -> List[DeliveryAttempt]:
-        attempts: List[DeliveryAttempt] = []
+    def deliver_email(
+        self, report_id: str, artifacts: list[dict[str, Any]], recipients: list[str]
+    ) -> list[DeliveryAttempt]:
+        attempts: list[DeliveryAttempt] = []
         for recipient in recipients:
             start = time.time()
             attempt = DeliveryAttempt(report_id=report_id, channel="email", recipient=recipient)
             try:
                 result = self._email_sender(recipient, report_id, artifacts)
                 import asyncio
+
                 if asyncio.iscoroutine(result):
                     raise RuntimeError("async email senders must be awaited by caller")
                 attempt.status = "sent"
@@ -85,14 +90,18 @@ class DistributionEngine:
             attempts.append(attempt)
         return attempts
 
-    def create_shared_link(self, report_id: str, version_number: int = 1,
-                           ttl_days: int = 7) -> SharedLink:
-        link = SharedLink(report_id=report_id, version_number=version_number,
-                          expires_at=datetime.utcnow() + timedelta(days=ttl_days))
+    def create_shared_link(
+        self, report_id: str, version_number: int = 1, ttl_days: int = 7
+    ) -> SharedLink:
+        link = SharedLink(
+            report_id=report_id,
+            version_number=version_number,
+            expires_at=datetime.utcnow() + timedelta(days=ttl_days),
+        )
         self._links[link.token] = link
         return link
 
-    def resolve_link(self, token: str) -> Optional[SharedLink]:
+    def resolve_link(self, token: str) -> SharedLink | None:
         link = self._links.get(token)
         return link if link and link.is_valid else None
 
@@ -103,7 +112,7 @@ class DistributionEngine:
         link.revoked = True
         return True
 
-    def attempts(self, report_id: Optional[str] = None) -> List[DeliveryAttempt]:
+    def attempts(self, report_id: str | None = None) -> list[DeliveryAttempt]:
         if report_id is None:
             return list(self._attempts)
         return [a for a in self._attempts if a.report_id == report_id]
@@ -113,8 +122,13 @@ class DistributionEngine:
         digest = hashlib.sha256(f"{storage_path}:{secrets.token_hex(4)}".encode()).hexdigest()[:16]
         return f"/reports/download/{digest}?path={storage_path}&exp={ttl_seconds}"
 
-    def _default_email_sender(self, recipient: str, report_id: str,
-                              artifacts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _default_email_sender(
+        self, recipient: str, report_id: str, artifacts: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         # Notification module interface reuse point: swap with real sender.
-        return {"queued": True, "recipient": recipient, "report_id": report_id,
-                "attachments": len(artifacts)}
+        return {
+            "queued": True,
+            "recipient": recipient,
+            "report_id": report_id,
+            "attachments": len(artifacts),
+        }

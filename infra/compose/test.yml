@@ -42,8 +42,9 @@ services:
       DATABASE_URL: postgresql+psycopg://bi:bi@db:5432/bi_test
       API_BASE_URL: http://api:8000
     command: >
-      sh -c "PYTHONPATH=/code python -m pytest app/admin/tests app/reports/tests -q &&
-             python /code/../infra/scripts/smoke_test.py"
+      sh -c "pip install -q pytest pytest-asyncio httpx &&
+             PYTHONPATH=/code python -m pytest app -q &&
+             python /scripts/smoke_test.py"
     volumes:
       - ../../backend/app:/code/app
-      - ../../infra/scripts:/code/../infra/scripts:ro
+      - ../../infra/scripts:/scripts:ro

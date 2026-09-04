@@ -1,12 +1,16 @@
+from datetime import datetime
+
 from pydantic import BaseModel
-from typing import Optional
-from analytics.kpi.definitions import KPI
+
+from app.analytics.kpi.definitions import KPI
+
 
 class KPICalculateRequest(BaseModel):
     kpi: KPI
     dataset_id: str
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    start_date: str | None = None
+    end_date: str | None = None
+
 
 class KPICalculateResponse(BaseModel):
     kpi: KPI

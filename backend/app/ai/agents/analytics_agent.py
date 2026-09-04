@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class AnalyticsAgentConfig(BaseModel):
@@ -16,16 +17,16 @@ class AnalyticsAgentConfig(BaseModel):
 class AnalyticsAgent:
     """Agent specialized for analytics queries."""
 
-    def __init__(self, config: Optional[AnalyticsAgentConfig] = None) -> None:
+    def __init__(self, config: AnalyticsAgentConfig | None = None) -> None:
         self.config = config or AnalyticsAgentConfig()
         self.name = self.config.name
 
     async def analyze(
         self,
         query: str,
-        data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         analysis_type = self._determine_analysis_type(query, data)
         insights = self._generate_insights(data, analysis_type)
         return {
@@ -36,9 +37,7 @@ class AnalyticsAgent:
             "confidence": self._calculate_confidence(data),
         }
 
-    def _determine_analysis_type(
-        self, query: str, data: Dict[str, Any]
-    ) -> str:
+    def _determine_analysis_type(self, query: str, data: dict[str, Any]) -> str:
         query_lower = query.lower()
         if "revenue" in query_lower or "income" in query_lower:
             return "revenue_analysis"
@@ -52,23 +51,21 @@ class AnalyticsAgent:
             return "anomaly_detection"
         return "general_analytics"
 
-    def _generate_insights(
-        self, data: Dict[str, Any], analysis_type: str
-    ) -> List[str]:
-        insights: List[str] = []
+    def _generate_insights(self, data: dict[str, Any], analysis_type: str) -> list[str]:
+        insights: list[str] = []
         values = [v for v in data.values() if isinstance(v, (int, float))]
         if values:
             insights.append(f"Data contains {len(values)} numeric metrics")
-            insights.append(f"Average value: {sum(values)/len(values):.2f}")
+            insights.append(f"Average value: {sum(values) / len(values):.2f}")
             insights.append(f"Maximum value: {max(values):.2f}")
             insights.append(f"Minimum value: {min(values):.2f}")
         if analysis_type == "revenue_analysis":
             insights.append("Revenue analysis indicates strong performance trends")
         return insights if insights else ["No specific insights generated"]
 
-    def _summarize_data(self, data: Dict[str, Any]) -> str:
+    def _summarize_data(self, data: dict[str, Any]) -> str:
         keys = list(data.keys())[:5]
         return f"Analyzed {len(data)} metrics, focusing on {', '.join(keys)}"
 
-    def _calculate_confidence(self, data: Dict[str, Any]) -> float:
+    def _calculate_confidence(self, data: dict[str, Any]) -> float:
         return min(1.0, 0.5 + len(data) * 0.05)

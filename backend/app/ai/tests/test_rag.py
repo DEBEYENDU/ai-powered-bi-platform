@@ -1,7 +1,6 @@
 """Tests for RAG Pipeline."""
 
-import pytest
-from app.ai.rag.rag_pipeline import RAGPipeline, RAGConfig
+from app.ai.rag.rag_pipeline import RAGPipeline
 
 
 class TestRAGPipeline:
@@ -14,6 +13,7 @@ class TestRAGPipeline:
         pipeline = RAGPipeline()
         pipeline.index_document("Revenue grew 12% this quarter", source="test")
         import asyncio
+
         result = asyncio.run(pipeline.retrieve("revenue growth"))
         assert result is not None
         assert len(result.retrieved_contexts) >= 0

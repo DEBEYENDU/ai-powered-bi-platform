@@ -27,8 +27,13 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         elapsed_ms = round((time.time() - start) * 1000, 2)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Process-Time-ms"] = str(elapsed_ms)
-        log.info("request", method=request.method, path=request.url.path,
-                 status=response.status_code, elapsed_ms=elapsed_ms)
+        log.info(
+            "request",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            elapsed_ms=elapsed_ms,
+        )
         return response
 
 
@@ -39,5 +44,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(
-            "Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
+            "Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'"
+        )
         return response

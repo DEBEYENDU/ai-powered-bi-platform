@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -30,24 +31,129 @@ class IntentType:
 class IntentMapping:
     INTENT_PATTERNS = {
         IntentType.KPI_QUERY: ["kpi", "metric", "performance", "measure", "calculate"],
-        IntentType.REVENUE_ANALYSIS: ["revenue", "income", "sales revenue", "total revenue", "revenue by", "revenue trend"],
+        IntentType.REVENUE_ANALYSIS: [
+            "revenue",
+            "income",
+            "sales revenue",
+            "total revenue",
+            "revenue by",
+            "revenue trend",
+        ],
         IntentType.SALES_ANALYSIS: ["sales", "sales performance", "sales trend", "sales by"],
-        IntentType.FORECAST: ["forecast", "predict", "predictive", "future", "what will", "next month", "next quarter", "next year", "outlook"],
-        IntentType.PREDICTION: ["predict", "prediction", "likely", "churn", "will happen", "probability", "risk", "likelihood"],
-        IntentType.DASHBOARD_SUMMARY: ["dashboard", "summary", "summarize", "overview", "show dashboard", "executive summary"],
-        IntentType.ROOT_CAUSE: ["why did", "why is", "why has", "reason for", "root cause", "cause of", "why are", "why was"],
-        IntentType.RECOMMENDATION: ["recommend", "suggest", "what should", "what can we", "how can we", "advice", "what to do"],
-        IntentType.EXECUTIVE_SUMMARY: ["executive summary", "board report", "ceo briefing", "quarterly summary", "annual summary", "weekly summary", "monthly summary"],
-        IntentType.REPORT_GENERATION: ["report", "generate report", "create report", "sales report", "financial report"],
-        IntentType.DATASET_SEARCH: ["dataset", "data source", "find data", "available data", "datasets"],
+        IntentType.FORECAST: [
+            "forecast",
+            "predict",
+            "predictive",
+            "future",
+            "what will",
+            "next month",
+            "next quarter",
+            "next year",
+            "outlook",
+        ],
+        IntentType.PREDICTION: [
+            "predict",
+            "prediction",
+            "likely",
+            "churn",
+            "will happen",
+            "probability",
+            "risk",
+            "likelihood",
+        ],
+        IntentType.DASHBOARD_SUMMARY: [
+            "dashboard",
+            "summary",
+            "summarize",
+            "overview",
+            "show dashboard",
+            "executive summary",
+        ],
+        IntentType.ROOT_CAUSE: [
+            "why did",
+            "why is",
+            "why has",
+            "reason for",
+            "root cause",
+            "cause of",
+            "why are",
+            "why was",
+        ],
+        IntentType.RECOMMENDATION: [
+            "recommend",
+            "suggest",
+            "what should",
+            "what can we",
+            "how can we",
+            "advice",
+            "what to do",
+        ],
+        IntentType.EXECUTIVE_SUMMARY: [
+            "executive summary",
+            "board report",
+            "ceo briefing",
+            "quarterly summary",
+            "annual summary",
+            "weekly summary",
+            "monthly summary",
+        ],
+        IntentType.REPORT_GENERATION: [
+            "report",
+            "generate report",
+            "create report",
+            "sales report",
+            "financial report",
+        ],
+        IntentType.DATASET_SEARCH: [
+            "dataset",
+            "data source",
+            "find data",
+            "available data",
+            "datasets",
+        ],
         IntentType.CHART_REQUEST: ["chart", "graph", "visualize", "show chart", "plot"],
         IntentType.ANOMALY_DETECTION: ["anomaly", "anomalies", "unusual", "outlier", "abnormal"],
         IntentType.TREND_ANALYSIS: ["trend", "trending", "seasonality", "cyclical"],
         IntentType.COMPARISON: ["compare", "comparison", "versus", "vs", "vs.", "compared to"],
     }
-    KPI_KEYWORDS = ["revenue", "profit", "margin", "roi", "roas", "growth", "churn", "retention", "conversion", "ltv", "aov", "inventory", "cost"]
-    TIME_KEYWORDS = ["today", "yesterday", "this week", "last week", "this month", "last month", "this quarter", "last quarter", "this year", "last year"]
-    DIMENSION_KEYWORDS = ["region", "product", "category", "customer", "segment", "channel", "department", "country", "state"]
+    KPI_KEYWORDS = [
+        "revenue",
+        "profit",
+        "margin",
+        "roi",
+        "roas",
+        "growth",
+        "churn",
+        "retention",
+        "conversion",
+        "ltv",
+        "aov",
+        "inventory",
+        "cost",
+    ]
+    TIME_KEYWORDS = [
+        "today",
+        "yesterday",
+        "this week",
+        "last week",
+        "this month",
+        "last month",
+        "this quarter",
+        "last quarter",
+        "this year",
+        "last year",
+    ]
+    DIMENSION_KEYWORDS = [
+        "region",
+        "product",
+        "category",
+        "customer",
+        "segment",
+        "channel",
+        "department",
+        "country",
+        "state",
+    ]
 
 
 class IntentDetector:
@@ -57,14 +163,18 @@ class IntentDetector:
             for intent, patterns in IntentMapping.INTENT_PATTERNS.items()
         }
 
-    def detect(self, query: str, context: Optional[Dict[str, Any]] = None) -> IntentDetection:
+    def detect(self, query: str, context: dict[str, Any] | None = None) -> IntentDetection:
         query_lower = query.lower().strip()
-        intent_scores: Dict[str, float] = {}
+        intent_scores: dict[str, float] = {}
         for intent, patterns in self._compiled_patterns.items():
             score = 0.0
             for pattern in patterns:
                 if pattern.search(query_lower):
-                    score += 1.0
+                    # Specificity weighting: longer (more specific) phrases
+                    # outrank generic single keywords. This breaks ties like
+                    # "Why did sales decrease?" where "why did" (question
+                    # intent) must beat the generic "sales" keyword.
+                    score += len(pattern.pattern)
             if score > 0:
                 intent_scores[intent] = score
         if not intent_scores:
@@ -83,7 +193,7 @@ class IntentDetector:
             suggested_tools=suggested_tools,
         )
 
-    def _calculate_confidence(self, scores: Dict[str, float], primary_intent: str) -> float:
+    def _calculate_confidence(self, scores: dict[str, float], primary_intent: str) -> float:
         primary_score = scores.get(primary_intent, 0)
         total_score = sum(scores.values())
         if total_score == 0:
@@ -96,8 +206,14 @@ class IntentDetector:
             raw_confidence *= 0.8
         return min(1.0, max(0.1, raw_confidence))
 
-    def _extract_entities(self, query_lower: str) -> Dict[str, Any]:
-        entities: Dict[str, Any] = {"kpi_keywords": [], "time_range": None, "dimensions": [], "comparison": False, "is_forecast": False}
+    def _extract_entities(self, query_lower: str) -> dict[str, Any]:
+        entities: dict[str, Any] = {
+            "kpi_keywords": [],
+            "time_range": None,
+            "dimensions": [],
+            "comparison": False,
+            "is_forecast": False,
+        }
         for kw in IntentMapping.KPI_KEYWORDS:
             if kw.lower() in query_lower:
                 entities["kpi_keywords"].append(kw)
@@ -118,7 +234,7 @@ class IntentDetector:
                 break
         return entities
 
-    def _detect_secondary_intent(self, query_lower: str, primary_intent: str) -> Optional[str]:
+    def _detect_secondary_intent(self, query_lower: str, primary_intent: str) -> str | None:
         secondary_candidates = []
         for intent, patterns in self._compiled_patterns.items():
             if intent == primary_intent:
@@ -133,31 +249,41 @@ class IntentDetector:
             return max(secondary_candidates, key=lambda x: len(x[1]))[0]
         return None
 
-    def _suggest_tools(self, primary_intent: str, secondary_intent: Optional[str], entities: Dict[str, Any]) -> List[str]:
+    def _suggest_tools(
+        self, primary_intent: str, secondary_intent: str | None, entities: dict[str, Any]
+    ) -> list[str]:
         tool_mapping = {
-            IntentType.KPI_QUERY: ["calculate_kpi"], IntentType.REVENUE_ANALYSIS: ["revenue_analytics"],
-            IntentType.SALES_ANALYSIS: ["sales_analytics"], IntentType.FORECAST: ["run_forecast"],
-            IntentType.PREDICTION: ["predict"], IntentType.DASHBOARD_SUMMARY: ["get_dashboard_summary"],
-            IntentType.ROOT_CAUSE: ["root_cause_analysis"], IntentType.RECOMMENDATION: ["generate_recommendations"],
-            IntentType.EXECUTIVE_SUMMARY: ["generate_executive_summary"], IntentType.REPORT_GENERATION: ["generate_report"],
-            IntentType.DATASET_SEARCH: ["search_datasets"], IntentType.CHART_REQUEST: ["generate_chart"],
-            IntentType.ANOMALY_DETECTION: ["detect_anomalies"], IntentType.TREND_ANALYSIS: ["analyze_trends"],
+            IntentType.KPI_QUERY: ["calculate_kpi"],
+            IntentType.REVENUE_ANALYSIS: ["revenue_analytics"],
+            IntentType.SALES_ANALYSIS: ["sales_analytics"],
+            IntentType.FORECAST: ["run_forecast"],
+            IntentType.PREDICTION: ["predict"],
+            IntentType.DASHBOARD_SUMMARY: ["get_dashboard_summary"],
+            IntentType.ROOT_CAUSE: ["root_cause_analysis"],
+            IntentType.RECOMMENDATION: ["generate_recommendations"],
+            IntentType.EXECUTIVE_SUMMARY: ["generate_executive_summary"],
+            IntentType.REPORT_GENERATION: ["generate_report"],
+            IntentType.DATASET_SEARCH: ["search_datasets"],
+            IntentType.CHART_REQUEST: ["generate_chart"],
+            IntentType.ANOMALY_DETECTION: ["detect_anomalies"],
+            IntentType.TREND_ANALYSIS: ["analyze_trends"],
             IntentType.COMPARISON: ["compare_metrics"],
         }
         tools = list(tool_mapping.get(primary_intent, []))
         if secondary_intent and secondary_intent in tool_mapping:
             tools.extend(tool_mapping[secondary_intent])
-        if entities.get("comparison") or entities.get("kpi_keywords"):
-            if "generate_chart" not in tools:
-                tools.append("generate_chart")
+        if (
+            entities.get("comparison") or entities.get("kpi_keywords")
+        ) and "generate_chart" not in tools:
+            tools.append("generate_chart")
         return tools
 
 
 class IntentDetection(BaseModel):
     intent: str = Field(..., description="Primary detected intent")
-    entities: Dict[str, Any] = Field(default_factory=dict, description="Extracted entities")
+    entities: dict[str, Any] = Field(default_factory=dict, description="Extracted entities")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
-    suggested_tools: List[str] = Field(default_factory=list, description="Suggested tool names")
+    suggested_tools: list[str] = Field(default_factory=list, description="Suggested tool names")
 
     @property
     def is_high_confidence(self) -> bool:

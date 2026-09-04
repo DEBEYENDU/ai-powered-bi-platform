@@ -1,3 +1,3 @@
-from app.ai.vectorstore.vectorstore import VectorStore, VectorRecord
+from app.ai.vectorstore.vectorstore import VectorRecord, VectorStore
 
-__all__ = ["VectorStore", "VectorRecord"]
+__all__ = ["VectorRecord", "VectorStore"]

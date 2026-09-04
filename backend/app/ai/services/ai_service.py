@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import UUID
 
-from app.ai.orchestrator.orchestrator import Orchestrator
-from app.ai.rag.rag_pipeline import RAGPipeline
-from app.ai.memory.memory import ConversationMemory
-from app.ai.prompts.prompt_manager import PromptManager
-from app.ai.tools.registry import ToolRegistry
-from app.ai.monitoring.observability import AIMonitor
-from app.ai.governance.audit import AuditLogger
 from app.ai.cache.caching import AICache
+from app.ai.governance.audit import AuditLogger
+from app.ai.memory.memory import ConversationMemory
+from app.ai.monitoring.observability import AIMonitor
+from app.ai.orchestrator.orchestrator import Orchestrator
+from app.ai.prompts.prompt_manager import PromptManager
+from app.ai.rag.rag_pipeline import RAGPipeline
+from app.ai.tools.registry import ToolRegistry
 
 
 class AIService:
@@ -22,8 +20,8 @@ class AIService:
 
     def __init__(
         self,
-        organization_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        organization_id: str | None = None,
+        user_id: str | None = None,
     ) -> None:
         self.organization_id = organization_id
         self.user_id = user_id
@@ -39,9 +37,9 @@ class AIService:
     async def process_chat(
         self,
         message: str,
-        conversation_id: Optional[UUID] = None,
-        session_id: Optional[UUID] = None,
-    ) -> Dict[str, Any]:
+        conversation_id: UUID | None = None,
+        session_id: UUID | None = None,
+    ) -> dict[str, Any]:
         result = await self.orchestrator.process_query(
             query=message,
             user_id=self.user_id,
@@ -64,7 +62,7 @@ class AIService:
     async def get_conversation_history(
         self,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         messages = self.memory.get_session_history(limit=limit)
         return [m.dict() for m in messages]
 
@@ -72,12 +70,12 @@ class AIService:
         self,
         role: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         self.memory.add_message(role=role, content=content, metadata=metadata)
 
-    def get_monitoring_dashboard(self) -> Dict[str, Any]:
+    def get_monitoring_dashboard(self) -> dict[str, Any]:
         return self.monitor.get_dashboard()
 
-    def get_audit_trail(self) -> List[Dict[str, Any]]:
+    def get_audit_trail(self) -> list[dict[str, Any]]:
         return [e.dict() for e in self.audit_logger.get_entries()]

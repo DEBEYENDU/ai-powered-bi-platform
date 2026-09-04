@@ -1,5 +1,5 @@
-from typing import Dict, Any
 from enum import Enum
+
 
 class KPI(str, Enum):
     REVENUE = "revenue"
@@ -17,6 +17,7 @@ class KPI(str, Enum):
     CONVERSION_RATE = "conversion_rate"
     CUSTOMER_LIFETIME_VALUE = "customer_lifetime_value"
     EMPLOYEE_PRODUCTIVITY = "employee_productivity"
+
 
 class KPIDefinition:
     def __init__(self, name: KPI, formula: str, unit: str, description: str):

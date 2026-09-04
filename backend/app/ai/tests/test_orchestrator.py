@@ -1,8 +1,9 @@
 """Tests for AI Orchestrator."""
 
 import pytest
+
+from app.ai.orchestrator.intent_detector import IntentDetector, IntentType
 from app.ai.orchestrator.orchestrator import Orchestrator
-from app.ai.orchestrator.intent_detector import IntentDetector, IntentDetection, IntentType
 
 
 class TestIntentDetector:

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 try:
     from app.db.base import Base  # type: ignore
-except Exception:  # pragma: no cover - allows unit tests without db infra
+except ImportError:  # pragma: no cover - allows unit tests without db infra
     from sqlalchemy.orm import DeclarativeBase
 
     class Base(DeclarativeBase):  # type: ignore[no-redef]
@@ -80,12 +80,18 @@ class ReportRecord(Base):
     __tablename__ = "reports"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     owner_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    report_type: Mapped[ReportType] = mapped_column(Enum(ReportType), default=ReportType.CUSTOM, index=True)
-    status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus), default=ReportStatus.DRAFT, index=True)
+    report_type: Mapped[ReportType] = mapped_column(
+        Enum(ReportType), default=ReportType.CUSTOM, index=True
+    )
+    status: Mapped[ReportStatus] = mapped_column(
+        Enum(ReportStatus), default=ReportStatus.DRAFT, index=True
+    )
     template_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     dataset_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     dashboard_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
@@ -93,7 +99,9 @@ class ReportRecord(Base):
     current_version: Mapped[int] = mapped_column(Integer, default=1)
     tags: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -122,7 +130,9 @@ class ReportTemplateRecord(Base):
     __tablename__ = "report_templates"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     layout: Mapped[dict] = mapped_column(JSON, default=dict)  # branding, margins, orientation
@@ -131,7 +141,9 @@ class ReportTemplateRecord(Base):
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
     shared: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -144,8 +156,12 @@ class ReportScheduleRecord(Base):
     report_id: Mapped[PG_UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False, index=True
     )
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
-    frequency: Mapped[ScheduleFrequency] = mapped_column(Enum(ScheduleFrequency), default=ScheduleFrequency.DAILY)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
+    frequency: Mapped[ScheduleFrequency] = mapped_column(
+        Enum(ScheduleFrequency), default=ScheduleFrequency.DAILY
+    )
     cron_expression: Mapped[str] = mapped_column(String(100), default="")
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -167,9 +183,13 @@ class ReportDeliveryRecord(Base):
         PG_UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False, index=True
     )
     version_number: Mapped[int] = mapped_column(Integer, default=1)
-    channel: Mapped[str] = mapped_column(String(50), default="download")  # email, download, link, webhook
+    channel: Mapped[str] = mapped_column(
+        String(50), default="download"
+    )  # email, download, link, webhook
     recipient: Mapped[str] = mapped_column(String(255), default="")
-    status: Mapped[DeliveryStatus] = mapped_column(Enum(DeliveryStatus), default=DeliveryStatus.PENDING)
+    status: Mapped[DeliveryStatus] = mapped_column(
+        Enum(DeliveryStatus), default=DeliveryStatus.PENDING
+    )
     error_message: Mapped[str] = mapped_column(Text, default="")
     execution_time_ms: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -184,7 +204,9 @@ class ReportShareRecord(Base):
     report_id: Mapped[PG_UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False, index=True
     )
-    granted_to: Mapped[str] = mapped_column(String(255), nullable=False)  # user id, role, dept, or 'org'
+    granted_to: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # user id, role, dept, or 'org'
     role: Mapped[str] = mapped_column(String(50), default="viewer")  # owner/editor/reviewer/viewer
     can_export: Mapped[bool] = mapped_column(Boolean, default=True)
     can_distribute: Mapped[bool] = mapped_column(Boolean, default=False)

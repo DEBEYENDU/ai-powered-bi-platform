@@ -6,7 +6,7 @@ substitute fakes. ``overview`` powers the admin dashboard landing page.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from app.admin.services.alerts import AlertService
 from app.admin.services.audit import AuditService
@@ -37,14 +37,16 @@ class PlatformAdmin:
         self.users = UserAdminService()
         self.orgs = OrganizationAdminService()
 
-    def _on_incident(self, incident: Dict[str, Any]) -> None:
+    def _on_incident(self, incident: dict[str, Any]) -> None:
         self.notifications.notify_alert(incident)
-        self.audit.append("alert_fired", resource_type="alert",
-                          resource_id=incident.get("id", ""),
-                          details={"metric": incident.get("metric"),
-                                   "value": incident.get("observed_value")})
+        self.audit.append(
+            "alert_fired",
+            resource_type="alert",
+            resource_id=incident.get("id", ""),
+            details={"metric": incident.get("metric"), "value": incident.get("observed_value")},
+        )
 
-    def overview(self) -> Dict[str, Any]:
+    def overview(self) -> dict[str, Any]:
         firing = self.alerts.incidents(status="firing")
         return {
             "health": self.health.check_all()["overall"],

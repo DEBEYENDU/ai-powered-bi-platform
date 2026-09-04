@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from app.ai.schemas.chat import ChatMessage
 
@@ -24,8 +25,8 @@ class MemoryEntry(BaseModel):
     memory_type: str
     content: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    expires_at: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
     relevance_score: float = 0.5
 
     @property
@@ -46,15 +47,15 @@ class ConversationMemory:
     RECENT_QUERY_TTL_DAYS = 7
 
     def __init__(self) -> None:
-        self._session_history: List[ChatMessage] = []
-        self._long_term_memory: List[MemoryEntry] = []
-        self._business_contexts: Dict[str, MemoryEntry] = {}
-        self._user_preferences: Dict[str, Dict[str, Any]] = {}
-        self._recent_queries: List[MemoryEntry] = []
-        self._pinned_contexts: List[MemoryEntry] = []
+        self._session_history: list[ChatMessage] = []
+        self._long_term_memory: list[MemoryEntry] = []
+        self._business_contexts: dict[str, MemoryEntry] = {}
+        self._user_preferences: dict[str, dict[str, Any]] = {}
+        self._recent_queries: list[MemoryEntry] = []
+        self._pinned_contexts: list[MemoryEntry] = []
 
     def add_message(
-        self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None
+        self, role: str, content: str, metadata: dict[str, Any] | None = None
     ) -> ChatMessage:
         message = ChatMessage(
             role=role,
@@ -63,17 +64,17 @@ class ConversationMemory:
         )
         self._session_history.append(message)
         if len(self._session_history) > self.SESSION_TTL_HOURS * 4:
-            self._session_history = self._session_history[-self.MAX_SESSION_HISTORY:]
+            self._session_history = self._session_history[-self.MAX_SESSION_HISTORY :]
         return message
 
-    def get_session_history(self, limit: int = 20) -> List[ChatMessage]:
+    def get_session_history(self, limit: int = 20) -> list[ChatMessage]:
         return self._session_history[-limit:]
 
     def clear_session(self) -> None:
         self._session_history.clear()
 
     def add_long_term_memory(
-        self, content: str, metadata: Optional[Dict[str, Any]] = None, ttl_days: int = 30
+        self, content: str, metadata: dict[str, Any] | None = None, ttl_days: int = 30
     ) -> MemoryEntry:
         entry = MemoryEntry(
             memory_type=MemoryType.LONG_TERM,
@@ -84,15 +85,11 @@ class ConversationMemory:
         )
         self._long_term_memory.append(entry)
         if len(self._long_term_memory) > self.MAX_LONG_TERM_ENTRIES:
-            self._long_term_memory = self._long_term_memory[-self.MAX_LONG_TERM_ENTRIES:]
+            self._long_term_memory = self._long_term_memory[-self.MAX_LONG_TERM_ENTRIES :]
         return entry
 
-    def get_long_term_memory(
-        self, query: Optional[str] = None, limit: int = 10
-    ) -> List[MemoryEntry]:
-        entries = [
-            e for e in self._long_term_memory if not e.is_expired
-        ]
+    def get_long_term_memory(self, query: str | None = None, limit: int = 10) -> list[MemoryEntry]:
+        entries = [e for e in self._long_term_memory if not e.is_expired]
         if query:
             entries = sorted(
                 entries,
@@ -102,40 +99,33 @@ class ConversationMemory:
         return entries[:limit]
 
     def add_business_context(
-        self, key: str, content: str, organization_id: Optional[str] = None
+        self, key: str, content: str, org_id: str | None = None
     ) -> MemoryEntry:
         entry = MemoryEntry(
             memory_type=MemoryType.BUSINESS_CONTEXT,
             content=content,
-            metadata={"key": key, "org_id": organization_id},
+            metadata={"key": key, "org_id": org_id},
             relevance_score=0.9,
         )
         self._business_contexts[key] = entry
         return entry
 
-    def get_business_context(
-        self, key: str
-    ) -> Optional[MemoryEntry]:
+    def get_business_context(self, key: str) -> MemoryEntry | None:
         entry = self._business_contexts.get(key)
         if entry and not entry.is_expired:
             return entry
         return None
 
-    def set_user_preference(
-        self, user_id: str, key: str, value: Any
-    ) -> None:
+    def set_user_preference(self, user_id: str, key: str, value: Any) -> None:
         if user_id not in self._user_preferences:
             self._user_preferences[user_id] = {}
         self._user_preferences[user_id][key] = value
 
-    def get_user_preference(
-        self, user_id: str, key: str, default: Any = None
-    ) -> Any:
+    def get_user_preference(self, user_id: str, key: str, default: Any = None) -> Any:
         return self._user_preferences.get(user_id, {}).get(key, default)
 
     def add_recent_query(
-        self, query: str, user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        self, query: str, user_id: str | None = None, metadata: dict[str, Any] | None = None
     ) -> MemoryEntry:
         entry = MemoryEntry(
             memory_type=MemoryType.RECENT_QUERIES,
@@ -146,20 +136,14 @@ class ConversationMemory:
         )
         self._recent_queries.append(entry)
         if len(self._recent_queries) > self.MAX_RECENT_QUERIES:
-            self._recent_queries = self._recent_queries[-self.MAX_RECENT_QUERIES:]
+            self._recent_queries = self._recent_queries[-self.MAX_RECENT_QUERIES :]
         return entry
 
-    def get_recent_queries(
-        self, limit: int = 10
-    ) -> List[str]:
-        entries = [
-            e for e in self._recent_queries if not e.is_expired
-        ]
+    def get_recent_queries(self, limit: int = 10) -> list[str]:
+        entries = [e for e in self._recent_queries if not e.is_expired]
         return [e.content for e in entries[-limit:]]
 
-    def pin_context(
-        self, content: str, description: str = ""
-    ) -> MemoryEntry:
+    def pin_context(self, content: str, description: str = "") -> MemoryEntry:
         entry = MemoryEntry(
             memory_type=MemoryType.PINNED_CONTEXT,
             content=content,
@@ -169,41 +153,31 @@ class ConversationMemory:
         self._pinned_contexts.append(entry)
         return entry
 
-    def get_pinned_contexts(self) -> List[str]:
-        return [
-            e.content for e in self._pinned_contexts if not e.is_expired
-        ]
+    def get_pinned_contexts(self) -> list[str]:
+        return [e.content for e in self._pinned_contexts if not e.is_expired]
 
     def summarize_session(self) -> str:
         if not self._session_history:
             return ""
-        user_msgs = [
-            m.content for m in self._session_history if m.role == "user"
-        ]
-        assistant_msgs = [
-            m.content for m in self._session_history if m.role == "assistant"
-        ]
+        user_msgs = [m.content for m in self._session_history if m.role == "user"]
+        assistant_msgs = [m.content for m in self._session_history if m.role == "assistant"]
         summary = f"Session had {len(user_msgs)} user messages and {len(assistant_msgs)} assistant responses."
         if user_msgs:
             summary += f" Latest query: {user_msgs[-1][:100]}"
         return summary
 
-    def cleanup_expired(self) -> Dict[str, int]:
-        cleaned: Dict[str, int] = {}
+    def cleanup_expired(self) -> dict[str, int]:
+        cleaned: dict[str, int] = {}
         before = len(self._long_term_memory)
-        self._long_term_memory = [
-            e for e in self._long_term_memory if not e.is_expired
-        ]
+        self._long_term_memory = [e for e in self._long_term_memory if not e.is_expired]
         cleaned["long_term"] = before - len(self._long_term_memory)
         before = len(self._recent_queries)
-        self._recent_queries = [
-            e for e in self._recent_queries if not e.is_expired
-        ]
+        self._recent_queries = [e for e in self._recent_queries if not e.is_expired]
         cleaned["recent_queries"] = before - len(self._recent_queries)
         return cleaned
 
-    def get_context_for_query(self, query: str) -> Dict[str, List[str]]:
-        context: Dict[str, List[str]] = {
+    def get_context_for_query(self, query: str) -> dict[str, list[str]]:
+        context: dict[str, list[str]] = {
             "pinned": self.get_pinned_contexts(),
             "long_term": [e.content for e in self.get_long_term_memory(query, limit=5)],
             "session": [m.content for m in self.get_session_history(limit=10)],

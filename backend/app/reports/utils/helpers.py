@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 
 def slugify(title: str) -> str:
@@ -11,14 +11,16 @@ def slugify(title: str) -> str:
     return slug or "report"
 
 
-def summarize_definition(definition: Dict[str, Any]) -> Dict[str, Any]:
+def summarize_definition(definition: dict[str, Any]) -> dict[str, Any]:
     sections = definition.get("sections", [])
-    kinds: Dict[str, int] = {}
+    kinds: dict[str, int] = {}
     for s in sections:
         kinds[s.get("kind", "unknown")] = kinds.get(s.get("kind", "unknown"), 0) + 1
     return {"title": definition.get("title", ""), "section_count": len(sections), "kinds": kinds}
 
 
-def paginate(items: List[Any], limit: int = 20, offset: int = 0) -> Dict[str, Any]:
-    return {"data": items[offset:offset + limit], "meta": {
-        "total": len(items), "limit": limit, "offset": offset}}
+def paginate(items: list[Any], limit: int = 20, offset: int = 0) -> dict[str, Any]:
+    return {
+        "data": items[offset : offset + limit],
+        "meta": {"total": len(items), "limit": limit, "offset": offset},
+    }

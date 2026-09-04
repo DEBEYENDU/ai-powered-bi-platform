@@ -9,18 +9,22 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 
 class UserAdminService:
-    def __init__(self, user_store: Optional[Dict[str, Dict[str, Any]]] = None,
-                 password_hasher: Optional[Callable[[str], str]] = None) -> None:
-        self._users: Dict[str, Dict[str, Any]] = user_store if user_store is not None else {}
-        self._sessions: Dict[str, Dict[str, Any]] = {}
-        self._api_keys: Dict[str, Dict[str, Any]] = {}
-        self._login_history: List[Dict[str, Any]] = []
+    def __init__(
+        self,
+        user_store: dict[str, dict[str, Any]] | None = None,
+        password_hasher: Callable[[str], str] | None = None,
+    ) -> None:
+        self._users: dict[str, dict[str, Any]] = user_store if user_store is not None else {}
+        self._sessions: dict[str, dict[str, Any]] = {}
+        self._api_keys: dict[str, dict[str, Any]] = {}
+        self._login_history: list[dict[str, Any]] = []
         self._hash = password_hasher or self._default_hash
 
     @staticmethod
@@ -29,28 +33,38 @@ class UserAdminService:
             from app.core.security import hash_password  # type: ignore
 
             return hash_password(password)
-        except Exception:
+        except ImportError:
             return "sha256$" + hashlib.sha256(password.encode()).hexdigest()
 
     # -- lifecycle --
-    def create(self, email: str, password: str, full_name: str = "",
-               organization_id: str = "") -> Dict[str, Any]:
+    def create(
+        self, email: str, password: str, full_name: str = "", organization_id: str = ""
+    ) -> dict[str, Any]:
         if any(u["email"] == email for u in self._users.values()):
             raise ValueError("Email already exists")
         uid = str(uuid4())
-        user = {"id": uid, "email": email, "password_hash": self._hash(password),
-                "full_name": full_name, "organization_id": organization_id,
-                "is_active": True, "is_verified": False, "suspended": False,
-                "mfa_enabled": False, "force_password_reset": False,
-                "last_login_at": None, "created_at": datetime.utcnow().isoformat()}
+        user = {
+            "id": uid,
+            "email": email,
+            "password_hash": self._hash(password),
+            "full_name": full_name,
+            "organization_id": organization_id,
+            "is_active": True,
+            "is_verified": False,
+            "suspended": False,
+            "mfa_enabled": False,
+            "force_password_reset": False,
+            "last_login_at": None,
+            "created_at": datetime.utcnow().isoformat(),
+        }
         self._users[uid] = user
         return self._public(user)
 
-    def get(self, user_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, user_id: str) -> dict[str, Any] | None:
         user = self._users.get(user_id)
         return self._public(user) if user else None
 
-    def update(self, user_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update(self, user_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
         user = self._users.get(user_id)
         if user is None:
             return None
@@ -59,14 +73,14 @@ class UserAdminService:
                 user[key] = patch[key]
         return self._public(user)
 
-    def set_active(self, user_id: str, active: bool) -> Optional[Dict[str, Any]]:
+    def set_active(self, user_id: str, active: bool) -> dict[str, Any] | None:
         user = self._users.get(user_id)
         if user is None:
             return None
         user["is_active"] = active
         return self._public(user)
 
-    def suspend(self, user_id: str, suspended: bool = True) -> Optional[Dict[str, Any]]:
+    def suspend(self, user_id: str, suspended: bool = True) -> dict[str, Any] | None:
         user = self._users.get(user_id)
         if user is None:
             return None
@@ -85,7 +99,7 @@ class UserAdminService:
         user["deleted"] = True
         return True
 
-    def restore(self, user_id: str) -> Optional[Dict[str, Any]]:
+    def restore(self, user_id: str) -> dict[str, Any] | None:
         user = self._users.get(user_id)
         if user is None:
             return None
@@ -93,8 +107,7 @@ class UserAdminService:
         user["is_active"] = True
         return self._public(user)
 
-    def reset_password(self, user_id: str, new_password: str,
-                       force_change: bool = False) -> bool:
+    def reset_password(self, user_id: str, new_password: str, force_change: bool = False) -> bool:
         user = self._users.get(user_id)
         if user is None:
             return False
@@ -102,8 +115,9 @@ class UserAdminService:
         user["force_password_reset"] = force_change
         return True
 
-    def list(self, organization_id: Optional[str] = None,
-             include_inactive: bool = False) -> List[Dict[str, Any]]:
+    def list(
+        self, organization_id: str | None = None, include_inactive: bool = False
+    ) -> list[dict[str, Any]]:
         users = list(self._users.values())
         if organization_id:
             users = [u for u in users if u.get("organization_id") == organization_id]
@@ -112,13 +126,19 @@ class UserAdminService:
         return [self._public(u) for u in users]
 
     # -- sessions / keys / history --
-    def create_session(self, user_id: str, ip_address: str = "",
-                       user_agent: str = "") -> Dict[str, Any]:
+    def create_session(
+        self, user_id: str, ip_address: str = "", user_agent: str = ""
+    ) -> dict[str, Any]:
         sid = str(uuid4())
-        session = {"id": sid, "user_id": user_id, "ip_address": ip_address,
-                   "user_agent": user_agent, "revoked": False,
-                   "last_seen_at": datetime.utcnow().isoformat(),
-                   "created_at": datetime.utcnow().isoformat()}
+        session = {
+            "id": sid,
+            "user_id": user_id,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "revoked": False,
+            "last_seen_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
+        }
         self._sessions[sid] = session
         return session
 
@@ -129,15 +149,21 @@ class UserAdminService:
         session["revoked"] = True
         return True
 
-    def sessions(self, user_id: str) -> List[Dict[str, Any]]:
+    def sessions(self, user_id: str) -> list[dict[str, Any]]:
         return [s for s in self._sessions.values() if s["user_id"] == user_id]
 
-    def create_api_key(self, user_id: str, name: str = "") -> Dict[str, Any]:
+    def create_api_key(self, user_id: str, name: str = "") -> dict[str, Any]:
         raw = secrets.token_urlsafe(32)
         key_hash = hashlib.sha256(raw.encode()).hexdigest()
-        record = {"id": str(uuid4()), "user_id": user_id, "name": name,
-                  "key_hash": key_hash, "key_prefix": raw[:8], "revoked": False,
-                  "created_at": datetime.utcnow().isoformat()}
+        record = {
+            "id": str(uuid4()),
+            "user_id": user_id,
+            "name": name,
+            "key_hash": key_hash,
+            "key_prefix": raw[:8],
+            "revoked": False,
+            "created_at": datetime.utcnow().isoformat(),
+        }
         self._api_keys[record["id"]] = record
         return {**record, "api_key": raw}
 
@@ -149,20 +175,24 @@ class UserAdminService:
         return True
 
     def record_login(self, user_id: str, success: bool, ip_address: str = "") -> None:
-        self._login_history.append({"user_id": user_id, "success": success,
-                                    "ip_address": ip_address,
-                                    "at": datetime.utcnow().isoformat()})
+        self._login_history.append(
+            {
+                "user_id": user_id,
+                "success": success,
+                "ip_address": ip_address,
+                "at": datetime.utcnow().isoformat(),
+            }
+        )
         user = self._users.get(user_id)
         if user and success:
             user["last_login_at"] = datetime.utcnow().isoformat()
 
-    def login_history(self, user_id: Optional[str] = None,
-                      limit: int = 100) -> List[Dict[str, Any]]:
+    def login_history(self, user_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         items = self._login_history
         if user_id:
             items = [h for h in items if h["user_id"] == user_id]
         return items[-limit:]
 
     @staticmethod
-    def _public(user: Dict[str, Any]) -> Dict[str, Any]:
+    def _public(user: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in user.items() if k != "password_hash"}

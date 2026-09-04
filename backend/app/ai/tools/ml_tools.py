@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-from pydantic import BaseModel, Field
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel
 
 from app.ai.tools.schemas import ForecastRequest, ForecastResponse
 
 
-def run_forecast_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def run_forecast_tool(
+    validated: BaseModel, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if isinstance(validated, dict):
         validated = ForecastRequest(**validated)
     return ForecastResponse(
@@ -23,5 +25,5 @@ def run_forecast_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = 
     ).dict()
 
 
-def predict_tool(validated: BaseModel, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def predict_tool(validated: BaseModel, context: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"predictions": [0.85, 0.72, 0.91], "model": "classification", "confidence": 0.85}

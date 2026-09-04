@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type, Callable
-from pydantic import BaseModel, Field
+from collections.abc import Callable
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class ToolRegistry:
     """Central registry for all AI assistant tools."""
 
     def __init__(self) -> None:
-        self._tools: Dict[str, ToolDefinition] = {}
-        self._tool_instances: Dict[str, Any] = {}
+        self._tools: dict[str, ToolDefinition] = {}
+        self._tool_instances: dict[str, Any] = {}
         self._register_all_tools()
 
     def _register_all_tools(self) -> None:
@@ -180,10 +182,10 @@ class ToolRegistry:
         self,
         name: str,
         description: str,
-        input_schema: Type[BaseModel],
-        output_schema: Type[BaseModel],
+        input_schema: type[BaseModel],
+        output_schema: type[BaseModel],
         handler: Callable,
-        permission_required: Optional[str] = None,
+        permission_required: str | None = None,
         timeout: float = 30.0,
         cacheable: bool = False,
     ) -> None:
@@ -199,19 +201,19 @@ class ToolRegistry:
         )
         self._tools[name] = definition
 
-    def get(self, name: str) -> Optional['ToolDefinition']:
+    def get(self, name: str) -> ToolDefinition | None:
         return self._tools.get(name)
 
-    def list_tools(self) -> List[str]:
+    def list_tools(self) -> list[str]:
         return list(self._tools.keys())
 
-    def get_all_definitions(self) -> Dict[str, 'ToolDefinition']:
+    def get_all_definitions(self) -> dict[str, ToolDefinition]:
         return self._tools
 
     def register_instance(self, name: str, instance: Any) -> None:
         self._tool_instances[name] = instance
 
-    def get_instance(self, name: str) -> Optional[Any]:
+    def get_instance(self, name: str) -> Any | None:
         return self._tool_instances.get(name)
 
     def has(self, name: str) -> bool:
@@ -227,10 +229,10 @@ class ToolRegistry:
 class ToolDefinition(BaseModel):
     name: str
     description: str
-    input_schema: Type[BaseModel]
-    output_schema: Type[BaseModel]
+    input_schema: type[BaseModel]
+    output_schema: type[BaseModel]
     handler: Callable
-    permission_required: Optional[str] = None
+    permission_required: str | None = None
     timeout: float = 30.0
     cacheable: bool = False
 

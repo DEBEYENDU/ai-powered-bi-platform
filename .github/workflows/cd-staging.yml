@@ -1,7 +1,21 @@
+# Staging delivery.
+#
+# Reality check (honest, not faked): no staging cluster exists yet, so there is
+# nothing to deploy INTO on every push. This workflow therefore does everything
+# real that can be done without a cluster:
+#   1. builds + pushes both images to GHCR (genuine, runs on every push),
+#   2. renders the staging manifests with helm template (genuine chart validation).
+# The actual cluster deploy is a manual `workflow_dispatch` step gated on the
+# `staging` environment + STAGING_KUBECONFIG secret, and is skipped otherwise.
 name: CD Staging
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-staging-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -10,6 +24,7 @@ env:
 jobs:
   push-images:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions: { packages: write, contents: read }
     steps:
       - uses: actions/checkout@v4
@@ -31,23 +46,49 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/bi-frontend:${{ env.TAG }},${{ env.REGISTRY }}/bi-frontend:staging
 
-  deploy:
+  render-manifests:
     needs: [push-images]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
+      # Proves the staging values + image tags render to valid manifests.
+      - run: helm template bi-platform ./infra/helm/bi-platform
+          -f ./infra/helm/bi-platform/values-staging.yaml
+          --set images.backend.tag=${{ env.TAG }}
+          --set images.frontend.tag=${{ env.TAG }}
+          --set secrets.jwtSecretKey=dummy-ci-value
+          --set dbUrlOverride=x --set redisUrlOverride=y
+          --validate > /dev/null
+
+  deploy:
+    needs: [push-images, render-manifests]
+    # Manual only, until a staging cluster exists. Requires the `staging`
+    # environment (approvals) and a STAGING_KUBECONFIG secret.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: echo "${{ secrets.STAGING_KUBECONFIG }}" > /tmp/kubeconfig && chmod 600 /tmp/kubeconfig
       - run: helm upgrade --install bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-staging.yaml
           --set images.backend.tag=${{ env.TAG }}
           --set images.frontend.tag=${{ env.TAG }}
           --set secrets.jwtSecretKey=${{ secrets.STAGING_JWT_SECRET }}
           --namespace bi-platform --create-namespace
+        env: { KUBECONFIG: /tmp/kubeconfig }
       - run: kubectl -n bi-platform rollout status deploy/bi-platform-api --timeout=300s
+        env: { KUBECONFIG: /tmp/kubeconfig }
 
   smoke:
     needs: [deploy]
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - run: python3 infra/scripts/smoke_test.py

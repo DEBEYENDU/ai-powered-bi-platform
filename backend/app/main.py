@@ -52,8 +52,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["health"])
     def health() -> dict:
-        return {"status": "ok", "app": settings.app_name,
-                "environment": settings.environment}
+        return {"status": "ok", "app": settings.app_name, "environment": settings.environment}
 
     @app.get("/health/db", tags=["health"])
     def health_db() -> dict:
@@ -73,8 +72,7 @@ def create_app() -> FastAPI:
         try:
             import redis  # type: ignore
 
-            client = redis.Redis.from_url(settings.redis_url,
-                                          socket_connect_timeout=2)
+            client = redis.Redis.from_url(settings.redis_url, socket_connect_timeout=2)
             client.ping()
             return {"status": "ok", "redis": "reachable"}
         except Exception as exc:

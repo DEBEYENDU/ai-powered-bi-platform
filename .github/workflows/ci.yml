@@ -4,33 +4,58 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install ruff
-      - run: ruff check backend/app || true
-      - run: ruff format --check backend/app || true
+      # Enforcing: backend must be ruff-clean (see backend/pyproject.toml).
+      - run: ruff check backend/app
+      - run: ruff format --check backend/app
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
   unit-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pydantic pytest pytest-asyncio httpx
-      - run: PYTHONPATH=backend python -m pytest backend/app/admin/tests backend/app/reports/tests -q
+      - run: PYTHONPATH=backend python -m pytest backend/app/ai/tests backend/app/admin/tests backend/app/reports/tests -q
 
   integration-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -51,18 +76,29 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r backend/requirements.txt
+      - run: pip install pytest pytest-asyncio httpx
       - run: alembic upgrade head
         working-directory: backend
         env:
           DATABASE_URL: postgresql+psycopg://bi:bi@localhost:5432/bi_test
-      - run: PYTHONPATH=backend python -m pytest backend/app -q -x --ignore=backend/app/ai/tests
+      # Boot smoke: catches broken router/wiring imports (app must assemble).
+      - run: PYTHONPATH=backend python -c "from app.main import app; print('paths:', len(app.openapi()['paths']))"
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://bi:bi@localhost:5432/bi_test
+      - run: PYTHONPATH=backend python -m pytest backend/app -q
+        env:
+          DATABASE_URL: postgresql+psycopg://bi:bi@localhost:5432/bi_test
+          REDIS_URL: redis://localhost:6379/0
 
   build:
-    needs: [lint, unit-test]
+    needs: [lint, unit-test, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
+      - run: helm dependency update ./infra/helm/bi-platform
       - run: helm lint ./infra/helm/bi-platform
       - run: helm template bi-test ./infra/helm/bi-platform --values ./infra/helm/bi-platform/values-prod.yaml --set dbUrlOverride=x --set redisUrlOverride=y > /dev/null
       - run: docker build -f infra/docker/backend.prod.Dockerfile -t bi-backend:ci .

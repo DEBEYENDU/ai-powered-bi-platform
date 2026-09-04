@@ -36,9 +36,12 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         return JSONResponse(
             status_code=503,
-            content={"title": "Maintenance", "status": 503,
-                     "detail": status.get("message") or
-                     "Platform is in maintenance mode. Reads only."})
+            content={
+                "title": "Maintenance",
+                "status": 503,
+                "detail": status.get("message") or "Platform is in maintenance mode. Reads only.",
+            },
+        )
 
     def _resolve_settings(self):  # type: ignore[no-untyped-def]
         if self._settings is not None:

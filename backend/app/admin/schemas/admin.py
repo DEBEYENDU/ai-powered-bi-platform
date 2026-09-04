@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -25,7 +25,7 @@ class AdminUserOut(BaseModel):
     is_verified: bool = False
     suspended: bool = False
     mfa_enabled: bool = False
-    last_login_at: Optional[datetime] = None
+    last_login_at: datetime | None = None
 
 
 class PasswordReset(BaseModel):
@@ -59,24 +59,24 @@ class OrgOut(BaseModel):
 
 
 class QuotaUpdate(BaseModel):
-    storage_mb: Optional[int] = None
-    dataset_limit: Optional[int] = None
-    ai_requests_per_day: Optional[int] = None
-    api_requests_per_minute: Optional[int] = None
+    storage_mb: int | None = None
+    dataset_limit: int | None = None
+    ai_requests_per_day: int | None = None
+    api_requests_per_minute: int | None = None
 
 
 # --- rbac ---
 class RoleCreate(BaseModel):
     name: str
     description: str = ""
-    organization_id: Optional[str] = None
-    permission_codes: List[str] = Field(default_factory=list)
+    organization_id: str | None = None
+    permission_codes: list[str] = Field(default_factory=list)
 
 
 class PermissionCheck(BaseModel):
     user_id: str
     permission: str
-    organization_id: Optional[str] = None
+    organization_id: str | None = None
 
 
 # --- feature flags ---
@@ -84,27 +84,27 @@ class FlagCreate(BaseModel):
     key: str
     description: str = ""
     flag_type: str = "boolean"
-    default_value: Dict[str, Any] = Field(default_factory=dict)
-    rules: List[Dict[str, Any]] = Field(default_factory=list)
+    default_value: dict[str, Any] = Field(default_factory=dict)
+    rules: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class FlagEvaluate(BaseModel):
     key: str
-    user_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    user_id: str | None = None
+    organization_id: str | None = None
     environment: str = "production"
 
 
 # --- settings / maintenance ---
 class SettingUpdate(BaseModel):
-    value: Dict[str, Any]
+    value: dict[str, Any]
 
 
 class MaintenanceUpdate(BaseModel):
     mode: str = Field("off", description="off, readonly, maintenance")
     message: str = ""
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
 
 
 # --- health / metrics ---
@@ -118,7 +118,7 @@ class HealthStatus(BaseModel):
 class MetricPoint(BaseModel):
     name: str
     value: float
-    labels: Dict[str, str] = Field(default_factory=dict)
+    labels: dict[str, str] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -134,9 +134,9 @@ class AlertRuleCreate(BaseModel):
 
 # --- audit ---
 class AuditQuery(BaseModel):
-    action: Optional[str] = None
-    actor_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    action: str | None = None
+    actor_id: str | None = None
+    organization_id: str | None = None
     limit: int = 50
     offset: int = 0
 
@@ -144,7 +144,7 @@ class AuditQuery(BaseModel):
 # --- notifications ---
 class NotificationCreate(BaseModel):
     user_id: str
-    organization_id: Optional[str] = None
+    organization_id: str | None = None
     kind: str = "info"
     title: str = ""
     body: str = ""

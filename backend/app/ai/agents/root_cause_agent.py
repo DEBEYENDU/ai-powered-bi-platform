@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class RootCauseAgentConfig(BaseModel):
@@ -16,16 +17,16 @@ class RootCauseAgentConfig(BaseModel):
 class RootCauseAgent:
     """Agent specialized in root cause analysis."""
 
-    def __init__(self, config: Optional[RootCauseAgentConfig] = None) -> None:
+    def __init__(self, config: RootCauseAgentConfig | None = None) -> None:
         self.config = config or RootCauseAgentConfig()
         self.name = self.config.name
 
     async def analyze_root_cause(
         self,
         issue: str,
-        data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         findings = self._identify_causes(issue, data)
         return {
             "agent": self.name,
@@ -35,24 +36,27 @@ class RootCauseAgent:
             "methodology": "evidence_based_analysis",
         }
 
-    def _identify_causes(self, issue: str, data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _identify_causes(self, issue: str, data: dict[str, Any]) -> list[dict[str, Any]]:
         findings = []
-        issue_lower = issue.lower()
         for key, value in data.items():
             if isinstance(value, (int, float)):
-                findings.append({
-                    "cause": f"Metric '{key}' may contribute to the issue",
-                    "value": value,
-                    "confidence": 0.6,
-                })
+                findings.append(
+                    {
+                        "cause": f"Metric '{key}' may contribute to the issue",
+                        "value": value,
+                        "confidence": 0.6,
+                    }
+                )
         if not findings:
-            findings.append({
-                "cause": "Insufficient data for definitive root cause analysis",
-                "confidence": 0.3,
-            })
+            findings.append(
+                {
+                    "cause": "Insufficient data for definitive root cause analysis",
+                    "confidence": 0.3,
+                }
+            )
         return findings
 
-    def _calculate_confidence(self, findings: List[Any]) -> float:
+    def _calculate_confidence(self, findings: list[Any]) -> float:
         if not findings:
             return 0.1
         avg = sum(f.get("confidence", 0.5) for f in findings) / len(findings)

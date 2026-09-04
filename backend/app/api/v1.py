@@ -13,12 +13,26 @@ from app.iam.routers.auth import router as auth_router
 from app.reports.routers.reports import reports_router
 
 api_router = APIRouter(prefix="/api/v1")
-for _router in (auth_router, dataset_router, etl_router,
-                analytics_router, ai_router, reports_router, admin_router):
+for _router in (
+    auth_router,
+    dataset_router,
+    etl_router,
+    analytics_router,
+    ai_router,
+    reports_router,
+    admin_router,
+):
     api_router.include_router(_router)
 
 # Legacy aliases so existing clients keep working during migration.
 legacy_router = APIRouter()
-for _router in (auth_router, dataset_router, etl_router,
-                analytics_router, ai_router, reports_router, admin_router):
+for _router in (
+    auth_router,
+    dataset_router,
+    etl_router,
+    analytics_router,
+    ai_router,
+    reports_router,
+    admin_router,
+):
     legacy_router.include_router(_router)

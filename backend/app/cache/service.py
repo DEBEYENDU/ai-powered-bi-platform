@@ -8,9 +8,10 @@ without Redis.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -30,9 +31,9 @@ class CacheService:
         try:
             import redis  # type: ignore
 
-            client = redis.Redis.from_url(get_settings().redis_url,
-                                          socket_connect_timeout=2,
-                                          decode_responses=True)
+            client = redis.Redis.from_url(
+                get_settings().redis_url, socket_connect_timeout=2, decode_responses=True
+            )
             client.ping()
             self._redis = client
         except Exception as exc:
@@ -41,14 +42,12 @@ class CacheService:
     def _namespaced(self, key: str) -> str:
         return f"{self.namespace}:{key}"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         ns = self._namespaced(key)
         if self._redis is not None:
-            try:
+            with contextlib.suppress(Exception):
                 raw = self._redis.get(ns)
                 return json.loads(raw) if raw is not None else None
-            except Exception:
-                pass
         entry = self._memory.get(ns)
         if entry is None:
             return None
@@ -57,14 +56,12 @@ class CacheService:
             return None
         return entry["value"]
 
-    def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
+    def set(self, key: str, value: Any, ttl: float | None = None) -> None:
         ns, ttl = self._namespaced(key), ttl or self.default_ttl
         if self._redis is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._redis.setex(ns, int(ttl), json.dumps(value, default=str))
                 return
-            except Exception:
-                pass
         if len(self._memory) > 5000:
             oldest = min(self._memory, key=lambda k: self._memory[k]["at"])
             del self._memory[oldest]
@@ -73,8 +70,6 @@ class CacheService:
     def delete(self, key: str) -> None:
         ns = self._namespaced(key)
         if self._redis is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._redis.delete(ns)
-            except Exception:
-                pass
         self._memory.pop(ns, None)

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
 
-from app.ai.embeddings.manager import EmbeddingManager
-from app.ai.retrieval.retriever import Retriever, RetrievalResult
+from pydantic import BaseModel
+
 from app.ai.cache.caching import AICache
+from app.ai.embeddings.manager import EmbeddingManager
+from app.ai.retrieval.retriever import RetrievalResult, Retriever
 
 
 class RAGConfig(BaseModel):
@@ -22,7 +23,7 @@ class RAGConfig(BaseModel):
 
 class RAGResult(BaseModel):
     query: str
-    retrieved_contexts: List[RetrievalResult]
+    retrieved_contexts: list[RetrievalResult]
     assembled_context: str
     confidence_score: float
     citation_count: int
@@ -32,7 +33,7 @@ class RAGResult(BaseModel):
 class RAGPipeline:
     """End-to-end RAG pipeline."""
 
-    def __init__(self, config: Optional[RAGConfig] = None) -> None:
+    def __init__(self, config: RAGConfig | None = None) -> None:
         self.config = config or RAGConfig()
         self.embedder = EmbeddingManager()
         self.retriever = Retriever(
@@ -52,7 +53,7 @@ class RAGPipeline:
         content: str,
         source: str,
         source_type: str = "document",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         chunk: bool = True,
     ) -> int:
         self.initialize()
@@ -70,7 +71,7 @@ class RAGPipeline:
             count += 1
         return count
 
-    def index_documents_batch(self, documents: List[Dict[str, Any]]) -> int:
+    def index_documents_batch(self, documents: list[dict[str, Any]]) -> int:
         count = 0
         for doc in documents:
             count += self.index_document(
@@ -84,8 +85,8 @@ class RAGPipeline:
     async def retrieve(
         self,
         query: str,
-        top_k: Optional[int] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        top_k: int | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> RAGResult:
         self.initialize()
         start = time.time()
@@ -95,16 +96,13 @@ class RAGPipeline:
             return cached
         query_embedding = self.embedder.get_embedding(query)
         top_k = top_k or self.config.top_k
-        retrieval_results = self.retriever.retrieve_for_query(
-            query, query_embedding, top_k=top_k
-        )
+        retrieval_results = self.retriever.retrieve_for_query(query, query_embedding, top_k=top_k)
         filtered = []
         for result in retrieval_results:
             if result.score < self.config.min_relevance_score:
                 continue
-            if filters:
-                if not all(result.metadata.get(k) == v for k, v in filters.items()):
-                    continue
+            if filters and not all(result.metadata.get(k) == v for k, v in filters.items()):
+                continue
             filtered.append(result)
         assembled = self._assemble_context(filtered)
         confidence = self._calculate_confidence(filtered)
@@ -119,19 +117,19 @@ class RAGPipeline:
         self.cache.set(cache_key, rag_result, ttl=300.0)
         return rag_result
 
-    def _assemble_context(self, results: List[RetrievalResult]) -> str:
+    def _assemble_context(self, results: list[RetrievalResult]) -> str:
         parts = []
         for result in results:
             parts.append(f"[Source: {result.source}] {result.content}")
         return "\n---\n".join(parts)
 
-    def _calculate_confidence(self, results: List[RetrievalResult]) -> float:
+    def _calculate_confidence(self, results: list[RetrievalResult]) -> float:
         if not results:
             return 0.0
         avg_score = sum(r.score for r in results) / len(results)
         return min(1.0, avg_score * 1.2)
 
-    def _chunk_text(self, text: str) -> List[str]:
+    def _chunk_text(self, text: str) -> list[str]:
         chunks = []
         start = 0
         while start < len(text):
@@ -140,7 +138,7 @@ class RAGPipeline:
             start += self.config.chunk_size - self.config.chunk_overlap
         return chunks
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         return {
             "documents_indexed": self.retriever.get_knowledge_base_size(),
             "embedding_model": self.embedder.config.model,

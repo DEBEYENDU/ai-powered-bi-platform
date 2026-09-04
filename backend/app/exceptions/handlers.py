@@ -40,8 +40,13 @@ class ForbiddenError(AppError):
 def _problem(status: int, title: str, detail: str) -> JSONResponse:
     return JSONResponse(
         status_code=status,
-        content={"type": "about:blank", "title": title, "status": status,
-                 "detail": detail, "trace_id": request_id_ctx.get()},
+        content={
+            "type": "about:blank",
+            "title": title,
+            "status": status,
+            "detail": detail,
+            "trace_id": request_id_ctx.get(),
+        },
     )
 
 

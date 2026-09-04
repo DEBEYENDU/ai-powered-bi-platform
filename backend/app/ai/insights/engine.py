@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 
 class InsightsEngine:
     """Generates deterministic business insights."""
 
-    def generate(
-        self, category: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate(self, category: str, data: dict[str, Any]) -> dict[str, Any]:
         numeric = {k: v for k, v in data.items() if isinstance(v, (int, float))}
-        insights: List[str] = []
+        insights: list[str] = []
         if numeric:
             total = sum(numeric.values())
             avg = total / len(numeric)
@@ -31,7 +29,7 @@ class InsightsEngine:
             "confidence": 0.8 if numeric else 0.2,
         }
 
-    def _detect_trend(self, numeric: Dict[str, float]) -> str:
+    def _detect_trend(self, numeric: dict[str, float]) -> str:
         vals = list(numeric.values())
         if len(vals) < 2:
             return "insufficient_data"

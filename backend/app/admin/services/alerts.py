@@ -7,47 +7,68 @@ notifications service via an injected callback.
 
 from __future__ import annotations
 
+import contextlib
 import operator
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
-OPS = {">": operator.gt, "<": operator.lt, ">=": operator.ge,
-       "<=": operator.le, "==": operator.eq, "!=": operator.ne}
+OPS = {
+    ">": operator.gt,
+    "<": operator.lt,
+    ">=": operator.ge,
+    "<=": operator.le,
+    "==": operator.eq,
+    "!=": operator.ne,
+}
 
 
 class AlertService:
-    def __init__(self, notify: Optional[Callable[[Dict[str, Any]], Any]] = None) -> None:
-        self._rules: Dict[str, Dict[str, Any]] = {}
-        self._incidents: Dict[str, Dict[str, Any]] = {}
+    def __init__(self, notify: Callable[[dict[str, Any]], Any] | None = None) -> None:
+        self._rules: dict[str, dict[str, Any]] = {}
+        self._incidents: dict[str, dict[str, Any]] = {}
         self._notify = notify
 
-    def create_rule(self, name: str, metric: str, threshold: float,
-                    rule_operator: str = ">", window_seconds: int = 300,
-                    severity: str = "warning") -> Dict[str, Any]:
+    def create_rule(
+        self,
+        name: str,
+        metric: str,
+        threshold: float,
+        rule_operator: str = ">",
+        window_seconds: int = 300,
+        severity: str = "warning",
+    ) -> dict[str, Any]:
         if rule_operator not in OPS:
             raise ValueError(f"Unknown operator '{rule_operator}'")
-        rule = {"id": str(uuid4()), "name": name, "metric": metric,
-                "operator": rule_operator, "threshold": threshold,
-                "window_seconds": window_seconds, "severity": severity,
-                "enabled": True, "created_at": datetime.utcnow().isoformat()}
+        rule = {
+            "id": str(uuid4()),
+            "name": name,
+            "metric": metric,
+            "operator": rule_operator,
+            "threshold": threshold,
+            "window_seconds": window_seconds,
+            "severity": severity,
+            "enabled": True,
+            "created_at": datetime.utcnow().isoformat(),
+        }
         self._rules[rule["id"]] = rule
         return rule
 
-    def list_rules(self) -> List[Dict[str, Any]]:
+    def list_rules(self) -> list[dict[str, Any]]:
         return list(self._rules.values())
 
     def delete_rule(self, rule_id: str) -> bool:
         return self._rules.pop(rule_id, None) is not None
 
-    def set_enabled(self, rule_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+    def set_enabled(self, rule_id: str, enabled: bool) -> dict[str, Any] | None:
         rule = self._rules.get(rule_id)
         if rule:
             rule["enabled"] = enabled
         return rule
 
-    def evaluate(self, metric: str, value: float) -> List[Dict[str, Any]]:
-        fired: List[Dict[str, Any]] = []
+    def evaluate(self, metric: str, value: float) -> list[dict[str, Any]]:
+        fired: list[dict[str, Any]] = []
         for rule in self._rules.values():
             if not rule["enabled"] or rule["metric"] != metric:
                 continue
@@ -58,21 +79,25 @@ class AlertService:
                 self._auto_resolve(rule["id"])
         return fired
 
-    def _fire(self, rule: Dict[str, Any], value: float) -> Dict[str, Any]:
+    def _fire(self, rule: dict[str, Any], value: float) -> dict[str, Any]:
         for incident in self._incidents.values():
             if incident["rule_id"] == rule["id"] and incident["status"] == "firing":
                 incident["observed_value"] = value
                 return incident
-        incident = {"id": str(uuid4()), "rule_id": rule["id"], "metric": rule["metric"],
-                    "observed_value": value, "severity": rule["severity"],
-                    "status": "firing", "created_at": datetime.utcnow().isoformat(),
-                    "resolved_at": None}
+        incident = {
+            "id": str(uuid4()),
+            "rule_id": rule["id"],
+            "metric": rule["metric"],
+            "observed_value": value,
+            "severity": rule["severity"],
+            "status": "firing",
+            "created_at": datetime.utcnow().isoformat(),
+            "resolved_at": None,
+        }
         self._incidents[incident["id"]] = incident
         if self._notify:
-            try:
+            with contextlib.suppress(Exception):
                 self._notify(incident)
-            except Exception:
-                pass
         return incident
 
     def _auto_resolve(self, rule_id: str) -> None:
@@ -81,13 +106,13 @@ class AlertService:
                 incident["status"] = "resolved"
                 incident["resolved_at"] = datetime.utcnow().isoformat()
 
-    def incidents(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def incidents(self, status: str | None = None) -> list[dict[str, Any]]:
         items = list(self._incidents.values())
         if status:
             items = [i for i in items if i["status"] == status]
         return sorted(items, key=lambda i: i["created_at"], reverse=True)
 
-    def acknowledge(self, incident_id: str) -> Optional[Dict[str, Any]]:
+    def acknowledge(self, incident_id: str) -> dict[str, Any] | None:
         incident = self._incidents.get(incident_id)
         if incident and incident["status"] == "firing":
             incident["status"] = "acknowledged"

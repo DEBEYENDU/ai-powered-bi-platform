@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class CoordinatorAgentConfig(BaseModel):
@@ -16,18 +17,18 @@ class CoordinatorAgentConfig(BaseModel):
 class CoordinatorAgent:
     """Coordinates specialized AI agents for query resolution."""
 
-    def __init__(self, config: Optional[CoordinatorAgentConfig] = None) -> None:
+    def __init__(self, config: CoordinatorAgentConfig | None = None) -> None:
         self.config = config or CoordinatorAgentConfig()
         self.name = self.config.name
-        self.agents: Dict[str, Any] = {}
+        self.agents: dict[str, Any] = {}
 
     def register_agent(self, name: str, agent: Any) -> None:
         self.agents[name] = agent
 
-    def get_agent(self, name: str) -> Optional[Any]:
+    def get_agent(self, name: str) -> Any | None:
         return self.agents.get(name)
 
-    def get_available_agents(self) -> List[str]:
+    def get_available_agents(self) -> list[str]:
         return list(self.agents.keys())
 
     def route_query(self, intent: str) -> str:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -41,27 +41,32 @@ def overview(platform: PlatformAdmin = Depends(get_platform)):
 
 @admin_router.get("/status", summary="Platform status")
 def status(platform: PlatformAdmin = Depends(get_platform)):
-    return {"health": platform.health.check_all(),
-            "maintenance": platform.settings.maintenance_status(),
-            "system": platform.metrics.system_snapshot()}
+    return {
+        "health": platform.health.check_all(),
+        "maintenance": platform.settings.maintenance_status(),
+        "system": platform.metrics.system_snapshot(),
+    }
 
 
 # -- users --
 @admin_router.post("/users", summary="Create user")
-def create_user(payload: AdminUserCreate = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def create_user(
+    payload: AdminUserCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
-        user = platform.users.create(payload.email, payload.password,
-                                     payload.full_name, payload.organization_id)
+        user = platform.users.create(
+            payload.email, payload.password, payload.full_name, payload.organization_id
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
     platform.audit.append("user_created", "user", user["id"], details={"email": user["email"]})
     return user
 
 
 @admin_router.get("/users", summary="List users")
-def list_users(organization_id: Optional[str] = Query(None),
-               platform: PlatformAdmin = Depends(get_platform)):
+def list_users(
+    organization_id: str | None = Query(None), platform: PlatformAdmin = Depends(get_platform)
+):
     return {"data": platform.users.list(organization_id)}
 
 
@@ -71,8 +76,9 @@ def get_user(user_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.patch("/users/{user_id}", summary="Update user")
-def update_user(user_id: str, patch: Dict[str, Any] = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def update_user(
+    user_id: str, patch: dict[str, Any] = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     return _not_found(platform.users.update(user_id, patch), "User")
 
 
@@ -101,10 +107,14 @@ def restore_user(user_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.post("/users/{user_id}/reset-password", summary="Reset password")
-def reset_password(user_id: str, payload: PasswordReset = Body(...),
-                   platform: PlatformAdmin = Depends(get_platform)):
-    if not platform.users.reset_password(user_id, payload.new_password,
-                                         payload.force_change_on_login):
+def reset_password(
+    user_id: str,
+    payload: PasswordReset = Body(...),
+    platform: PlatformAdmin = Depends(get_platform),
+):
+    if not platform.users.reset_password(
+        user_id, payload.new_password, payload.force_change_on_login
+    ):
         raise HTTPException(404, "User not found")
     platform.audit.append("password_reset", "user", user_id)
     return {"reset": True}
@@ -128,8 +138,9 @@ def login_history(user_id: str, platform: PlatformAdmin = Depends(get_platform))
 
 
 @admin_router.post("/users/{user_id}/api-keys", summary="Create API key")
-def create_api_key(user_id: str, payload: ApiKeyCreate = Body(...),
-                   platform: PlatformAdmin = Depends(get_platform)):
+def create_api_key(
+    user_id: str, payload: ApiKeyCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     return platform.users.create_api_key(user_id, payload.name)
 
 
@@ -142,12 +153,11 @@ def revoke_api_key(key_id: str, platform: PlatformAdmin = Depends(get_platform))
 
 # -- organizations --
 @admin_router.post("/organizations", summary="Create organization")
-def create_org(payload: OrgCreate = Body(...),
-               platform: PlatformAdmin = Depends(get_platform)):
+def create_org(payload: OrgCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)):
     try:
         return platform.orgs.create(payload.name, payload.slug)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.get("/organizations", summary="List organizations")
@@ -161,8 +171,9 @@ def get_org(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.patch("/organizations/{org_id}", summary="Update organization")
-def update_org(org_id: str, patch: Dict[str, Any] = Body(...),
-               platform: PlatformAdmin = Depends(get_platform)):
+def update_org(
+    org_id: str, patch: dict[str, Any] = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     return _not_found(platform.orgs.update(org_id, patch), "Organization")
 
 
@@ -184,13 +195,15 @@ def get_quotas(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.patch("/organizations/{org_id}/quotas", summary="Update quotas")
-def update_quotas(org_id: str, payload: QuotaUpdate = Body(...),
-                  platform: PlatformAdmin = Depends(get_platform)):
+def update_quotas(
+    org_id: str, payload: QuotaUpdate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
-        return _not_found(platform.orgs.update_quotas(
-            org_id, payload.dict(exclude_none=True)), "Organization")
+        return _not_found(
+            platform.orgs.update_quotas(org_id, payload.dict(exclude_none=True)), "Organization"
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.get("/organizations/{org_id}/settings", summary="Org settings")
@@ -200,14 +213,13 @@ def org_settings(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 # -- rbac --
 @admin_router.post("/roles", summary="Create role")
-def create_role(payload: RoleCreate = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def create_role(payload: RoleCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)):
     try:
-        return platform.rbac.create_role(payload.name, payload.description,
-                                         payload.organization_id,
-                                         payload.permission_codes)
+        return platform.rbac.create_role(
+            payload.name, payload.description, payload.organization_id, payload.permission_codes
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.get("/roles", summary="List roles")
@@ -221,28 +233,29 @@ def list_permissions(platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.post("/users/{user_id}/roles/{role_id}", summary="Assign role")
-def assign_role(user_id: str, role_id: str,
-                platform: PlatformAdmin = Depends(get_platform)):
+def assign_role(user_id: str, role_id: str, platform: PlatformAdmin = Depends(get_platform)):
     try:
         platform.rbac.assign_role(user_id, role_id)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
-    platform.audit.append("role_assigned", "role", role_id,
-                          details={"user_id": user_id})
+        raise HTTPException(400, str(exc)) from exc
+    platform.audit.append("role_assigned", "role", role_id, details={"user_id": user_id})
     return {"assigned": True}
 
 
 @admin_router.delete("/users/{user_id}/roles/{role_id}", summary="Unassign role")
-def unassign_role(user_id: str, role_id: str,
-                  platform: PlatformAdmin = Depends(get_platform)):
+def unassign_role(user_id: str, role_id: str, platform: PlatformAdmin = Depends(get_platform)):
     return {"unassigned": platform.rbac.unassign_role(user_id, role_id)}
 
 
 @admin_router.post("/permissions/check", summary="Check permission")
-def check_permission(payload: PermissionCheck = Body(...),
-                     platform: PlatformAdmin = Depends(get_platform)):
-    return {"user_id": payload.user_id, "permission": payload.permission,
-            "allowed": platform.rbac.check(payload.user_id, payload.permission)}
+def check_permission(
+    payload: PermissionCheck = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
+    return {
+        "user_id": payload.user_id,
+        "permission": payload.permission,
+        "allowed": platform.rbac.check(payload.user_id, payload.permission),
+    }
 
 
 @admin_router.get("/users/{user_id}/permissions/simulate", summary="Permission simulator")
@@ -252,14 +265,17 @@ def simulate(user_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 # -- feature flags --
 @admin_router.post("/flags", summary="Create flag")
-def create_flag(payload: FlagCreate = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def create_flag(payload: FlagCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)):
     try:
-        return platform.flags.create(payload.key, payload.description,
-                                     payload.flag_type, payload.default_value,
-                                     payload.rules)
+        return platform.flags.create(
+            payload.key,
+            payload.description,
+            payload.flag_type,
+            payload.default_value,
+            payload.rules,
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.get("/flags", summary="List flags")
@@ -268,22 +284,25 @@ def list_flags(platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.post("/flags/evaluate", summary="Evaluate flag")
-def evaluate_flag(payload: FlagEvaluate = Body(...),
-                  platform: PlatformAdmin = Depends(get_platform)):
+def evaluate_flag(
+    payload: FlagEvaluate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
-        return platform.flags.evaluate(payload.key, payload.user_id,
-                                       payload.organization_id, payload.environment)
+        return platform.flags.evaluate(
+            payload.key, payload.user_id, payload.organization_id, payload.environment
+        )
     except ValueError as exc:
-        raise HTTPException(404, str(exc))
+        raise HTTPException(404, str(exc)) from exc
 
 
 @admin_router.patch("/flags/{key}", summary="Update flag")
-def update_flag(key: str, patch: Dict[str, Any] = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def update_flag(
+    key: str, patch: dict[str, Any] = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
         return platform.flags.update(key, patch)
     except ValueError as exc:
-        raise HTTPException(404, str(exc))
+        raise HTTPException(404, str(exc)) from exc
 
 
 @admin_router.post("/flags/{key}/kill", summary="Kill switch")
@@ -291,14 +310,13 @@ def kill_flag(key: str, platform: PlatformAdmin = Depends(get_platform)):
     try:
         flag = platform.flags.kill(key)
     except ValueError as exc:
-        raise HTTPException(404, str(exc))
+        raise HTTPException(404, str(exc)) from exc
     platform.audit.append("flag_killed", "flag", key)
     return flag
 
 
 @admin_router.get("/flags/history", summary="Flag history")
-def flag_history(key: Optional[str] = Query(None),
-                 platform: PlatformAdmin = Depends(get_platform)):
+def flag_history(key: str | None = Query(None), platform: PlatformAdmin = Depends(get_platform)):
     return {"data": platform.flags.history(key)}
 
 
@@ -309,14 +327,14 @@ def all_settings(platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.patch("/settings/{key}", summary="Update setting")
-def update_setting(key: str, payload: SettingUpdate = Body(...),
-                   platform: PlatformAdmin = Depends(get_platform)):
+def update_setting(
+    key: str, payload: SettingUpdate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
         value = platform.settings.update(key, payload.value.get("value"))
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
-    platform.audit.append("setting_changed", "setting", key,
-                          details={"value": value})
+        raise HTTPException(400, str(exc)) from exc
+    platform.audit.append("setting_changed", "setting", key, details={"value": value})
     return {"key": key, "value": value}
 
 
@@ -326,13 +344,15 @@ def maintenance_status(platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.post("/maintenance", summary="Set maintenance mode")
-def set_maintenance(payload: MaintenanceUpdate = Body(...),
-                    platform: PlatformAdmin = Depends(get_platform)):
+def set_maintenance(
+    payload: MaintenanceUpdate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
         return platform.settings.set_maintenance(
-            payload.mode, payload.message, payload.starts_at, payload.ends_at)
+            payload.mode, payload.message, payload.starts_at, payload.ends_at
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.post("/maintenance/override-token", summary="Mint admin override")
@@ -356,23 +376,28 @@ def platform_snapshot(platform: PlatformAdmin = Depends(get_platform)):
     return platform.metrics.platform_snapshot()
 
 
-@admin_router.get("/metrics/prometheus", summary="Prometheus exposition",
-                  response_class=PlainTextResponse)
+@admin_router.get(
+    "/metrics/prometheus", summary="Prometheus exposition", response_class=PlainTextResponse
+)
 def prometheus(platform: PlatformAdmin = Depends(get_platform)):
     return platform.metrics.render_prometheus()
 
 
 @admin_router.post("/metrics/record", summary="Record metric")
-def record_metric(name: str = Body(...), value: float = Body(...),
-                  labels: Optional[Dict[str, str]] = Body(None),
-                  platform: PlatformAdmin = Depends(get_platform)):
+def record_metric(
+    name: str = Body(...),
+    value: float = Body(...),
+    labels: dict[str, str] | None = Body(None),
+    platform: PlatformAdmin = Depends(get_platform),
+):
     platform.metrics.record(name, value, labels)
     return {"recorded": True}
 
 
 @admin_router.get("/traces", summary="Recent traces")
-def recent_traces(limit: int = Query(50, ge=1, le=500),
-                  platform: PlatformAdmin = Depends(get_platform)):
+def recent_traces(
+    limit: int = Query(50, ge=1, le=500), platform: PlatformAdmin = Depends(get_platform)
+):
     return {"data": platform.tracer.recent(limit)}
 
 
@@ -383,14 +408,15 @@ def trace_detail(trace_id: str, platform: PlatformAdmin = Depends(get_platform))
 
 # -- audit --
 @admin_router.get("/audit", summary="Query audit log")
-def query_audit(action: Optional[str] = Query(None),
-                actor_id: Optional[str] = Query(None),
-                organization_id: Optional[str] = Query(None),
-                limit: int = Query(50, ge=1, le=500),
-                offset: int = Query(0, ge=0),
-                platform: PlatformAdmin = Depends(get_platform)):
-    return {"data": platform.audit.query(action, actor_id, organization_id,
-                                         limit, offset)}
+def query_audit(
+    action: str | None = Query(None),
+    actor_id: str | None = Query(None),
+    organization_id: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    platform: PlatformAdmin = Depends(get_platform),
+):
+    return {"data": platform.audit.query(action, actor_id, organization_id, limit, offset)}
 
 
 @admin_router.get("/audit/verify", summary="Verify audit chain")
@@ -400,14 +426,20 @@ def verify_audit(platform: PlatformAdmin = Depends(get_platform)):
 
 # -- alerts --
 @admin_router.post("/alerts/rules", summary="Create alert rule")
-def create_rule(payload: AlertRuleCreate = Body(...),
-                platform: PlatformAdmin = Depends(get_platform)):
+def create_rule(
+    payload: AlertRuleCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
     try:
-        return platform.alerts.create_rule(payload.name, payload.metric,
-                                           payload.threshold, payload.operator,
-                                           payload.window_seconds, payload.severity)
+        return platform.alerts.create_rule(
+            payload.name,
+            payload.metric,
+            payload.threshold,
+            payload.operator,
+            payload.window_seconds,
+            payload.severity,
+        )
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.get("/alerts/rules", summary="List alert rules")
@@ -423,8 +455,9 @@ def delete_rule(rule_id: str, platform: PlatformAdmin = Depends(get_platform)):
 
 
 @admin_router.get("/alerts/incidents", summary="List incidents")
-def list_incidents(status: Optional[str] = Query(None),
-                   platform: PlatformAdmin = Depends(get_platform)):
+def list_incidents(
+    status: str | None = Query(None), platform: PlatformAdmin = Depends(get_platform)
+):
     return {"data": platform.alerts.incidents(status)}
 
 
@@ -434,8 +467,11 @@ def acknowledge(incident_id: str, platform: PlatformAdmin = Depends(get_platform
 
 
 @admin_router.post("/alerts/evaluate", summary="Evaluate metric")
-def evaluate_alert(metric: str = Body(...), value: float = Body(...),
-                   platform: PlatformAdmin = Depends(get_platform)):
+def evaluate_alert(
+    metric: str = Body(...),
+    value: float = Body(...),
+    platform: PlatformAdmin = Depends(get_platform),
+):
     platform.metrics.record(metric, value)
     return {"fired": platform.alerts.evaluate(metric, value)}
 
@@ -464,22 +500,23 @@ def scheduler_status(platform: PlatformAdmin = Depends(get_platform)):
 
 # -- notifications --
 @admin_router.post("/notifications", summary="Create notification")
-def create_notification(payload: NotificationCreate = Body(...),
-                        platform: PlatformAdmin = Depends(get_platform)):
-    return platform.notifications.create(payload.user_id, payload.title,
-                                         payload.body, payload.kind,
-                                         payload.organization_id)
+def create_notification(
+    payload: NotificationCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)
+):
+    return platform.notifications.create(
+        payload.user_id, payload.title, payload.body, payload.kind, payload.organization_id
+    )
 
 
 @admin_router.get("/notifications", summary="List notifications")
-def list_notifications(user_id: Optional[str] = Query(None),
-                       unread_only: bool = Query(False),
-                       platform: PlatformAdmin = Depends(get_platform)):
+def list_notifications(
+    user_id: str | None = Query(None),
+    unread_only: bool = Query(False),
+    platform: PlatformAdmin = Depends(get_platform),
+):
     return {"data": platform.notifications.list(user_id, unread_only)}
 
 
 @admin_router.post("/notifications/{notification_id}/read", summary="Mark read")
-def mark_read(notification_id: str,
-              platform: PlatformAdmin = Depends(get_platform)):
-    return _not_found(platform.notifications.mark_read(notification_id),
-                      "Notification")
+def mark_read(notification_id: str, platform: PlatformAdmin = Depends(get_platform)):
+    return _not_found(platform.notifications.mark_read(notification_id), "Notification")

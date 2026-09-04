@@ -1,8 +1,12 @@
-from sqlalchemy import String, DateTime, Enum as SQLEnum, JSON
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, String
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.base import Base
+
 
 class JobStatus(str, enum.Enum):
     PENDING = "pending"
@@ -10,6 +14,7 @@ class JobStatus(str, enum.Enum):
     SUCCESS = "success"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
 
 class ETLJob(Base):
     __tablename__ = "etl_jobs"

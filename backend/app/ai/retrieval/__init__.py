@@ -1,3 +1,3 @@
-from app.ai.retrieval.retriever import Retriever, RetrievalResult, HybridSearchResult
+from app.ai.retrieval.retriever import HybridSearchResult, RetrievalResult, Retriever
 
-__all__ = ["Retriever", "RetrievalResult", "HybridSearchResult"]
+__all__ = ["HybridSearchResult", "RetrievalResult", "Retriever"]

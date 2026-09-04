@@ -2,31 +2,30 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-from uuid import uuid4
 from datetime import datetime
+from typing import Any
+from uuid import uuid4
 
-from app.ai.schemas.citation import Citation, CitationRequest, CitationResponse
+from app.ai.schemas.citation import Citation, CitationResponse
 
 
 class CitationEngine:
     """Generates citations for AI responses."""
 
     def __init__(self) -> None:
-        self._citation_store: Dict[str, List[Citation]] = {}
+        self._citation_store: dict[str, list[Citation]] = {}
 
     async def generate(
         self,
-        execution_results: List[Any],
+        execution_results: list[Any],
         request_id: str,
-    ) -> List[Dict[str, Any]]:
-        citations: List[Citation] = []
+    ) -> list[dict[str, Any]]:
+        citations: list[Citation] = []
 
         for result in execution_results:
             if not result.success:
                 continue
-            data = result.data if hasattr(result, 'data') and result.data else None
+            data = result.data if hasattr(result, "data") and result.data else None
             if data is None:
                 continue
             citation = self._build_citation(result.tool_name, data, request_id)
@@ -41,7 +40,7 @@ class CitationEngine:
         tool_name: str,
         data: Any,
         request_id: str,
-    ) -> Optional[Citation]:
+    ) -> Citation | None:
         snippet = self._extract_snippet(data)
         if not snippet:
             return None
@@ -54,7 +53,7 @@ class CitationEngine:
             retrieved_at=datetime.utcnow(),
         )
 
-    def _extract_snippet(self, data: Any) -> Optional[str]:
+    def _extract_snippet(self, data: Any) -> str | None:
         if isinstance(data, dict):
             if "summary" in data:
                 return str(data["summary"])
@@ -65,7 +64,7 @@ class CitationEngine:
             return data[:500]
         return str(data)[:500]
 
-    def get_citations(self, request_id: str) -> List[Dict[str, Any]]:
+    def get_citations(self, request_id: str) -> list[dict[str, Any]]:
         citations = self._citation_store.get(request_id, [])
         return [c.dict() for c in citations]
 
@@ -75,7 +74,9 @@ class CitationEngine:
         conversation_id: str,
     ) -> CitationResponse:
         citations = self._citation_store.get(conversation_id, [])
-        evidence_strength = "strong" if len(citations) > 3 else "moderate" if len(citations) > 1 else "weak"
+        evidence_strength = (
+            "strong" if len(citations) > 3 else "moderate" if len(citations) > 1 else "weak"
+        )
         confidence = min(1.0, len(citations) * 0.25)
         return CitationResponse(
             citations=citations,

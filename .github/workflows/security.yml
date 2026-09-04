@@ -5,9 +5,14 @@ on:
   pull_request:
   schedule: [{ cron: "0 6 * * 1" }]
 
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   secrets-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -15,15 +20,30 @@ jobs:
 
   deps-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pip-audit
+      # Non-blocking: advisories are triaged in the weekly review, not merged
+      # blindly, so a new CVE in a transitive dep can't freeze all development.
       - run: pip-audit -r backend/requirements.txt || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm audit --audit-level=high
+        working-directory: frontend
 
   container-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # upload-sarif requires this scope; without it the upload is rejected.
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f infra/docker/backend.prod.Dockerfile -t bi-backend:scan .

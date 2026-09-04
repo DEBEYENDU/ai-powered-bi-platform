@@ -72,8 +72,7 @@ class TestFlags:
 
     def test_org_targeting(self):
         flags = FeatureFlagService()
-        flags.create("org-feat", rules=[{"name": "o1", "organizations": ["o1"],
-                                         "enabled": True}])
+        flags.create("org-feat", rules=[{"name": "o1", "organizations": ["o1"], "enabled": True}])
         assert flags.evaluate("org-feat", organization_id="o1")["enabled"] is True
         assert flags.evaluate("org-feat", organization_id="o2")["enabled"] is False
 
@@ -129,6 +128,7 @@ class TestAlerts:
     def test_fire_ack_resolve(self):
         alerts = AlertService()
         rule = alerts.create_rule("cpu high", "cpu_percent", 90.0)
+        assert rule["metric"] == "cpu_percent"
         fired = alerts.evaluate("cpu_percent", 95.0)
         assert len(fired) == 1
         # second breach while firing does not duplicate
@@ -170,8 +170,15 @@ class TestUsersOrgs:
 class TestPlatform:
     def test_overview_shape(self):
         overview = PlatformAdmin().overview()
-        for key in ("health", "organizations", "users", "firing_alerts",
-                    "feature_flags", "maintenance", "system"):
+        for key in (
+            "health",
+            "organizations",
+            "users",
+            "firing_alerts",
+            "feature_flags",
+            "maintenance",
+            "system",
+        ):
             assert key in overview
 
     def test_jobs_degrade_cleanly(self):
