@@ -1,8 +1,34 @@
-.env
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Backend env / local data
+backend/.env
+*.db
+*.sqlite3
+
+# Frontend
 node_modules/
-*.log
+frontend/dist/
+frontend/dist-ssr/
+*.local
+frontend/tsconfig.tsbuildinfo
+
+# OS / editors
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Infra / secrets
+infra/nginx/certs/
+*.pem
+*.key
+terraform.tfstate*
+.terraform/
