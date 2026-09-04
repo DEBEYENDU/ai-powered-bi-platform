@@ -33,13 +33,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/docker/backend.prod.Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/bi-backend:${{ env.TAG }},${{ env.REGISTRY }}/bi-backend:staging
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/docker/frontend.prod.Dockerfile
