@@ -1,0 +1,67 @@
+# Default values (development-leaning). Override per env with values-<env>.yaml.
+global:
+  environment: development
+
+namespace: bi-platform
+
+images:
+  backend:
+    repository: ghcr.io/ORG/bi-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: ghcr.io/ORG/bi-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+host: bi.local
+
+api:
+  replicas: 1
+  autoscaling: { enabled: false, min: 1, max: 4, cpu: 70 }
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+worker:
+  replicas: 1
+  autoscaling: { enabled: false, min: 1, max: 4, cpu: 70 }
+  concurrency: 2
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 2Gi }
+
+scheduler: { enabled: true }
+
+frontend:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
+
+ingress:
+  enabled: true
+  className: nginx
+  tls: false
+
+postgresql:
+  enabled: true
+  auth: { username: bi, database: bi_platform }
+  primary:
+    persistence: { size: 10Gi }
+
+redis:
+  enabled: true
+  auth: { enabled: false }
+
+secrets:
+  # Prefer --set or external secrets in real deploys; never commit values.
+  postgresPassword: CHANGEME
+  redisPassword: CHANGEME
+  jwtSecretKey: CHANGEME-min-32-chars
+
+config:
+  JWT_ALGORITHM: HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  CORS_ORIGINS: https://bi.local

@@ -1,0 +1,18 @@
+# Non-secret configuration. Secrets live in secrets.yaml (sealed/external in prod).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bi-config
+  namespace: bi-platform
+data:
+  APP_ENV: production
+  APP_DEBUG: "false"
+  DATABASE_URL: postgresql+psycopg://bi@postgres:5432/bi_platform
+  REDIS_URL: redis://redis:6379/0
+  JWT_ALGORITHM: HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  CORS_ORIGINS: https://bi.example.com
+  STORAGE_PATH: /data/storage
+  REPORTS_PATH: /data/reports
+  RATE_LIMIT_PER_MINUTE: "120"

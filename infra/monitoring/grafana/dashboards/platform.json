@@ -1,0 +1,32 @@
+{
+  "title": "BI Platform — Overview",
+  "uid": "bi-overview",
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "API latency (ms)",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_api_latency_ms", "refId": "A" }]
+    },
+    {
+      "title": "API throughput",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_api_throughput_rpm", "refId": "A" }]
+    },
+    {
+      "title": "Cache hit rate",
+      "type": "gauge",
+      "targets": [{ "expr": "bi_cache_hit_rate", "refId": "A" }]
+    },
+    {
+      "title": "Job queue length",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_job_queue_length", "refId": "A" }]
+    },
+    {
+      "title": "DB connections",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_db_connections", "refId": "A" }]
+    }
+  ]
+}

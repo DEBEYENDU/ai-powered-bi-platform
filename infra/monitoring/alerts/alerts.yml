@@ -1,0 +1,50 @@
+groups:
+  - name: bi-platform
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.job }} is down"
+      - alert: HighCPU
+        expr: avg(rate(process_cpu_seconds_total[5m])) * 100 > 85
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "High CPU on {{ $labels.instance }}" }
+      - alert: HighMemory
+        expr: process_resident_memory_bytes / 1073741824 > 1.5
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "High memory on {{ $labels.instance }}" }
+      - alert: HighApiLatency
+        expr: bi_api_latency_ms > 2000
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "API latency above 2s" }
+      - alert: ApiErrors
+        expr: increase(bi_api_errors_total[5m]) > 10
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Elevated API errors" }
+      - alert: QueueBacklog
+        expr: bi_job_queue_length > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Worker queue backlog growing" }
+      - alert: DiskSpace
+        expr: (1 - node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 > 85
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Disk usage above 85% on {{ $labels.mountpoint }}" }
+      - alert: CertExpiring
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "TLS certificate expires in < 14 days" }
+      - alert: BackupStale
+        expr: time() - bi_last_backup_timestamp > 90000
+        for: 1h
+        labels: { severity: critical }
+        annotations: { summary: "No successful backup in 25h" }

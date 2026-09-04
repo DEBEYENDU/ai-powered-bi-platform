@@ -1,0 +1,16 @@
+global: { environment: staging }
+host: staging.bi.example.com
+images:
+  backend: { tag: staging }
+  frontend: { tag: staging }
+api:
+  replicas: 2
+  autoscaling: { enabled: true, min: 2, max: 8, cpu: 65 }
+worker:
+  replicas: 2
+  autoscaling: { enabled: true, min: 2, max: 6, cpu: 70 }
+ingress: { tls: true }
+postgresql:
+  enabled: false  # staging uses managed RDS (see infra/terraform)
+redis:
+  enabled: false

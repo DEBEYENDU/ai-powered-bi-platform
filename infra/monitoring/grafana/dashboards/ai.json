@@ -1,0 +1,27 @@
+{
+  "title": "BI Platform — AI & Reports",
+  "uid": "bi-ai",
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "AI requests",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_ai_requests_total", "refId": "A" }]
+    },
+    {
+      "title": "AI latency (ms)",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_ai_latency_ms", "refId": "A" }]
+    },
+    {
+      "title": "LLM cost (est.)",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_llm_cost_total", "refId": "A" }]
+    },
+    {
+      "title": "Report generation time (ms)",
+      "type": "timeseries",
+      "targets": [{ "expr": "bi_report_generation_ms", "refId": "A" }]
+    }
+  ]
+}

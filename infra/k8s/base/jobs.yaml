@@ -1,0 +1,78 @@
+# Migration Job (pre-deploy hook pattern) + nightly DB backup CronJob.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  namespace: bi-platform
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: migrate
+          image: ghcr.io/ORG/bi-backend:TAG
+          command: ["alembic", "upgrade", "head"]
+          envFrom: [{ configMapRef: { name: bi-config } }]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: POSTGRES_PASSWORD } }
+            - name: DATABASE_URL
+              value: postgresql+psycopg://bi:$(POSTGRES_PASSWORD)@postgres:5432/bi_platform
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: bi-platform
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: pgvector/pgvector:pg16
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  export PGPASSWORD="$POSTGRES_PASSWORD"
+                  FILE="/backups/bi-$(date +%F).dump"
+                  pg_dump -h postgres -U bi -Fc bi_platform > "$FILE"
+                  echo "backup written to $FILE"
+              env:
+                - name: POSTGRES_PASSWORD
+                  valueFrom: { secretKeyRef: { name: bi-secrets, key: POSTGRES_PASSWORD } }
+              volumeMounts: [{ name: backups, mountPath: /backups }]
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: 500m, memory: 1Gi }
+          volumes:
+            - name: backups
+              persistentVolumeClaim: { claimName: backups }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups
+  namespace: bi-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 100Gi } }

@@ -1,6 +1,7 @@
 # pip-installable mirror of pyproject.toml (poetry remains canonical).
 fastapi>=0.115
 uvicorn[standard]>=0.30
+gunicorn>=22.0
 pydantic>=2.7
 pydantic-settings>=2.4
 sqlalchemy>=2.0

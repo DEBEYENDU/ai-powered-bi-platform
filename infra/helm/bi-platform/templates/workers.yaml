@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-worker
+  labels: {{- include "bi.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector: { matchLabels: { app: worker } }
+  template:
+    metadata: { labels: { app: worker } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: worker
+          image: "{{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}"
+          imagePullPolicy: {{ .Values.images.backend.pullPolicy }}
+          command: ["celery", "-A", "app.workers.celery_app", "worker",
+                    "--loglevel=info", "--concurrency={{ .Values.worker.concurrency }}"]
+          env:
+            - name: DATABASE_URL
+              value: {{ include "bi.dbUrl" . | quote }}
+            - name: REDIS_URL
+              value: {{ include "bi.redisUrl" . | quote }}
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+---
+{{- if .Values.scheduler.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-scheduler
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: scheduler } }
+  template:
+    metadata: { labels: { app: scheduler } }
+    spec:
+      containers:
+        - name: scheduler
+          image: "{{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}"
+          command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
+          env:
+            - name: DATABASE_URL
+              value: {{ include "bi.dbUrl" . | quote }}
+            - name: REDIS_URL
+              value: {{ include "bi.redisUrl" . | quote }}
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+{{- end }}

@@ -1,0 +1,103 @@
+# Celery worker (queue-scalable) + beat scheduler (singleton).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: bi-platform
+  labels: { app: worker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: worker } }
+  template:
+    metadata: { labels: { app: worker } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: worker
+          image: ghcr.io/ORG/bi-backend:TAG
+          command: ["celery", "-A", "app.workers.celery_app", "worker",
+                    "--loglevel=info", "--concurrency=4"]
+          envFrom: [{ configMapRef: { name: bi-config } }]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: POSTGRES_PASSWORD } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: REDIS_PASSWORD } }
+            - name: JWT_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: JWT_SECRET_KEY } }
+            - name: DATABASE_URL
+              value: postgresql+psycopg://bi:$(POSTGRES_PASSWORD)@postgres:5432/bi_platform
+            - name: REDIS_URL
+              value: redis://:$(REDIS_PASSWORD)@redis:6379/0
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { cpu: "2", memory: 4Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          lifecycle:
+            preStop:
+              exec: { command: [sh, -c, "celery -A app.workers.celery_app control shutdown || true; sleep 30"] }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker
+  namespace: bi-platform
+  annotations:
+    note: Queue-based scaling needs KEDA (ScaledObject on redis list length).
+      CPU fallback below keeps plain-HPA clusters working.
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: worker }
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker
+  namespace: bi-platform
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: worker } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: bi-platform
+  labels: { app: scheduler }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: scheduler } }
+  template:
+    metadata: { labels: { app: scheduler } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: scheduler
+          image: ghcr.io/ORG/bi-backend:TAG
+          command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
+          envFrom: [{ configMapRef: { name: bi-config } }]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: POSTGRES_PASSWORD } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: REDIS_PASSWORD } }
+            - name: DATABASE_URL
+              value: postgresql+psycopg://bi:$(POSTGRES_PASSWORD)@postgres:5432/bi_platform
+            - name: REDIS_URL
+              value: redis://:$(REDIS_PASSWORD)@redis:6379/0
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }

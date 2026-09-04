@@ -1,0 +1,46 @@
+# Redis StatefulSet + Service. Production HA: managed Redis
+# (ElastiCache/Memorystore — see infra/terraform) or Redis Sentinel.
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: bi-platform
+spec:
+  clusterIP: None
+  selector: { app: redis }
+  ports: [{ port: 6379 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: bi-platform
+spec:
+  serviceName: redis
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      securityContext: { runAsUser: 999, fsGroup: 999 }
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes", "--requirepass", "$(REDIS_PASSWORD)"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: bi-secrets, key: REDIS_PASSWORD } }
+          ports: [{ containerPort: 6379 }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          readinessProbe:
+            exec: { command: [sh, -c, "redis-cli -a $REDIS_PASSWORD ping | grep PONG"] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 10Gi } }

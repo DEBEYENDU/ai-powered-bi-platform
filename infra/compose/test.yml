@@ -1,0 +1,49 @@
+# Testing: ephemeral stack for CI (pytest + smoke tests). No volumes kept.
+# Usage: docker compose -f infra/compose/test.yml up --build --abort-on-container-exit
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: bi
+      POSTGRES_PASSWORD: bi
+      POSTGRES_DB: bi_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bi"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.dev.Dockerfile
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql+psycopg://bi:bi@db:5432/bi_test
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: test-secret
+      RUN_MIGRATIONS: "true"
+
+  tests:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.dev.Dockerfile
+    depends_on:
+      api: { condition: service_started }
+    environment:
+      DATABASE_URL: postgresql+psycopg://bi:bi@db:5432/bi_test
+      API_BASE_URL: http://api:8000
+    command: >
+      sh -c "PYTHONPATH=/code python -m pytest app/admin/tests app/reports/tests -q &&
+             python /code/../infra/scripts/smoke_test.py"
+    volumes:
+      - ../../backend/app:/code/app
+      - ../../infra/scripts:/code/../infra/scripts:ro

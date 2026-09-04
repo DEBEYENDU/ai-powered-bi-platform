@@ -21,6 +21,7 @@ All phases are complete:
 - ✅ **Phase 13** – AI Business Assistant, LLM Orchestration, RAG & Natural Language Analytics Engine
 - ✅ **Phase 14** – Reporting, Document Generation & Report Automation Engine
 - ✅ **Phase 15** – Enterprise Administration, Monitoring & Platform Management
+- ✅ **Phase 16** – DevOps, Cloud Deployment, Security Hardening & Production Readiness
 
 ## 📚 Documentation
 
@@ -42,6 +43,7 @@ All design artifacts are in the `docs/` folder:
 |13 | [AI Business Assistant](docs/phase13-ai-assistant.md) |
 |14 | [Reporting & Automation](docs/phase14-reporting.md) |
 |15 | [Admin & Observability](docs/phase15-admin.md) |
+|16 | [DevOps & Production](docs/phase16-devops.md) |
 
 ## 🛠 Tech Stack
 

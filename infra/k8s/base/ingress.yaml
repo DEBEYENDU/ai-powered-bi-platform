@@ -1,0 +1,33 @@
+# Ingress with cert-manager TLS (install cert-manager + a ClusterIssuer first).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bi-platform
+  namespace: bi-platform
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [bi.example.com]
+      secretName: bi-tls
+  rules:
+    - host: bi.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 80 } } }
+          - path: /admin
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 80 } } }
+          - path: /health
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 80 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: frontend, port: { number: 80 } } }

@@ -1,0 +1,66 @@
+name: CD Production
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  push-images:
+    runs-on: ubuntu-latest
+    permissions: { packages: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/backend.prod.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/bi-backend:${{ env.TAG }},${{ env.REGISTRY }}/bi-backend:latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/frontend.prod.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/bi-frontend:${{ env.TAG }},${{ env.REGISTRY }}/bi-frontend:latest
+
+  deploy:
+    needs: [push-images]
+    runs-on: ubuntu-latest
+    environment:
+      name: production  # protected: required reviewers configured in repo settings
+      url: https://bi.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm upgrade --install bi-platform ./infra/helm/bi-platform
+          -f ./infra/helm/bi-platform/values-prod.yaml
+          --set images.backend.tag=${{ env.TAG }}
+          --set images.frontend.tag=${{ env.TAG }}
+          --set secrets.jwtSecretKey=${{ secrets.PROD_JWT_SECRET }}
+          --namespace bi-platform --create-namespace
+      - run: kubectl -n bi-platform rollout status deploy/bi-platform-api --timeout=600s
+
+  smoke:
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 infra/scripts/smoke_test.py
+        env: { API_BASE_URL: https://bi.example.com }
+
+  rollback-on-failure:
+    needs: [smoke]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm rollback bi-platform -n bi-platform

@@ -1,0 +1,24 @@
+global: { environment: production }
+host: bi.example.com
+images:
+  backend: { tag: v1.0.0, pullPolicy: Always }
+  frontend: { tag: v1.0.0, pullPolicy: Always }
+api:
+  replicas: 3
+  autoscaling: { enabled: true, min: 3, max: 20, cpu: 65 }
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits: { cpu: "2", memory: 2Gi }
+worker:
+  replicas: 3
+  concurrency: 4
+  autoscaling: { enabled: true, min: 2, max: 10, cpu: 70 }
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: "2", memory: 4Gi }
+frontend: { replicas: 2 }
+ingress: { tls: true }
+postgresql:
+  enabled: false  # production uses managed RDS/Aurora (see infra/terraform)
+redis:
+  enabled: false
