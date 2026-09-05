@@ -207,3 +207,38 @@ pytest, full `pip install -r backend/requirements.txt`, `npm run build`).
 ## Live status at sign-off
 - main: CI ✅ Security ✅ CD Staging ✅ (verified via `gh run list`).
 - Open PRs re-triaged; superseded ones auto-closed by dependabot.
+
+---
+
+# Pass 4 audit (2026-09-05): live triage with `gh`, all green
+
+## X. CD failed on GHCR uppercase owner (fixed)
+- `ghcr.io/DEBEYENDU/...` rejected. Both CD workflows now tag via
+  `docker/metadata-action@v6` (tag verified via API), which lowercases.
+  `build-push-action v6→v7` in the same edit.
+
+## Y. CD render failed twice more (fixed from runner logs)
+- Missing chart deps → `helm dependency update` in CI build + both CD
+  render/deploy jobs. `--validate` needs a live cluster → dropped (plain
+  `helm template` still executes all chart logic + `required` checks).
+
+## Z. Trivy tag corrected twice
+- `0.36.0` does not resolve; owner pinned `v0.20.0`; API listing proved
+  `v0.36.0` exists → pinned that (newest verified).
+
+## AA. Dependabot swarm resolved (7 PRs → 0 open)
+- vite-8 / plugin-react-6 blocked each other (ERESOLVE): upgraded as one
+  coordinated set with vitest-3 + typescript-7, each verified locally
+  (test+build+audit green). Dependabot `vite-stack` group prevents recurrence.
+- python-3.14: accepted with evidence (suite green on local 3.14.4); CI +
+  all backend Dockerfiles moved together. nginx-1.31: accepted (stable
+  line, CI rebuild validates). login-action-4: applied directly (this token
+  lacks the `workflow` OAuth scope to merge workflow-touching PRs — owner
+  action needed for such merges). vitest-4.1.11: rebased via
+  `@dependabot rebase`, CI green, merged (frontend-only, no scope issue).
+- node-26 held at 24 via dependabot ignore with dated justification.
+
+## Final live status
+- Latest main: CI ✅ CD Staging ✅ Security ✅. Zero open PRs.
+- Local: ruff clean, mypy 24 files clean, backend 55/55, frontend test+build
+  green, `npm audit` 0 vulns, all workflow YAML parses.
