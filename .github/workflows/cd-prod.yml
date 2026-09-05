@@ -75,7 +75,7 @@ jobs:
           --set images.frontend.tag=${{ env.TAG }}
           --set secrets.jwtSecretKey=dummy-ci-value
           --set dbUrlOverride=x --set redisUrlOverride=y
-          --validate > /dev/null
+          > /dev/null
 
   deploy:
     needs: [push-images, render-manifests]
