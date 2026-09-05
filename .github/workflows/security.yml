@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -f infra/docker/backend.prod.Dockerfile -t bi-backend:scan .
-      - uses: aquasecurity/trivy-action@0.36.0
+      - uses: aquasecurity/trivy-action@v0.20.0
         with:
           image-ref: bi-backend:scan
           format: sarif
