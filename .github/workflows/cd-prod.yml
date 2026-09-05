@@ -68,6 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
+      - run: helm dependency update ./infra/helm/bi-platform
       - run: helm template bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-prod.yaml
           --set images.backend.tag=${{ env.TAG }}
@@ -90,6 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
+      - run: helm dependency update ./infra/helm/bi-platform
       - run: echo "${{ secrets.PROD_KUBECONFIG }}" > /tmp/kubeconfig && chmod 600 /tmp/kubeconfig
       - run: helm upgrade --install bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-prod.yaml

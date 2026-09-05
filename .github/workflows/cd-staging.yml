@@ -70,6 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
+      - run: helm dependency update ./infra/helm/bi-platform
       # Proves the staging values + image tags render to valid manifests.
       - run: helm template bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-staging.yaml
@@ -92,6 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
+      - run: helm dependency update ./infra/helm/bi-platform
       - run: echo "${{ secrets.STAGING_KUBECONFIG }}" > /tmp/kubeconfig && chmod 600 /tmp/kubeconfig
       - run: helm upgrade --install bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-staging.yaml
