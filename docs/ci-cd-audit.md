@@ -166,3 +166,44 @@ pytest, full `pip install -r backend/requirements.txt`, `npm run build`).
 - Backend 55/55 pass; frontend `npm test` 1/1 + `npm run build` pass;
   `npm audit --audit-level=high`: 0 vulnerabilities.
 - 9/9 workflow+compose YAML files parse. Dependabot covers pip/npm/docker/actions.
+
+---
+
+# Pass 3 audit (2026-09-05): live CI triage via `gh` (all green on main)
+
+## R. CD failed: uppercase GHCR owner (critical, fixed)
+- `ghcr.io/DEBEYENDU/...` rejected: repository names must be lowercase.
+- Fixed with `docker/metadata-action@v6` (tag verified via API) in both CD
+  workflows; also bumped `build-push-action v6→v7`.
+
+## S. CD render failed twice more (fixed iteratively from runner logs)
+- `helm template` needs chart deps → added `helm dependency update` to CI
+  build, both CD render jobs, and both CD deploy jobs.
+- `helm template --validate` requires a live cluster → dropped the flag
+  (plain template still executes all chart logic + `required` checks).
+
+## T. Trivy pin used a nonexistent tag (fixed by owner, then corrected)
+- `0.36.0` (no `v`) does not resolve; verified `v0.36.0` exists via API and
+  pinned that. Lesson: verify action tags via API, not search snippets.
+
+## U. Dependabot peer conflicts (fixed by coordination, verified locally)
+- vite 8 vs plugin-react 4 and plugin-react 6 vs vite 6 blocked each other.
+  Upgraded as one set (vite 8.2.2 + plugin-react 6.1.1 + vitest 3.2.7 +
+  typescript 7.0.2): test+build+audit all green. Added a `vite-stack`
+  dependabot group so future majors move together.
+
+## V. Python 3.12→3.14 + nginx 1.27→1.31 (accepted with evidence)
+- Python: whole suite already green on local 3.14.4; bumped CI + all backend
+  Dockerfiles together (supersedes that PR). nginx: stable-line bump, CI
+  rebuild validates the image.
+
+## W. Deliberately left open (documented, not ignored)
+- `node-26-alpine` PR: held at Node 24 via dependabot ignore (can't validate
+  26 without a Docker daemon; 24 LTS supported to 2028).
+- `login-action v3→v4` PR: applied directly to main instead (this token lacks
+  the `workflow` OAuth scope required to merge workflow-touching PRs — the
+  owner must merge such PRs from the UI, or grant the scope).
+
+## Live status at sign-off
+- main: CI ✅ Security ✅ CD Staging ✅ (verified via `gh run list`).
+- Open PRs re-triaged; superseded ones auto-closed by dependabot.
