@@ -44,6 +44,33 @@ ruff = ">=0.4"
 testpaths = ["app"]
 asyncio_mode = "auto"
 
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+show_error_codes = true
+# `app/` is a PEP 420 namespace package (no __init__.py); these flags let mypy
+# resolve `app.*` imports to a single module identity.
+namespace_packages = true
+explicit_package_bases = true
+# Incremental adoption: only the `files` list below is checked; dependencies
+# outside it are treated as untyped until those modules are onboarded.
+follow_imports = "skip"
+# Strictness is introduced incrementally: the foundation layer below is fully
+# typed; feature modules (iam/dataset/etl/analytics/ai/reports/admin) follow.
+files = [
+  "app/core",
+  "app/db",
+  "app/exceptions",
+  "app/dependencies",
+  "app/middleware",
+  "app/repositories",
+  "app/services",
+  "app/cache",
+  "app/api",
+  "app/main.py",
+  "app/workers",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

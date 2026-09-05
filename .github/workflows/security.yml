@@ -13,23 +13,32 @@ jobs:
   secrets-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # GITHUB_TOKEN is required for PR scans/comments; pull-requests scope lets
+    # gitleaks annotate pull requests. No license key needed (personal account).
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deps-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: pip install pip-audit
       # Non-blocking: advisories are triaged in the weekly review, not merged
       # blindly, so a new CVE in a transitive dep can't freeze all development.
       - run: pip-audit -r backend/requirements.txt || true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -45,13 +54,13 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -f infra/docker/backend.prod.Dockerfile -t bi-backend:scan .
-      - uses: aquasecurity/trivy-action@0.24.0
+      - uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: bi-backend:scan
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         with: { sarif_file: trivy-results.sarif }

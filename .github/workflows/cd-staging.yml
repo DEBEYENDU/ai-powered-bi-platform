@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 20
     permissions: { packages: write, contents: read }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -50,9 +50,11 @@ jobs:
     needs: [push-images]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       # Proves the staging values + image tags render to valid manifests.
       - run: helm template bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-staging.yaml
@@ -69,10 +71,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     environment: staging
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       - run: echo "${{ secrets.STAGING_KUBECONFIG }}" > /tmp/kubeconfig && chmod 600 /tmp/kubeconfig
       - run: helm upgrade --install bi-platform ./infra/helm/bi-platform
           -f ./infra/helm/bi-platform/values-staging.yaml
@@ -89,7 +93,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: python3 infra/scripts/smoke_test.py
         env: { API_BASE_URL: https://staging.bi.example.com }

@@ -117,8 +117,52 @@ pytest, full `pip install -r backend/requirements.txt`, `npm run build`).
   `GRAFANA_PASSWORD`, `REGISTRY`, `TAG`.
 
 ## 5. Recommended next improvements
-1. Gate mypy incrementally (start with `app/core`, `app/db`).
+1. ~~Gate mypy incrementally~~ DONE (pass 2): foundation layer gated.
 2. Coverage thresholds (`--cov-fail-under`) once suite grows.
 3. Pin action SHAs for supply-chain hardening.
 4. Provision staging cluster → flip CD deploy to automatic.
 5. Migrate `@validator` → `@field_validator`, naive → aware datetimes (major).
+
+---
+
+# Pass 2 audit (2026-09-05): action currency, least privilege, type gates
+
+## N. End-of-life actions would have failed imminently (all workflows, critical)
+- Verified against upstream READMEs/releases: GitHub removed Node 20 from
+  runners — **gitleaks-action@v2 stops working entirely**; v3 (Node 24) is the
+  supported line and additionally requires `GITHUB_TOKEN` for PR scans.
+- Bumped with verification, not blindly:
+  `actions/checkout@v4→v7`, `actions/setup-python@v5→v7`,
+  `actions/setup-node@v4→v7` (all Node 24 per upstream docs),
+  `azure/setup-helm@v4→v5` (upstream README), `gitleaks@v2→v3` (+ `GITHUB_TOKEN`
+  env, `contents:read` + `pull-requests:read`), `upload-sarif@v3→v4`
+  (v4 is latest; v3 still supported), `trivy-action@0.24.0→0.36.0` (latest).
+  Docker-based actions (`build-push@v6`, `login@v3`) are unaffected by the
+  Node deprecation and already current — left pinned.
+- Node runtime 20→24 in CI (`NODE_VERSION`) and `frontend.prod.Dockerfile`
+  (Node 20 went EOL April 2026). Local `npm run build` + `npm test` verified
+  on Node 24. Python stays 3.12 (matches prod image + `requires-python`).
+
+## O. Workflows ran with implicit token permissions (all, medium)
+- Added explicit least-privilege blocks: CI top-level `contents: read`;
+  per-job `contents: read` on CD render/deploy/smoke/rollback;
+  `security-events: write` only on the SARIF-upload job. Gitleaks got exactly
+  `contents: read` + `pull-requests: read` per its docs.
+
+## P. No type checking in CI (CI, medium)
+- Measured first: `app/core` + `app/db` were already clean, then the whole
+  foundation layer (24 files). Added `[tool.mypy]` (namespace-package flags
+  included) and a CI `typecheck` job gated to that scope; feature modules
+  onboard incrementally (`follow_imports = skip`).
+
+## Q. No frontend tests existed (CI, medium)
+- Added vitest + jsdom + Testing Library, `vitest.config.ts`, hermetic
+  `App.test.tsx` (API mocked, asserts nav renders), `npm test` script, and a
+  CI step. Fixed two real setup bugs found while doing it (jest-dom v7 needs
+  `globals: true`; matchers need the `/vitest` setup entry).
+
+## Verification (pass 2)
+- `ruff check` + `ruff format --check`: clean. `mypy`: 24 files clean.
+- Backend 55/55 pass; frontend `npm test` 1/1 + `npm run build` pass;
+  `npm audit --audit-level=high`: 0 vulnerabilities.
+- 9/9 workflow+compose YAML files parse. Dependabot covers pip/npm/docker/actions.
