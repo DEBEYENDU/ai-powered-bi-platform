@@ -18,7 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
   TAG: staging-${{ github.sha }}
 
 jobs:
@@ -33,18 +32,34 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      # metadata-action lowercases the owner (GHCR requires lowercase repo
+      # names; github.repository_owner preserves case like DEBEYENDU).
+      - uses: docker/metadata-action@v6
+        id: meta-backend
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/bi-backend
+          tags: |
+            type=raw,value=${{ env.TAG }}
+            type=raw,value=staging
+      - uses: docker/metadata-action@v6
+        id: meta-frontend
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/bi-frontend
+          tags: |
+            type=raw,value=${{ env.TAG }}
+            type=raw,value=staging
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/docker/backend.prod.Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/bi-backend:${{ env.TAG }},${{ env.REGISTRY }}/bi-backend:staging
-      - uses: docker/build-push-action@v6
+          tags: ${{ steps.meta-backend.outputs.tags }}
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/docker/frontend.prod.Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/bi-frontend:${{ env.TAG }},${{ env.REGISTRY }}/bi-frontend:staging
+          tags: ${{ steps.meta-frontend.outputs.tags }}
 
   render-manifests:
     needs: [push-images]

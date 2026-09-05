@@ -6,7 +6,7 @@ RUN npm ci || npm install
 COPY frontend/ ./
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 RUN adduser -D -u 10002 static && \
     mkdir -p /var/cache/nginx /var/run /etc/nginx/conf.d && \
     chown -R static:static /usr/share/nginx/html /var/cache/nginx /var/run

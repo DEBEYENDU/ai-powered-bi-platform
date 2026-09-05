@@ -8,9 +8,20 @@ updates:
     directory: /frontend
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    # Vite majors must move together (vite + plugin-react + vitest share peer
+    # ranges); single-package bumps fail `npm ci` with ERESOLVE. Group them.
+    groups:
+      vite-stack:
+        patterns: ["vite", "@vitejs/*", "vitest"]
   - package-ecosystem: docker
     directory: /infra/docker
     schedule: { interval: weekly }
+    # Hold the Node 24 line: Node 26 cannot be validated here yet (no Docker
+    # daemon for image builds; local toolchain is Node 24). Revisit once 26
+    # is LTS-proven or CI image builds cover it. Other images update normally.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }

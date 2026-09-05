@@ -1,6 +1,6 @@
 # Production backend image: multi-stage, non-root, health-checked.
 # Build from repo root: docker build -f infra/docker/backend.prod.Dockerfile .
-ARG PYTHON_VERSION=3.12-slim
+ARG PYTHON_VERSION=3.14-slim
 
 FROM python:${PYTHON_VERSION} AS builder
 ENV PIP_NO_CACHE_DIR=1
