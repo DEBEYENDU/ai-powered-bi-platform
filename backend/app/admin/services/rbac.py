@@ -83,6 +83,18 @@ class RBACService:
     def list_roles(self) -> list[dict[str, Any]]:
         return list(self._roles.values())
 
+    def delete_role(self, role_id: str) -> bool:
+        role = self._roles.get(role_id)
+        if role is None:
+            return False
+        if role.get("system_role"):
+            raise ValueError("System roles cannot be deleted")
+        del self._roles[role_id]
+        self._role_permissions.pop(role_id, None)
+        for assigned in self._user_roles.values():
+            assigned.discard(role_id)
+        return True
+
     def grant_permission(self, role_id: str, code: str) -> None:
         if role_id not in self._roles:
             raise ValueError("Role not found")

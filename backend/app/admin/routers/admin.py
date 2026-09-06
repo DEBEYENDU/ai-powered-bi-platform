@@ -189,6 +189,14 @@ def restore_org(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
     return _not_found(platform.orgs.restore(org_id), "Organization")
 
 
+@admin_router.delete("/organizations/{org_id}", summary="Delete organization")
+def delete_org(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
+    if not platform.orgs.delete(org_id):
+        raise HTTPException(404, "Organization not found")
+    platform.audit.append("org_deleted", "organization", org_id)
+    return {"deleted": True}
+
+
 @admin_router.get("/organizations/{org_id}/quotas", summary="Get quotas")
 def get_quotas(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
     return _not_found(platform.orgs.quotas(org_id), "Organization")
@@ -220,6 +228,17 @@ def create_role(payload: RoleCreate = Body(...), platform: PlatformAdmin = Depen
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+@admin_router.delete("/roles/{role_id}", summary="Delete role")
+def delete_role(role_id: str, platform: PlatformAdmin = Depends(get_platform)):
+    try:
+        if not platform.rbac.delete_role(role_id):
+            raise HTTPException(404, "Role not found")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    platform.audit.append("role_deleted", "role", role_id)
+    return {"deleted": True}
 
 
 @admin_router.get("/roles", summary="List roles")

@@ -32,3 +32,6 @@ infra/nginx/certs/
 *.key
 terraform.tfstate*
 .terraform/
+
+# Runtime server logs
+*-server.log

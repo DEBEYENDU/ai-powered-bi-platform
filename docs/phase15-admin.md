@@ -75,3 +75,17 @@ Run: `PYTHONPATH=backend python3 -m pytest backend/app/admin/tests backend/app/r
 - [x] APIs + tests + docs
 
 Out of scope per spec: CI/CD, Kubernetes, IaC, backup/restore automation, cloud deployment.
+
+## Maintenance deadlock fix (2026-09-06)
+**Bug:** entering `readonly`/`maintenance` blocked `POST /admin/maintenance`
+itself (and the override-token endpoint), so the platform could never leave
+the mode via API — every write returned 503 forever.
+**Fix:** the middleware now always allows the maintenance-management endpoints
+(`/admin/maintenance*`, `/api/v1/admin/maintenance*`), health checks, and API
+docs, in every mode. Exact semantics: `off` = all allowed; `readonly` = safe
+methods + escape hatch + override tokens; `maintenance` = only exempt paths +
+override tokens. The frontend Settings page shows the live mode, confirms
+before entering restrictive modes, and surfaces backend errors instead of
+reloading silently. Regression tests in `test_admin.py::TestMaintenanceEscapeHatch`.
+**Ops note:** in-memory state is per-process; run one uvicorn worker in dev
+(multi-worker gunicorn requires shared state, e.g. Redis, for flags/modes).

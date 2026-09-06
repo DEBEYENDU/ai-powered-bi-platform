@@ -20,6 +20,9 @@ from app.admin.services.rbac import RBACService
 from app.admin.services.settings import SettingsService
 from app.admin.services.tracing import Tracer
 from app.admin.services.users import UserAdminService
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
 
 
 class PlatformAdmin:
@@ -63,7 +66,22 @@ _platform: PlatformAdmin | None = None
 
 
 def get_platform() -> PlatformAdmin:
+    """Process-wide singleton composition root.
+
+    Exactly one PlatformAdmin (and therefore exactly one SettingsService)
+    exists per process. Routers receive it via ``Depends(get_platform)``;
+    the maintenance middleware resolves it per request through this same
+    function, so no stale or duplicate copies can exist. Creation is logged
+    with instance ids — if you ever see two creation lines, you have two
+    processes (e.g. gunicorn workers, which intentionally do NOT share
+    in-memory state; see docs note on multi-worker deployments).
+    """
     global _platform
     if _platform is None:
         _platform = PlatformAdmin()
+        log.info(
+            "platform_singleton_created",
+            platform_id=id(_platform),
+            settings_id=id(_platform.settings),
+        )
     return _platform

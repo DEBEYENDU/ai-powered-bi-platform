@@ -11,6 +11,10 @@ import secrets
 from datetime import datetime
 from typing import Any
 
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
+
 VALIDATORS = {
     "rate_limit_per_minute": lambda v: isinstance(v, int) and v > 0,
     "log_level": lambda v: v in ("DEBUG", "INFO", "WARNING", "ERROR"),
@@ -69,6 +73,7 @@ class SettingsService:
     ) -> dict[str, Any]:
         if mode not in ("off", "readonly", "maintenance"):
             raise ValueError(f"Unknown maintenance mode '{mode}'")
+        previous = self._maintenance.get("mode")
         self._maintenance = {
             "mode": mode,
             "message": message,
@@ -77,6 +82,12 @@ class SettingsService:
             "created_by": created_by,
         }
         self._settings["maintenance_mode"] = mode
+        log.info(
+            "maintenance_mode_changed",
+            previous=previous,
+            current=mode,
+            settings_id=id(self),
+        )
         return self._maintenance
 
     def maintenance_status(self) -> dict[str, Any]:

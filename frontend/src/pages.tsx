@@ -30,20 +30,25 @@ export function Overview() {
 export function Users() {
   const { data, error, loading } = useFetch(() => get<any>("/users"));
   const [email, setEmail] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   if (loading) return <p>Loading…</p>;
   if (error) return <p>Error: {error}</p>;
+  async function createUser() {
+    setCreateError(null);
+    try {
+      await post("/users", { email, password: "ChangeMe123!" });
+      location.reload();
+    } catch (e) {
+      setCreateError(String(e));
+    }
+  }
   return (
     <>
       <h1>Users</h1>
+      {createError && <p style={{ color: "red" }}>Failed to create user: {createError}</p>}
       <Card title="Create user">
         <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <button
-          onClick={() =>
-            post("/users", { email, password: "ChangeMe123!" }).then(() => location.reload())
-          }
-        >
-          Create
-        </button>
+        <button onClick={createUser}>Create</button>
       </Card>
       <Card title={`All users (${data.data.length})`}>
         <table cellPadding={6}>
@@ -254,24 +259,56 @@ export function Flags() {
 
 export function Settings() {
   const { data, error, loading } = useFetch(() => get<any>("/settings"));
-  const [mode, setMode] = useState("readonly");
-  if (loading) return <p>Loading…</p>;
+  const {
+    data: maint,
+    error: maintError,
+    loading: maintLoading,
+  } = useFetch(() => get<any>("/maintenance"));
+  const [mode, setMode] = useState("off");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
+  if (loading || maintLoading) return <p>Loading…</p>;
   if (error) return <p>Error: {error}</p>;
+  if (maintError) return <p>Error: {maintError}</p>;
+  const currentMode = maint.mode as string;
+  async function applyMaintenance() {
+    setApplyError(null);
+    setNotice(null);
+    if (mode !== "off" && mode !== currentMode) {
+      const ok = window.confirm(
+        `Switch maintenance mode from "${currentMode}" to "${mode}"? ` +
+          (mode === "readonly"
+            ? "Write endpoints will return 503 until you switch back."
+            : "Almost everything will return 503 until you switch back.")
+      );
+      if (!ok) return;
+    }
+    try {
+      const updated = await post<any>("/maintenance", { mode });
+      setNotice(`Maintenance mode is now "${updated.mode}".`);
+    } catch (e) {
+      // Backend errors (e.g. 503 while locked out) are shown, never swallowed.
+      setApplyError(String(e));
+    }
+  }
   return (
     <>
       <h1>Settings</h1>
+      {notice && <p style={{ color: "green" }}>{notice}</p>}
+      {applyError && <p style={{ color: "red" }}>Failed to apply: {applyError}</p>}
       <Card title="System settings">
         <pre>{JSON.stringify(data, null, 2)}</pre>
       </Card>
       <Card title="Maintenance mode">
+        <p>
+          Current mode: <strong>{currentMode}</strong>
+        </p>
         <select value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="off">off</option>
           <option value="readonly">readonly</option>
           <option value="maintenance">maintenance</option>
         </select>{" "}
-        <button onClick={() => post("/maintenance", { mode }).then(() => location.reload())}>
-          Apply
-        </button>
+        <button onClick={applyMaintenance}>Apply</button>
       </Card>
     </>
   );

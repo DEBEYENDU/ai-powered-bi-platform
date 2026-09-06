@@ -17,6 +17,84 @@ from app.admin.services.tracing import Tracer
 from app.admin.services.users import UserAdminService
 
 
+class TestMaintenanceEscapeHatch:
+    """Regression tests for the readonly deadlock: the maintenance-management
+    endpoints must stay reachable in every mode, or the platform can never
+    leave readonly/maintenance via the API."""
+
+    def _middleware(self, mode: str):
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        settings = SettingsService()
+        settings.set_maintenance(mode, "test")
+        return MaintenanceMiddleware(app=None, settings_service=settings)
+
+    def _request(self, method: str, path: str):
+        from starlette.requests import Request
+
+        return Request(
+            {
+                "type": "http",
+                "method": method,
+                "path": path,
+                "headers": [],
+                "query_string": b"",
+            }
+        )
+
+    async def _dispatch(self, middleware, method: str, path: str) -> int:
+        from starlette.responses import PlainTextResponse
+
+        async def call_next(request):
+            return PlainTextResponse("ok")
+
+        response = await middleware.dispatch(self._request(method, path), call_next)
+        return response.status_code
+
+    def test_escape_hatch_in_readonly(self):
+        import asyncio
+
+        middleware = self._middleware("readonly")
+        # The escape hatch itself must stay open ...
+        assert asyncio.run(self._dispatch(middleware, "POST", "/admin/maintenance")) == 200
+        assert asyncio.run(self._dispatch(middleware, "POST", "/api/v1/admin/maintenance")) == 200
+        # ... while ordinary writes stay blocked and reads pass.
+        assert asyncio.run(self._dispatch(middleware, "POST", "/admin/users")) == 503
+        assert asyncio.run(self._dispatch(middleware, "GET", "/admin/users")) == 200
+
+    def test_maintenance_mode_blocks_reads_but_not_health_or_docs(self):
+        import asyncio
+
+        middleware = self._middleware("maintenance")
+        assert asyncio.run(self._dispatch(middleware, "GET", "/admin/users")) == 503
+        assert asyncio.run(self._dispatch(middleware, "GET", "/health")) == 200
+        assert asyncio.run(self._dispatch(middleware, "GET", "/docs")) == 200
+        assert asyncio.run(self._dispatch(middleware, "POST", "/admin/maintenance")) == 200
+
+    def test_off_allows_everything(self):
+        import asyncio
+
+        middleware = self._middleware("off")
+        assert asyncio.run(self._dispatch(middleware, "POST", "/admin/users")) == 200
+        assert asyncio.run(self._dispatch(middleware, "DELETE", "/admin/users/1")) == 200
+
+    def test_mode_change_is_visible(self):
+        settings = SettingsService()
+        assert settings.maintenance_status()["mode"] == "off"
+        settings.set_maintenance("readonly", "test")
+        assert settings.maintenance_status()["mode"] == "readonly"
+        settings.set_maintenance("off", "")
+        assert settings.maintenance_status()["mode"] == "off"
+
+    def test_singleton_is_single(self):
+        from app.admin.services.platform import get_platform
+
+        first = get_platform()
+        second = get_platform()
+        assert first is second
+        assert first.settings is second.settings
+
+
 class TestAudit:
     def test_append_query_verify(self):
         audit = AuditService()
