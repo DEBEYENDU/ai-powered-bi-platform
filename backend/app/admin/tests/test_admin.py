@@ -186,6 +186,91 @@ class TestHealthMetrics:
         out = metrics.render_prometheus()
         assert "bi_api_latency_ms" in out and "42.0" in out
 
+    def test_request_recording_drives_snapshot(self):
+        metrics = MetricsCollector()
+        for _ in range(5):
+            metrics.record_request(100.0, 200, "/x")
+        metrics.record_request(500.0, 500, "/x")
+        snapshot = metrics.system_snapshot()
+        assert snapshot["api_requests_total"] == 6
+        assert snapshot["api_errors_total"] == 1
+        assert snapshot["api_throughput_rpm"] == 6.0
+        assert snapshot["api_latency_ms"] > 0
+        assert snapshot["api_latency_p95_ms"] >= snapshot["api_latency_ms"]
+        assert "bi_request_duration_ms_count 6" in metrics.render_prometheus()
+
+    def test_queue_not_configured_without_broker(self):
+        stats = MetricsCollector.queue_stats()
+        assert stats["queue_length"] == "Not Configured" or isinstance(
+            stats["queue_length"], (int, float)
+        )
+
+    def test_storage_health_details(self):
+        health = HealthService()
+        result = health.check_all()
+        storage = next(s for s in result["services"] if s["service"] == "storage")
+        assert "directory" in storage
+        assert "readable" in storage
+        assert "writable" in storage
+
+
+class TestStoragePaths:
+    def test_settings_defaults_are_backend_local(self):
+        from pathlib import Path
+
+        from app.core.config import BASE_DIR, get_settings
+
+        get_settings.cache_clear() if hasattr(get_settings, "cache_clear") else None
+        settings = get_settings()
+        assert Path(settings.storage_path).is_absolute()
+        assert "\\tmp" not in settings.storage_path.replace("/", "\\")
+        assert str(BASE_DIR) in settings.storage_path or "storage" in settings.storage_path
+
+    def test_env_file_location_is_absolute(self):
+        from app.core.config import ENV_FILE
+
+        assert ENV_FILE.is_absolute()
+        assert ENV_FILE.name == ".env"
+
+    def test_provider_roundtrip(self):
+        import asyncio
+        import tempfile
+        from pathlib import Path
+
+        from app.dataset.storage.base import LocalStorageProvider
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = LocalStorageProvider(base_path=Path(tmp))
+            asyncio.run(provider.put("a/b.bin", b"data"))
+            assert asyncio.run(provider.exists("a/b.bin")) is True
+            assert asyncio.run(provider.get("a/b.bin")) == b"data"
+
+    def test_provider_blocks_escape(self):
+        import asyncio
+        import tempfile
+        from pathlib import Path
+
+        import pytest
+
+        from app.dataset.storage.base import LocalStorageProvider
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = LocalStorageProvider(base_path=Path(tmp))
+            with pytest.raises(ValueError):
+                asyncio.run(provider.put("../evil.bin", b"x"))
+
+    def test_cache_hit_rate(self):
+        from app.cache.service import CacheService
+
+        before_hits, before_misses = CacheService.total_hits(), CacheService.total_misses()
+        cache = CacheService(namespace="test-rate")
+        cache.set("k", "v")
+        assert cache.get("k") == "v"
+        assert cache.get("absent") is None
+        assert CacheService.total_hits() == before_hits + 1
+        assert CacheService.total_misses() == before_misses + 1
+        assert 0.0 <= CacheService.hit_rate() <= 1.0
+
     def test_system_snapshot(self):
         snapshot = MetricsCollector().system_snapshot()
         assert "uptime_seconds" in snapshot

@@ -6,6 +6,7 @@ without a running server; CORS is configured on the app in ``main.py``.
 
 from __future__ import annotations
 
+import contextlib
 import time
 import uuid
 
@@ -16,6 +17,15 @@ from starlette.responses import Response
 from app.core.logging import get_logger, request_id_ctx
 
 log = get_logger(__name__)
+
+
+def _record_request_metrics(latency_ms: float, status_code: int, route: str) -> None:
+    # Lazy import: keeps core middleware decoupled from the admin module and
+    # never breaks request handling if metrics are unavailable.
+    with contextlib.suppress(Exception):
+        from app.admin.services.platform import get_platform
+
+        get_platform().metrics.record_request(latency_ms, status_code, route)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -34,6 +44,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             status=response.status_code,
             elapsed_ms=elapsed_ms,
         )
+        _record_request_metrics(elapsed_ms, response.status_code, request.url.path)
         return response
 
 
@@ -44,6 +55,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(
-            "Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'"
+            "Content-Security-Policy",
+            (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com; "
+                "font-src 'self' https://cdn.jsdelivr.net; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            ),
         )
         return response

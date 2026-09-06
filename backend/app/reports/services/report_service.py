@@ -25,11 +25,22 @@ from app.reports.schedulers.scheduler import Scheduler
 from app.reports.templates.engine import TemplateEngine
 
 
+def _default_reports_root() -> Path:
+    try:
+        from app.core.config import get_settings
+
+        return Path(get_settings().reports_path)
+    except ImportError:
+        return Path(__file__).resolve().parents[3] / "reports"
+
+
 class ReportService:
     def __init__(
         self, storage_root: Path | None = None, builder: ReportBuilder | None = None
     ) -> None:
-        self.storage_root = storage_root or Path("/tmp/reports")  # noqa: S108 -- env-overridable dev default  # noqa: S108 -- env-overridable dev default; see .env.example
+        self.storage_root = (
+            Path(storage_root) if storage_root is not None else _default_reports_root()
+        )
         self.repo = ReportRepository()
         self.templates = TemplateEngine()
         self.builder = builder or ReportBuilder()

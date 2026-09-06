@@ -18,6 +18,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+def _default_reports_root() -> Path:
+    try:
+        from app.core.config import get_settings
+
+        return Path(get_settings().reports_path)
+    except ImportError:
+        return Path(__file__).resolve().parents[3] / "reports"
+
+
 class DeliveryAttempt(BaseModel):
     attempt_id: str = Field(default_factory=lambda: secrets.token_hex(8))
     report_id: str
@@ -48,7 +57,9 @@ class DistributionEngine:
         self._email_sender = email_sender or self._default_email_sender
         self._attempts: list[DeliveryAttempt] = []
         self._links: dict[str, SharedLink] = {}
-        self.storage_root = storage_root or Path("/tmp/reports")  # noqa: S108 -- env-overridable dev default  # noqa: S108 -- env-overridable dev default; see .env.example
+        self.storage_root = (
+            Path(storage_root) if storage_root is not None else _default_reports_root()
+        )
 
     # -- channels --
     def deliver_download(
