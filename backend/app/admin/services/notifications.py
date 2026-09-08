@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from app.admin.repositories import db_store
+
 
 class NotificationService:
     def __init__(self, on_create: Callable[[dict[str, Any]], Any] | None = None) -> None:
@@ -41,6 +43,8 @@ class NotificationService:
         if self._on_create:
             with contextlib.suppress(Exception):
                 self._on_create(item)
+        with contextlib.suppress(Exception):
+            db_store.notification_upsert(item)
         return item
 
     def notify_alert(self, incident: dict[str, Any], user_ids: list[str] | None = None) -> int:
@@ -69,6 +73,8 @@ class NotificationService:
         item = self._items.get(notification_id)
         if item:
             item["read"] = True
+            with contextlib.suppress(Exception):
+                db_store.notification_upsert(item)
         return item
 
     def unread_count(self, user_id: str) -> int:

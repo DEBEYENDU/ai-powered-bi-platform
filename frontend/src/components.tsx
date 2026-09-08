@@ -1,11 +1,39 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Drawer,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  TextField,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
+import { useColorMode } from "./theme";
 
-const NAV = [
+const NAV: Array<[string, string]> = [
   ["Overview", "/"],
   ["Users", "/users"],
   ["Organizations", "/orgs"],
   ["Roles", "/roles"],
+  ["Dashboards", "/dashboards"],
+  ["Reports", "/reports"],
+  ["AI Admin", "/ai"],
   ["Health", "/health"],
   ["Metrics", "/metrics"],
   ["Audit", "/audit"],
@@ -15,29 +43,51 @@ const NAV = [
   ["Settings", "/settings"],
 ];
 
+const DRAWER_WIDTH = 220;
+
 export function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { toggle, mode } = useColorMode();
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <nav style={{ width: 220, background: "#1e3a5f", color: "#fff", padding: 16 }}>
-        <h2 style={{ fontSize: 16 }}>BI Platform Admin</h2>
-        {NAV.map(([label, to]) => (
-          <Link
-            key={to + label}
-            to={to}
-            style={{
-              display: "block",
-              color: pathname === to ? "#ffd166" : "#fff",
-              padding: "8px 4px",
-              textDecoration: "none",
-            }}
+    <Box sx={{ display: "flex" }}>
+      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <Typography
+            variant="h6"
+            sx={{ flexGrow: 1, cursor: "pointer" }}
+            onClick={() => navigate("/")}
           >
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <main style={{ flex: 1, padding: 24, background: "#f5f7fa" }}>{children}</main>
-    </div>
+            BI Platform Admin
+          </Typography>
+          <IconButton color="inherit" onClick={toggle} aria-label="toggle theme">
+            {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: DRAWER_WIDTH,
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box" },
+        }}
+      >
+        <Toolbar />
+        <List>
+          {NAV.map(([label, to]) => (
+            <ListItem key={to + label} disablePadding>
+              <ListItemButton component={Link} to={to} selected={pathname === to}>
+                <ListItemText primary={label} />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Drawer>
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Toolbar />
+        {children}
+      </Box>
+    </Box>
   );
 }
 
@@ -57,19 +107,147 @@ export function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
-  return { data, error, loading };
+  return { data, error, loading, setData };
 }
 
-export function Status({ value }: { value: string }) {
-  const color = value === "ok" ? "green" : value === "down" || value === "firing" ? "red" : "orange";
-  return <span style={{ color, fontWeight: 700 }}>{value}</span>;
+/** Mutation helper: runs async work, surfaces backend errors, shows notices. */
+export function useMutation<T>(fn: (args: T) => Promise<unknown>, onDone?: () => void) {
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function run(args: T, successMessage?: string) {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      await fn(args);
+      if (successMessage) setNotice(successMessage);
+      onDone?.();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return { run, error, notice, busy };
 }
 
-export function Card({ title, children }: { title: string; children: ReactNode }) {
+export function Loading() {
   return (
-    <section style={{ background: "#fff", borderRadius: 8, padding: 16, marginBottom: 16 }}>
-      <h3 style={{ marginTop: 0 }}>{title}</h3>
-      {children}
-    </section>
+    <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+      <CircularProgress />
+    </Box>
+  );
+}
+
+export function ErrorBanner({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <Alert severity="error" sx={{ mb: 2 }}>
+      {error}
+    </Alert>
+  );
+}
+
+export function NoticeBanner({ notice }: { notice: string | null }) {
+  if (!notice) return null;
+  return (
+    <Alert severity="success" sx={{ mb: 2 }}>
+      {notice}
+    </Alert>
+  );
+}
+
+export function EmptyState({ message }: { message: string }) {
+  return (
+    <Box sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
+      <Typography>{message}</Typography>
+    </Box>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent>
+        <DialogContentText>{message}</DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onConfirm} color="error" variant="contained">
+          Confirm
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export function FormDialog({
+  open,
+  title,
+  onClose,
+  onSubmit,
+  children,
+  submitLabel = "Save",
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  onSubmit: () => void;
+  children: ReactNode;
+  submitLabel?: string;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>{children}</Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onSubmit} variant="contained">
+          {submitLabel}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <TextField
+      label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      type={type}
+      required={required}
+      fullWidth
+      size="small"
+    />
   );
 }

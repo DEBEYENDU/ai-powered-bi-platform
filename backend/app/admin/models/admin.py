@@ -138,6 +138,7 @@ class FeatureFlagRecord(Base):
     rules: Mapped[list] = mapped_column(JSON, default=list)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
+    killed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -204,6 +205,16 @@ class UserSessionRecord(Base):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LoginHistoryRecord(Base):
+    __tablename__ = "login_history"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(_uuid()))
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id"), index=True)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    ip_address: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
 class OrganizationQuotaRecord(Base):

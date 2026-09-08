@@ -15,6 +15,7 @@ from app.db.base import Base
 
 # Import models so metadata is complete.
 import app.admin.models.admin  # noqa: F401
+import app.dashboards.models  # noqa: F401
 import app.dataset.models.dataset  # noqa: F401
 import app.etl.models.job  # noqa: F401
 import app.iam.models.user  # noqa: F401

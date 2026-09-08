@@ -6,6 +6,7 @@ substitute fakes. ``overview`` powers the admin dashboard landing page.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from app.admin.services.alerts import AlertService
@@ -51,12 +52,21 @@ class PlatformAdmin:
 
     def overview(self) -> dict[str, Any]:
         firing = self.alerts.incidents(status="firing")
+        inventory = None
+        with contextlib.suppress(Exception):
+            from app.admin.repositories import db_store
+
+            inventory = db_store.entity_counts()
         return {
             "health": self.health.check_all()["overall"],
             "organizations": len(self.orgs.list()),
             "users": len(self.users.list(include_inactive=True)),
+            "roles": len(self.rbac.list_roles()),
+            "alerts": len(self.alerts.incidents()),
             "firing_alerts": len(firing),
             "feature_flags": len(self.flags.list()),
+            "inventory": inventory or {},
+            "inventory_source": "database" if inventory is not None else "unavailable",
             "maintenance": self.settings.maintenance_status(),
             "system": self.metrics.system_snapshot(),
         }

@@ -7,10 +7,12 @@ scheduled windows and admin override tokens.
 
 from __future__ import annotations
 
+import contextlib
 import secrets
 from datetime import datetime
 from typing import Any
 
+from app.admin.repositories import db_store
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
@@ -60,6 +62,8 @@ class SettingsService:
             raise ValueError(f"Invalid value for '{key}': {value!r}")
         self._settings[key] = value
         self._updated_by[key] = updated_by
+        with contextlib.suppress(Exception):
+            db_store.setting_upsert(key, value, updated_by)
         return value
 
     # -- maintenance --
@@ -88,9 +92,29 @@ class SettingsService:
             current=mode,
             settings_id=id(self),
         )
+        with contextlib.suppress(Exception):
+            db_store.setting_upsert("maintenance_mode", mode, created_by)
+            db_store.maintenance_save(
+                {
+                    "mode": mode,
+                    "message": message,
+                    "starts_at": starts_at,
+                    "ends_at": ends_at,
+                    "created_by": created_by,
+                }
+            )
         return self._maintenance
 
     def maintenance_status(self) -> dict[str, Any]:
+        # Hydrate once from the persisted window so restarts resume the
+        # last mode instead of silently resetting to "off".
+        if not getattr(self, "_maintenance_loaded", False):
+            self._maintenance_loaded = True
+            with contextlib.suppress(Exception):
+                latest = db_store.maintenance_latest()
+                if latest and latest.get("mode") in ("off", "readonly", "maintenance"):
+                    self._maintenance.update({k: v for k, v in latest.items() if v is not None})
+                    self._settings["maintenance_mode"] = self._maintenance["mode"]
         return dict(self._maintenance)
 
     def is_write_blocked(self) -> bool:

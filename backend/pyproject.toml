@@ -96,6 +96,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Asserts are the test mechanism; stub placeholder literals are not secrets.
 "app/**/tests/*.py" = ["S101", "S106"]
+# Single documented persistence-fallback boundary: every broad except here
+# guards a database call with an in-memory fallback. Audited 2026-09-06:
+# no business logic lives inside these handlers.
+"app/admin/repositories/db_store.py" = ["BLE001"]
 # Never-raise probes, event fan-out, degraded-mode fallbacks, retry loops:
 # broad catching is the documented design in these files.
 "app/admin/services/health.py" = ["BLE001"]

@@ -44,6 +44,7 @@ All design artifacts are in the `docs/` folder:
 |14 | [Reporting & Automation](docs/phase14-reporting.md) |
 |15 | [Admin & Observability](docs/phase15-admin.md) |
 |16 | [DevOps & Production](docs/phase16-devops.md) |
+|17 | [Production Completion Pass](docs/completion-pass.md) |
 
 ## 🛠 Tech Stack
 

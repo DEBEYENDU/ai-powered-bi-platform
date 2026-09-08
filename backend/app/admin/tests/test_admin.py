@@ -98,17 +98,27 @@ class TestMaintenanceEscapeHatch:
 class TestAudit:
     def test_append_query_verify(self):
         audit = AuditService()
-        audit.append("user_created", "user", "u1", actor_id="admin")
-        audit.append("user_suspended", "user", "u1", actor_id="admin")
-        assert len(audit.query()) == 2
+        first = audit.append("user_created", "user", "u1", actor_id="admin")
+        second = audit.append("user_suspended", "user", "u1", actor_id="admin")
+        ids = {e["id"] for e in audit.query(actor_id="admin", limit=1000)}
+        assert first["id"] in ids and second["id"] in ids
         assert audit.query(action="user_created")
         assert audit.verify_chain()["valid"] is True
 
     def test_chain_detects_tampering(self):
+        from unittest import mock
+
         audit = AuditService()
-        audit.append("x", "r", "1")
-        audit._entries[0]["details"] = {"tampered": True}
-        assert audit.verify_chain()["valid"] is False
+        with (
+            mock.patch("app.admin.repositories.db_store.audit_query_db", return_value=[]),
+            mock.patch("app.admin.repositories.db_store.audit_insert", return_value=True),
+        ):
+            audit.append("x", "r", "1")
+            assert audit.verify_chain()["valid"] is True
+            audit._entries[0]["details"] = {"tampered": True}
+            result = audit.verify_chain()
+            assert result["valid"] is False
+            assert result["broken_at_index"] == 0
 
 
 class TestRBAC:
@@ -116,17 +126,39 @@ class TestRBAC:
         rbac = RBACService()
         rbac.assign_role("u1", "sys-viewer")
         assert rbac.check("u1", "datasets:read") is True
-        assert rbac.check("u1", "admin:settings") is False
+        assert rbac.check("u1", "datasets.view") is True
+        assert rbac.check("u1", "settings.view") is True
+        assert rbac.check("u1", "settings.update") is False
         sim = rbac.simulate("u1")
-        assert "datasets:read" in sim["permissions"]
+        assert "datasets.view" in sim["permissions"]
 
     def test_custom_role(self):
         rbac = RBACService()
         role = rbac.create_role("data-steward", permission_codes=["datasets:write"])
+        # Legacy code expands to canonical grants.
+        assert rbac.check("u2", "datasets.create") is False
         rbac.assign_role("u2", role["id"])
         assert rbac.check("u2", "datasets:write") is True
+        assert rbac.check("u2", "datasets.create") is True
+        assert rbac.check("u2", "datasets.delete") is False
         assert rbac.unassign_role("u2", role["id"]) is True
         assert rbac.check("u2", "datasets:write") is False
+
+    def test_role_edit_clone_delete(self):
+        rbac = RBACService()
+        role = rbac.create_role("ops", permission_codes=["alerts.view"])
+        updated = rbac.update_role(role["id"], {"description": "Ops team"})
+        assert updated is not None and updated["description"] == "Ops team"
+        clone = rbac.clone_role(role["id"], "ops-copy")
+        assert clone["name"] == "ops-copy"
+        assert rbac.check("u9", "alerts.view") is False
+        rbac.assign_role("u9", clone["id"])
+        assert rbac.check("u9", "alerts.view") is True
+        assert rbac.role_users(clone["id"]) == ["u9"]
+        assert rbac.delete_role(clone["id"]) is True
+        assert rbac.check("u9", "alerts.view") is False
+        with pytest.raises(ValueError):
+            rbac.delete_role("sys-viewer")
 
     def test_unknown_permission_rejected(self):
         rbac = RBACService()

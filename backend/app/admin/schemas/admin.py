@@ -13,6 +13,7 @@ class AdminUserCreate(BaseModel):
     email: str
     password: str = Field(..., min_length=8)
     full_name: str = ""
+    username: str = ""
     organization_id: str = ""
 
 
@@ -49,6 +50,7 @@ class ApiKeyOut(BaseModel):
 class OrgCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     slug: str = ""
+    owner_id: str = ""
 
 
 class OrgOut(BaseModel):

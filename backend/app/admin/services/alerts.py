@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from app.admin.repositories import db_store
+
 OPS = {
     ">": operator.gt,
     "<": operator.lt,
@@ -53,18 +55,26 @@ class AlertService:
             "created_at": datetime.utcnow().isoformat(),
         }
         self._rules[rule["id"]] = rule
+        with contextlib.suppress(Exception):
+            db_store.alert_rule_upsert(rule["id"], rule)
         return rule
 
     def list_rules(self) -> list[dict[str, Any]]:
         return list(self._rules.values())
 
     def delete_rule(self, rule_id: str) -> bool:
-        return self._rules.pop(rule_id, None) is not None
+        removed = self._rules.pop(rule_id, None) is not None
+        if removed:
+            with contextlib.suppress(Exception):
+                db_store.alert_rule_delete_db(rule_id)
+        return removed
 
     def set_enabled(self, rule_id: str, enabled: bool) -> dict[str, Any] | None:
         rule = self._rules.get(rule_id)
         if rule:
             rule["enabled"] = enabled
+            with contextlib.suppress(Exception):
+                db_store.alert_rule_upsert(rule_id, rule)
         return rule
 
     def evaluate(self, metric: str, value: float) -> list[dict[str, Any]]:
@@ -95,6 +105,8 @@ class AlertService:
             "resolved_at": None,
         }
         self._incidents[incident["id"]] = incident
+        with contextlib.suppress(Exception):
+            db_store.incident_upsert(incident)
         if self._notify:
             with contextlib.suppress(Exception):
                 self._notify(incident)
@@ -105,6 +117,8 @@ class AlertService:
             if incident["rule_id"] == rule_id and incident["status"] in ("firing", "acknowledged"):
                 incident["status"] = "resolved"
                 incident["resolved_at"] = datetime.utcnow().isoformat()
+                with contextlib.suppress(Exception):
+                    db_store.incident_upsert(incident)
 
     def incidents(self, status: str | None = None) -> list[dict[str, Any]]:
         items = list(self._incidents.values())
@@ -116,4 +130,6 @@ class AlertService:
         incident = self._incidents.get(incident_id)
         if incident and incident["status"] == "firing":
             incident["status"] = "acknowledged"
+            with contextlib.suppress(Exception):
+                db_store.incident_upsert(incident)
         return incident

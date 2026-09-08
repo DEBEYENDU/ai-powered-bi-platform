@@ -5,9 +5,12 @@ and appends to history for audit.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 from datetime import datetime
 from typing import Any
+
+from app.admin.repositories import db_store
 
 
 class FeatureFlagService:
@@ -37,6 +40,7 @@ class FeatureFlagService:
         }
         self._flags[key] = flag
         self._log(key, "created", 1)
+        self._persist(key)
         return flag
 
     def update(self, key: str, patch: dict[str, Any]) -> dict[str, Any]:
@@ -50,6 +54,7 @@ class FeatureFlagService:
         )
         flag["version"] += 1
         self._log(key, "updated", flag["version"])
+        self._persist(key)
         return flag
 
     def kill(self, key: str) -> dict[str, Any]:
@@ -57,6 +62,7 @@ class FeatureFlagService:
         flag["killed"] = True
         flag["version"] += 1
         self._log(key, "killed", flag["version"])
+        self._persist(key)
         return flag
 
     def delete(self, key: str) -> bool:
@@ -64,6 +70,8 @@ class FeatureFlagService:
             return False
         del self._flags[key]
         self._log(key, "deleted", 0)
+        with contextlib.suppress(Exception):
+            db_store.flag_delete_db(key)
         return True
 
     def evaluate(
@@ -136,6 +144,10 @@ class FeatureFlagService:
 
     def history(self, key: str | None = None) -> list[dict[str, Any]]:
         return [h for h in self._history if key is None or h["key"] == key]
+
+    def _persist(self, key: str) -> None:
+        with contextlib.suppress(Exception):
+            db_store.flag_upsert(self._flags[key])
 
     def _require(self, key: str) -> dict[str, Any]:
         flag = self._flags.get(key)
