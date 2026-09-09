@@ -1,0 +1,12 @@
+{
+  "backend_port": 8000,
+  "frontend_port": 5173,
+  "database_url": "postgresql+psycopg://bi:bi@localhost:5432/bi_platform",
+  "redis_url": "redis://localhost:6379/0",
+  "storage_path": "",
+  "reports_path": "",
+  "theme": "dark",
+  "auto_start_browser": true,
+  "redis_container": "bi-redis",
+  "manage_redis_container": true
+}

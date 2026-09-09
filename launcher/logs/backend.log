@@ -1,0 +1,47 @@
+[20:01:11] $ C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload  (cwd=C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend)
+[20:01:11] INFO:     Will watch for changes in these directories: ['C:\\Users\\GOD KAKAROT\\ai-powered-bi-platform\\backend']
+[20:01:11] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[20:01:11] INFO:     Started reloader process [16620] using WatchFiles
+[20:01:13] INFO:     Started server process [10028]
+[20:01:13] INFO:     Waiting for application startup.
+[20:01:14] {"event": "database_connected", "level": "info", "timestamp": "2026-09-08T14:31:14.123742Z"}
+[20:01:14] INFO:     Application startup complete.
+[20:01:15] {"platform_id": 2213728543008, "settings_id": 2213728544352, "event": "platform_singleton_created", "level": "info", "timestamp": "2026-09-08T14:31:15.653814Z"}
+[20:01:15] {"method": "GET", "path": "/health", "mode": "off", "reason": "health-or-docs", "settings_id": 2213728544352, "event": "maintenance_allow", "level": "info", "timestamp": "2026-09-08T14:31:15.663854Z"}
+[20:01:15] {"method": "GET", "path": "/health", "status": 200, "elapsed_ms": 273.19, "event": "request", "level": "info", "timestamp": "2026-09-08T14:31:15.849218Z"}
+[20:01:15] INFO:     127.0.0.1:60043 - "GET /health HTTP/1.1" 200 OK
+[20:07:01] $ C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload  (cwd=C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend)
+[20:07:02] INFO:     Will watch for changes in these directories: ['C:\\Users\\GOD KAKAROT\\ai-powered-bi-platform\\backend']
+[20:07:02] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[20:07:02] INFO:     Started reloader process [8048] using WatchFiles
+[20:07:03] INFO:     Started server process [6328]
+[20:07:03] INFO:     Waiting for application startup.
+[20:07:03] {"event": "database_connected", "level": "info", "timestamp": "2026-09-08T14:37:03.437876Z"}
+[20:07:03] INFO:     Application startup complete.
+[20:07:44] Backend is already running.
+[09:36:33] $ C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload  (cwd=C:\Users\GOD KAKAROT\ai-powered-bi-platform\backend)
+[09:36:34] INFO:     Will watch for changes in these directories: ['C:\\Users\\GOD KAKAROT\\ai-powered-bi-platform\\backend']
+[09:36:34] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[09:36:34] INFO:     Started reloader process [8096] using WatchFiles
+[09:36:36] INFO:     Started server process [7364]
+[09:36:36] INFO:     Waiting for application startup.
+[09:36:36] {"event": "database_connected", "level": "info", "timestamp": "2026-09-09T04:06:36.830258Z"}
+[09:36:36] INFO:     Application startup complete.
+[09:36:37] {"platform_id": 2089724010784, "settings_id": 2089724012128, "event": "platform_singleton_created", "level": "info", "timestamp": "2026-09-09T04:06:37.649274Z"}
+[09:36:37] {"method": "GET", "path": "/health", "mode": "off", "reason": "health-or-docs", "settings_id": 2089724012128, "event": "maintenance_allow", "level": "info", "timestamp": "2026-09-09T04:06:37.656419Z"}
+[09:36:37] {"method": "GET", "path": "/health", "status": 200, "elapsed_ms": 261.77, "event": "request", "level": "info", "timestamp": "2026-09-09T04:06:37.859082Z"}
+[09:36:37] INFO:     127.0.0.1:60819 - "GET /health HTTP/1.1" 200 OK
+[09:38:07] {"method": "GET", "path": "/", "status": 404, "elapsed_ms": 4.4, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:07.425883Z"}
+[09:38:07] INFO:     127.0.0.1:55328 - "GET / HTTP/1.1" 404 Not Found
+[09:38:07] {"method": "GET", "path": "/favicon.ico", "status": 404, "elapsed_ms": 2.33, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:07.538625Z"}
+[09:38:07] INFO:     127.0.0.1:55328 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+[09:38:09] {"method": "GET", "path": "/", "status": 404, "elapsed_ms": 1.96, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:09.618309Z"}
+[09:38:09] INFO:     127.0.0.1:55328 - "GET / HTTP/1.1" 404 Not Found
+[09:38:12] {"method": "GET", "path": "/", "status": 404, "elapsed_ms": 3.75, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:12.327179Z"}
+[09:38:12] INFO:     127.0.0.1:55328 - "GET / HTTP/1.1" 404 Not Found
+[09:38:39] {"method": "GET", "path": "/docs", "mode": "off", "reason": "health-or-docs", "settings_id": 2089724012128, "event": "maintenance_allow", "level": "info", "timestamp": "2026-09-09T04:08:39.823280Z"}
+[09:38:39] {"method": "GET", "path": "/docs", "status": 200, "elapsed_ms": 1.19, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:39.824293Z"}
+[09:38:39] INFO:     127.0.0.1:65002 - "GET /docs HTTP/1.1" 200 OK
+[09:38:41] {"method": "GET", "path": "/openapi.json", "mode": "off", "reason": "health-or-docs", "settings_id": 2089724012128, "event": "maintenance_allow", "level": "info", "timestamp": "2026-09-09T04:08:41.055141Z"}
+[09:38:41] {"method": "GET", "path": "/openapi.json", "status": 200, "elapsed_ms": 294.36, "event": "request", "level": "info", "timestamp": "2026-09-09T04:08:41.349278Z"}
+[09:38:41] INFO:     127.0.0.1:65002 - "GET /openapi.json HTTP/1.1" 200 OK

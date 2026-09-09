@@ -1,0 +1,7 @@
+# BI Platform Launcher dependencies (Python 3.12+).
+customtkinter>=5.2
+psutil>=6.0
+pystray>=0.19
+pillow>=10.0
+# Build only:
+# pyinstaller>=6.0

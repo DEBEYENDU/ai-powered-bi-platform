@@ -1,8 +1,12 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./components";
+import { AIDashboardGenerator } from "./pages/AIDashboardGenerator";
 import { AIAdmin } from "./pages/AIAdmin";
+import { AIChat } from "./pages/AIChat";
 import { Alerts } from "./pages/Alerts";
+import { AskYourData } from "./pages/AskYourData";
 import { Audit } from "./pages/Audit";
+import { BusinessInsights } from "./pages/BusinessInsights";
 import { Dashboards } from "./pages/Dashboards";
 import { Flags } from "./pages/Flags";
 import { Health } from "./pages/Health";
@@ -27,6 +31,10 @@ export default function App() {
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/ai" element={<AIAdmin />} />
+          <Route path="/ai/chat" element={<AIChat />} />
+          <Route path="/ai/ask" element={<AskYourData />} />
+          <Route path="/ai/dashboard-gen" element={<AIDashboardGenerator />} />
+          <Route path="/ai/insights" element={<BusinessInsights />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

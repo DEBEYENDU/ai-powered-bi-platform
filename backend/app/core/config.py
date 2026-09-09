@@ -88,6 +88,22 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
     rate_limit_per_minute: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
 
+    # AI Chat settings
+    ai_provider: str = os.getenv("AI_PROVIDER", "openai")
+    ai_model: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    ai_temperature: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
+    ai_max_tokens: int = int(os.getenv("AI_MAX_TOKENS", "4096"))
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_base_url: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    lmstudio_base_url: str = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+    azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
+    azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    azure_openai_api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+    azure_openai_deployment: str = os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

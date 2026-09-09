@@ -5,7 +5,10 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.admin.routers.admin import admin_router
+from app.ai.analytics.routers.analytics import business_analyst_router
 from app.ai.routers.ai_assistant import ai_router
+from app.ai.routers.dashboard_gen import dashboard_gen_router
+from app.ai.routers.nlq import nlq_router
 from app.analytics.routers.analytics import router as analytics_router
 from app.dashboards.router import router as dashboards_router
 from app.dataset.routers.dataset import router as dataset_router
@@ -20,6 +23,9 @@ for _router in (
     etl_router,
     analytics_router,
     ai_router,
+    nlq_router,
+    dashboard_gen_router,
+    business_analyst_router,
     reports_router,
     admin_router,
     dashboards_router,
@@ -34,6 +40,9 @@ for _router in (
     etl_router,
     analytics_router,
     ai_router,
+    nlq_router,
+    dashboard_gen_router,
+    business_analyst_router,
     reports_router,
     admin_router,
     dashboards_router,

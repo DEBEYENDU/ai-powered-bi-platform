@@ -1,0 +1,28 @@
+# Ruff policy for the Windows launcher (desktop GUI).
+#
+# UI event-loop callbacks and the startup sequence must never raise to the
+# user as a traceback: failures surface as dialogs/status messages instead.
+# Broad catches below are therefore intentional and audited (2026-09-08):
+# every one logs to the LogStore or shows a messagebox. Detection/probe
+# modules (checks/health/processes/logs) use narrowed handlers or suppress().
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "S", "RUF", "DTZ", "BLE", "PLW"]
+ignore = [
+  # Desktop-locale thumb rule: tkinter/customtkinter event handlers.
+  # Kept minimal; detection modules narrow their handlers instead.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"launcher/checks.py" = ["S603", "S607"]
+"launcher/health.py" = ["S310"]
+"launcher/processes.py" = ["S603", "S310"]
+"launcher/ui_app.py" = ["BLE001", "S110", "S603", "S606", "S607"]
+"launcher/ui_logs.py" = ["BLE001", "S110"]
+"launcher/ui_settings.py" = ["BLE001", "S110"]
+"main.py" = ["BLE001", "S110"]
+"build_exe.py" = ["S603", "F401"]

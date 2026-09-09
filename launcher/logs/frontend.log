@@ -1,0 +1,16 @@
+[20:01:06] node_modules present, skipping npm install.
+[20:06:57] node_modules present, skipping npm install.
+[20:07:23] node_modules present, skipping npm install.
+[09:36:29] node_modules present, skipping npm install.
+[09:36:58] $ npm.cmd run dev -- --port 5173 --strictPort  (cwd=C:\Users\GOD KAKAROT\ai-powered-bi-platform\frontend)
+[09:36:59] 
+[09:36:59] > bi-platform-admin@0.1.0 dev
+[09:36:59] > vite --port 5173 --strictPort
+[09:36:59] 
+[09:37:02] [2m9:37:02 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because lockfile has changed
+[09:37:02] 
+[09:37:02]   [32m[1mVITE[22m v8.2.2[39m  [2mready in [0m[1m3067[22m[2m[0m ms[22m
+[09:37:02] 
+[09:37:02]   [32mâžœ[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[09:37:02] [2m  [32mâžœ[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[09:37:03] [2m9:37:03 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] bundling dependencies...
