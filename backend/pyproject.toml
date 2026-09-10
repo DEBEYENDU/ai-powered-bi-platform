@@ -120,6 +120,8 @@ ignore = [
 "app/dependencies/deps.py" = ["BLE001"]
 "app/main.py" = ["BLE001"]
 "app/ai/orchestrator/orchestrator.py" = ["BLE001"]
+# SQL WHERE built from whitelisted columns + parameterized values (no user input).
+"app/ai/reports/services/report_service.py" = ["S608"]
 
 [build-system]
 requires = ["poetry-core"]

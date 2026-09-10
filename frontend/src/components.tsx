@@ -38,6 +38,7 @@ const NAV: Array<[string, string]> = [
   ["Ask Your Data", "/ai/ask"],
   ["AI Dashboard Gen", "/ai/dashboard-gen"],
   ["Business Insights", "/ai/insights"],
+  ["AI Reports", "/ai/reports"],
   ["Health", "/health"],
   ["Metrics", "/metrics"],
   ["Audit", "/audit"],

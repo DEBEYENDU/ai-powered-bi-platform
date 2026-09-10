@@ -15,6 +15,7 @@ import { Metrics } from "./pages/Metrics";
 import { Organizations } from "./pages/Organizations";
 import { Overview } from "./pages/Overview";
 import { Reports } from "./pages/Reports";
+import { ReportsLibrary } from "./pages/ReportsLibrary";
 import { Roles } from "./pages/Roles";
 import { Settings } from "./pages/Settings";
 import { Users } from "./pages/Users";
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/ai/ask" element={<AskYourData />} />
           <Route path="/ai/dashboard-gen" element={<AIDashboardGenerator />} />
           <Route path="/ai/insights" element={<BusinessInsights />} />
+          <Route path="/ai/reports" element={<ReportsLibrary />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

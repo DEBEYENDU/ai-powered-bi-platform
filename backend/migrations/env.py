@@ -10,19 +10,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from alembic import context  # type: ignore
 from sqlalchemy import create_engine
 
+# Import models so metadata is complete.
+import app.admin.models.admin
+import app.ai.dashboard.models
+import app.ai.models.conversation
+import app.ai.models.message
+import app.ai.reports.models
+import app.dashboards.models
+import app.dataset.models.dataset
+import app.etl.models.job
+import app.iam.models.user
+import app.reports.models.report  # noqa: F401
 from app.core.config import get_settings
 from app.db.base import Base
-
-# Import models so metadata is complete.
-import app.admin.models.admin  # noqa: F401
-import app.ai.models.conversation  # noqa: F401
-import app.ai.models.message  # noqa: F401
-import app.ai.dashboard.models  # noqa: F401
-import app.dashboards.models  # noqa: F401
-import app.dataset.models.dataset  # noqa: F401
-import app.etl.models.job  # noqa: F401
-import app.iam.models.user  # noqa: F401
-import app.reports.models.report  # noqa: F401
 
 target_metadata = Base.metadata
 
