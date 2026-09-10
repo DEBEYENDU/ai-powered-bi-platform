@@ -8,6 +8,11 @@ import { AskYourData } from "./pages/AskYourData";
 import { Audit } from "./pages/Audit";
 import { BusinessInsights } from "./pages/BusinessInsights";
 import { Dashboards } from "./pages/Dashboards";
+import { DataCleaning } from "./pages/DataCleaning";
+import { DataPipelines } from "./pages/DataPipelines";
+import { DataQuality } from "./pages/DataQuality";
+import { DataSources } from "./pages/DataSources";
+import { DataTransform } from "./pages/DataTransform";
 import { Flags } from "./pages/Flags";
 import { Health } from "./pages/Health";
 import { Jobs } from "./pages/Jobs";
@@ -37,6 +42,11 @@ export default function App() {
           <Route path="/ai/dashboard-gen" element={<AIDashboardGenerator />} />
           <Route path="/ai/insights" element={<BusinessInsights />} />
           <Route path="/ai/reports" element={<ReportsLibrary />} />
+          <Route path="/de/sources" element={<DataSources />} />
+          <Route path="/de/quality" element={<DataQuality />} />
+          <Route path="/de/cleaning" element={<DataCleaning />} />
+          <Route path="/de/transform" element={<DataTransform />} />
+          <Route path="/de/pipelines" element={<DataPipelines />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />
