@@ -132,6 +132,18 @@ ignore = [
 "app/ai/data_engineering/profiling/profiler.py" = ["BLE001", "S110"]
 "app/ai/data_engineering/quality/scorer.py" = ["BLE001", "S110"]
 "app/ai/data_engineering/validation/validator.py" = ["F841"]
+# AI predictions: intentional broad exceptions for ML fallbacks and service resilience.
+"app/ai/predictions/services/ai_service.py" = ["BLE001"]
+"app/ai/predictions/services/orchestrator.py" = ["BLE001", "S112"]
+"app/ai/predictions/services/data_service.py" = ["BLE001", "S108", "S110"]
+"app/ai/predictions/classification/engine.py" = ["BLE001"]
+"app/ai/predictions/regression/engine.py" = ["BLE001"]
+"app/ai/predictions/forecasting/engine.py" = ["BLE001", "S110"]
+"app/ai/predictions/timeseries/engine.py" = ["BLE001", "S110"]
+"app/ai/predictions/monitoring/drift.py" = ["BLE001"]
+"app/ai/predictions/routers/predictions_router.py" = ["BLE001", "S112"]
+"app/ai/predictions/evaluation/metrics.py" = ["BLE001"]
+"app/ai/predictions/models/registry.py" = ["BLE001", "S108", "S110", "S112"]
 
 [build-system]
 requires = ["poetry-core"]

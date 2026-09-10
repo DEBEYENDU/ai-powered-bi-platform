@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.admin.routers.admin import admin_router
 from app.ai.analytics.routers.analytics import business_analyst_router
 from app.ai.data_engineering.routers.de_router import de_router
+from app.ai.predictions.routers.predictions_router import predictions_router
 from app.ai.reports.routers.reports import ai_reports_router
 from app.ai.routers.ai_assistant import ai_router
 from app.ai.routers.dashboard_gen import dashboard_gen_router
@@ -30,6 +31,7 @@ for _router in (
     business_analyst_router,
     ai_reports_router,
     de_router,
+    predictions_router,
     reports_router,
     admin_router,
     dashboards_router,
@@ -49,6 +51,7 @@ for _router in (
     business_analyst_router,
     ai_reports_router,
     de_router,
+    predictions_router,
     reports_router,
     admin_router,
     dashboards_router,
