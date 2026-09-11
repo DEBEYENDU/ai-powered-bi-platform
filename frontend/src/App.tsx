@@ -3,6 +3,13 @@ import { Layout } from "./components";
 import { AgentDashboard } from "./pages/AgentDashboard";
 import { AgentLogs } from "./pages/AgentLogs";
 import { AgentStatus } from "./pages/AgentStatus";
+import { WorkflowApprovals } from "./pages/WorkflowApprovals";
+import { WorkflowBuilder } from "./pages/WorkflowBuilder";
+import { WorkflowDetails } from "./pages/WorkflowDetails";
+import { WorkflowExecutionDetails } from "./pages/WorkflowExecutionDetails";
+import { WorkflowHistory } from "./pages/WorkflowHistory";
+import { WorkflowTemplates } from "./pages/WorkflowTemplates";
+import { Workflows } from "./pages/Workflows";
 import { AIDashboardGenerator } from "./pages/AIDashboardGenerator";
 import { AIAdmin } from "./pages/AIAdmin";
 import { AIChat } from "./pages/AIChat";
@@ -67,6 +74,13 @@ export default function App() {
           <Route path="/agents/graph" element={<ExecutionGraph />} />
           <Route path="/agents/logs" element={<AgentLogs />} />
           <Route path="/agents/memory" element={<MemoryViewer />} />
+          <Route path="/workflows" element={<Workflows />} />
+          <Route path="/workflows/builder" element={<WorkflowBuilder />} />
+          <Route path="/workflows/templates" element={<WorkflowTemplates />} />
+          <Route path="/workflows/:id" element={<WorkflowDetails />} />
+          <Route path="/workflows/:id/history" element={<WorkflowHistory />} />
+          <Route path="/workflows/executions/:executionId" element={<WorkflowExecutionDetails />} />
+          <Route path="/workflows/approvals" element={<WorkflowApprovals />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

@@ -19,6 +19,7 @@ from app.dataset.routers.dataset import router as dataset_router
 from app.etl.routers.etl import router as etl_router
 from app.iam.routers.auth import router as auth_router
 from app.reports.routers.reports import reports_router
+from app.workflows.routers.workflow_router import workflow_router
 
 api_router = APIRouter(prefix="/api/v1")
 for _router in (
@@ -37,6 +38,7 @@ for _router in (
     admin_router,
     dashboards_router,
     agents_router,
+    workflow_router,
 ):
     api_router.include_router(_router)
 
@@ -58,5 +60,6 @@ for _router in (
     admin_router,
     dashboards_router,
     agents_router,
+    workflow_router,
 ):
     legacy_router.include_router(_router)

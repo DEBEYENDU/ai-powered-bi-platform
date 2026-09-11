@@ -152,6 +152,13 @@ ignore = [
 "app/ai/agents/services/orchestrator.py" = ["BLE001", "F841"]
 "app/ai/agents/services/ai_service.py" = ["BLE001"]
 "app/ai/agents/tools/registry.py" = ["BLE001"]
+# Workflow automation: intentional broad exceptions for service resilience,
+# LLM fallbacks, scheduler error handling, and notification delivery.
+"app/workflows/actions/registry.py" = ["BLE001", "F841"]
+"app/workflows/ai/builder.py" = ["BLE001"]
+"app/workflows/engine/executor.py" = ["BLE001", "F841"]
+"app/workflows/notifications/handler.py" = ["BLE001"]
+"app/workflows/scheduler/scheduler.py" = ["BLE001"]
 
 [build-system]
 requires = ["poetry-core"]
