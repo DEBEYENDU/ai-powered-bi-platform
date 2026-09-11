@@ -144,6 +144,14 @@ ignore = [
 "app/ai/predictions/routers/predictions_router.py" = ["BLE001", "S112"]
 "app/ai/predictions/evaluation/metrics.py" = ["BLE001"]
 "app/ai/predictions/models/registry.py" = ["BLE001", "S108", "S110", "S112"]
+# AI multi-agent platform: intentional broad exceptions for agent resilience,
+# fallback patterns, and LLM provider abstraction.
+"app/ai/agents/agents/base.py" = ["BLE001"]
+"app/ai/agents/coordinator/planner.py" = ["BLE001", "F841"]
+"app/ai/agents/execution/runner.py" = ["BLE001"]
+"app/ai/agents/services/orchestrator.py" = ["BLE001", "F841"]
+"app/ai/agents/services/ai_service.py" = ["BLE001"]
+"app/ai/agents/tools/registry.py" = ["BLE001"]
 
 [build-system]
 requires = ["poetry-core"]

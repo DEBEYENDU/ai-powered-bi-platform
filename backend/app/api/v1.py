@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.admin.routers.admin import admin_router
+from app.ai.agents.routers.agents_router import agents_router
 from app.ai.analytics.routers.analytics import business_analyst_router
 from app.ai.data_engineering.routers.de_router import de_router
 from app.ai.predictions.routers.predictions_router import predictions_router
@@ -35,6 +36,7 @@ for _router in (
     reports_router,
     admin_router,
     dashboards_router,
+    agents_router,
 ):
     api_router.include_router(_router)
 
@@ -55,5 +57,6 @@ for _router in (
     reports_router,
     admin_router,
     dashboards_router,
+    agents_router,
 ):
     legacy_router.include_router(_router)

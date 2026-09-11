@@ -1,15 +1,1 @@
-from app.ai.agents.analytics_agent import AnalyticsAgent
-from app.ai.agents.coordinator_agent import CoordinatorAgent
-from app.ai.agents.dashboard_agent import DashboardAgent
-from app.ai.agents.executive_summary_agent import ExecutiveSummaryAgent
-from app.ai.agents.forecast_agent import ForecastAgent
-from app.ai.agents.root_cause_agent import RootCauseAgent
-
-__all__ = [
-    "AnalyticsAgent",
-    "CoordinatorAgent",
-    "DashboardAgent",
-    "ExecutiveSummaryAgent",
-    "ForecastAgent",
-    "RootCauseAgent",
-]
+"""AI Multi-Agent Platform — production-ready agent orchestration."""

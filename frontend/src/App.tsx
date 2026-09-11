@@ -1,5 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./components";
+import { AgentDashboard } from "./pages/AgentDashboard";
+import { AgentLogs } from "./pages/AgentLogs";
+import { AgentStatus } from "./pages/AgentStatus";
 import { AIDashboardGenerator } from "./pages/AIDashboardGenerator";
 import { AIAdmin } from "./pages/AIAdmin";
 import { AIChat } from "./pages/AIChat";
@@ -13,10 +16,12 @@ import { DataPipelines } from "./pages/DataPipelines";
 import { DataQuality } from "./pages/DataQuality";
 import { DataSources } from "./pages/DataSources";
 import { DataTransform } from "./pages/DataTransform";
+import { ExecutionGraph } from "./pages/ExecutionGraph";
 import { Flags } from "./pages/Flags";
 import { Forecasting } from "./pages/Forecasting";
 import { Health } from "./pages/Health";
 import { Jobs } from "./pages/Jobs";
+import { MemoryViewer } from "./pages/MemoryViewer";
 import { Metrics } from "./pages/Metrics";
 import { ModelManagement } from "./pages/ModelManagement";
 import { ModelPerformance } from "./pages/ModelPerformance";
@@ -27,6 +32,7 @@ import { ReportsLibrary } from "./pages/ReportsLibrary";
 import { Roles } from "./pages/Roles";
 import { ScenarioAnalysis } from "./pages/ScenarioAnalysis";
 import { Settings } from "./pages/Settings";
+import { TaskHistory } from "./pages/TaskHistory";
 import { Users } from "./pages/Users";
 
 export default function App() {
@@ -55,6 +61,12 @@ export default function App() {
           <Route path="/pred/models" element={<ModelManagement />} />
           <Route path="/pred/scenarios" element={<ScenarioAnalysis />} />
           <Route path="/pred/performance" element={<ModelPerformance />} />
+          <Route path="/agents" element={<AgentDashboard />} />
+          <Route path="/agents/status" element={<AgentStatus />} />
+          <Route path="/agents/history" element={<TaskHistory />} />
+          <Route path="/agents/graph" element={<ExecutionGraph />} />
+          <Route path="/agents/logs" element={<AgentLogs />} />
+          <Route path="/agents/memory" element={<MemoryViewer />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

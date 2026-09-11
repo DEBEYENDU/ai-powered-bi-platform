@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 
 # Import models so metadata is complete.
 import app.admin.models.admin
+import app.ai.agents.models
 import app.ai.dashboard.models
 import app.ai.models.conversation
 import app.ai.models.message
