@@ -216,6 +216,64 @@ class NotificationTool(BaseTool):
         return {"type": "notification", "data": {"sent": True}}
 
 
+class MLOpsTool(BaseTool):
+    """MLOps model lifecycle operations."""
+
+    name = "mlops"
+    description = (
+        "Manage ML models: register, train, evaluate, deploy, monitor, detect drift, rollback"
+    )
+    risk_level = "high"
+
+    async def execute(self, params: dict, context: dict) -> dict:
+        from app.db.session import get_db_session
+        from app.mlops.services.lifecycle_service import LifecycleService
+        from app.mlops.services.model_registry import ModelRegistryService
+
+        action = params.get("action", "list_models")
+        org_id = context.get("organization_id", "")
+
+        with get_db_session() as db:
+            if action == "list_models":
+                service = ModelRegistryService(db)
+                models = service.list_models(org_id)
+                return {
+                    "type": "mlops",
+                    "data": {
+                        "models": [
+                            {
+                                "id": m.id,
+                                "name": m.name,
+                                "status": m.status,
+                                "model_type": m.model_type,
+                            }
+                            for m in models
+                        ],
+                        "total": len(models),
+                    },
+                }
+            elif action == "model_lifecycle":
+                service = LifecycleService(db)
+                result = service.get_model_lifecycle(params.get("model_id", ""), org_id)
+                return {"type": "mlops", "data": result}
+            elif action == "overview":
+                service = LifecycleService(db)
+                result = service.get_overview(org_id)
+                return {"type": "mlops", "data": result}
+            elif action == "rollback":
+                from app.mlops.services.rollback_service import RollbackService
+
+                service = RollbackService(db)
+                result = service.rollback(
+                    params.get("model_id", ""),
+                    org_id,
+                    params.get("target_version_id", ""),
+                )
+                return {"type": "mlops", "data": result}
+            else:
+                return {"type": "mlops", "data": {"error": f"Unknown action: {action}"}}
+
+
 class ToolRegistry:
     _instance: ToolRegistry | None = None
 
@@ -240,6 +298,7 @@ class ToolRegistry:
             DataProfileTool,
             WorkflowGeneratorTool,
             NotificationTool,
+            MLOpsTool,
         ]:
             tool = tool_cls()
             self._tools[tool.name] = tool

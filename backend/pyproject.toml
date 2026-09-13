@@ -180,6 +180,8 @@ ignore = [
 "app/copilot/services/*.py" = ["BLE001", "S110"]
 "app/copilot/routers/*.py" = ["BLE001", "S110"]
 "app/copilot/tools/registry.py" = ["BLE001"]
+"app/mlops/services/*.py" = ["BLE001", "S110"]
+"app/mlops/routers/*.py" = ["BLE001", "S110"]
 
 [build-system]
 requires = ["poetry-core"]

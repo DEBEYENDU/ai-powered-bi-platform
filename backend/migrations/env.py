@@ -27,6 +27,7 @@ import app.knowledge.models.document
 import app.knowledge.models.collection
 import app.knowledge.models.chunk
 import app.copilot.models.session
+import app.mlops.models.model
 from app.core.config import get_settings
 from app.db.base import Base
 

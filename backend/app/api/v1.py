@@ -23,6 +23,12 @@ from app.knowledge.routers.collections import collections_router
 from app.knowledge.routers.documents import documents_router
 from app.knowledge.routers.rag import rag_router
 from app.knowledge.routers.search import search_router
+from app.mlops.routers.deployments import mlops_deployments_router
+from app.mlops.routers.drift import mlops_drift_router
+from app.mlops.routers.experiments import mlops_experiments_router
+from app.mlops.routers.models import mlops_models_router
+from app.mlops.routers.monitoring import mlops_monitoring_router
+from app.mlops.routers.training import mlops_training_router
 from app.reports.routers.reports import reports_router
 from app.workflows.routers.workflow_router import workflow_router
 
@@ -52,6 +58,12 @@ for _router in (
     workflow_router,
     knowledge_router,
     copilot_router,
+    mlops_models_router,
+    mlops_experiments_router,
+    mlops_training_router,
+    mlops_deployments_router,
+    mlops_monitoring_router,
+    mlops_drift_router,
 ):
     api_router.include_router(_router)
 
@@ -76,5 +88,11 @@ for _router in (
     workflow_router,
     knowledge_router,
     copilot_router,
+    mlops_models_router,
+    mlops_experiments_router,
+    mlops_training_router,
+    mlops_deployments_router,
+    mlops_monitoring_router,
+    mlops_drift_router,
 ):
     legacy_router.include_router(_router)

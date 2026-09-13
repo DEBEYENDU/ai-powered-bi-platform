@@ -41,6 +41,7 @@ RESOURCE_ACTIONS: dict[str, list[str]] = {
     "jobs": ["view", "execute", "delete"],
     "knowledge": ["view", "upload", "update", "delete", "search", "manage"],
     "copilot": ["view", "execute", "manage"],
+    "mlops": ["read", "register", "train", "evaluate", "deploy", "rollback", "monitor", "manage"],
 }
 
 # Legacy "resource:action" codes expand to these canonical grants.

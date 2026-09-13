@@ -45,6 +45,14 @@ import { Reports } from "./pages/Reports";
 import { ReportsLibrary } from "./pages/ReportsLibrary";
 import { Roles } from "./pages/Roles";
 import { ScenarioAnalysis } from "./pages/ScenarioAnalysis";
+import { MLOps } from "./pages/MLOps";
+import { MLOpsModels } from "./pages/MLOpsModels";
+import { MLOpsModelDetail } from "./pages/MLOpsModelDetail";
+import { MLOpsExperiments } from "./pages/MLOpsExperiments";
+import { MLOpsTraining } from "./pages/MLOpsTraining";
+import { MLOpsDeployments } from "./pages/MLOpsDeployments";
+import { MLOpsMonitoring } from "./pages/MLOpsMonitoring";
+import { MLOpsDrift } from "./pages/MLOpsDrift";
 import { Settings } from "./pages/Settings";
 import { TaskHistory } from "./pages/TaskHistory";
 import { Users } from "./pages/Users";
@@ -95,6 +103,14 @@ export default function App() {
           <Route path="/knowledge/collections" element={<KnowledgeCollections />} />
           <Route path="/knowledge/search" element={<KnowledgeSearch />} />
           <Route path="/knowledge/rag" element={<KnowledgeRAGChat />} />
+          <Route path="/mlops" element={<MLOps />} />
+          <Route path="/mlops/models" element={<MLOpsModels />} />
+          <Route path="/mlops/models/:id" element={<MLOpsModelDetail />} />
+          <Route path="/mlops/experiments" element={<MLOpsExperiments />} />
+          <Route path="/mlops/training" element={<MLOpsTraining />} />
+          <Route path="/mlops/deployments" element={<MLOpsDeployments />} />
+          <Route path="/mlops/monitoring" element={<MLOpsMonitoring />} />
+          <Route path="/mlops/drift" element={<MLOpsDrift />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />
