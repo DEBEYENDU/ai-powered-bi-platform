@@ -96,12 +96,14 @@ class AIService:
 
         return self._fallback_report(prompt, report_type, data_context)
 
-    async def generate_section(
-        self, section_type: str, data_context: str
-    ) -> dict[str, Any]:
+    async def generate_section(self, section_type: str, data_context: str) -> dict[str, Any]:
         """Generate a specific report section via LLM."""
         if self._provider is None:
-            return {"title": section_type, "content": f"[Section: {section_type}]", "section_type": section_type}
+            return {
+                "title": section_type,
+                "content": f"[Section: {section_type}]",
+                "section_type": section_type,
+            }
 
         template = SECTION_PROMPTS.get(section_type, "")
         if not template:
@@ -115,7 +117,11 @@ class AIService:
             ]
             response = await self._provider.chat(messages)
             content = response.get("content", "")
-            return {"title": section_type.replace("_", " ").title(), "content": content, "section_type": section_type}
+            return {
+                "title": section_type.replace("_", " ").title(),
+                "content": content,
+                "section_type": section_type,
+            }
         except Exception:  # noqa: BLE001
             return {"title": section_type, "content": "", "section_type": section_type}
 
@@ -137,9 +143,7 @@ class AIService:
         except Exception as e:  # noqa: BLE001
             return f"Error generating response: {e}"
 
-    def _fallback_report(
-        self, prompt: str, report_type: str, data_context: str
-    ) -> dict[str, Any]:
+    def _fallback_report(self, prompt: str, report_type: str, data_context: str) -> dict[str, Any]:
         """Generate a structured report without LLM."""
         return {
             "title": f"{report_type.title()} Report",

@@ -111,8 +111,10 @@ def train_lstm(
     """Train a simple LSTM model for time series forecasting."""
     try:
         import os
+
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
         import tensorflow as tf
+
         tf.get_logger().setLevel("ERROR")
 
         from tensorflow.keras.layers import LSTM, Dense, Dropout
@@ -136,17 +138,20 @@ def train_lstm(
     X_train_r = X_train_norm.reshape((X_train_norm.shape[0], X_train_norm.shape[1], 1))
     X_test_r = X_test_norm.reshape((X_test_norm.shape[0], X_test_norm.shape[1], 1))
 
-    model = Sequential([
-        LSTM(50, activation="relu", input_shape=(lookback, 1)),
-        Dropout(0.2),
-        LSTM(30, activation="relu"),
-        Dropout(0.2),
-        Dense(1),
-    ])
+    model = Sequential(
+        [
+            LSTM(50, activation="relu", input_shape=(lookback, 1)),
+            Dropout(0.2),
+            LSTM(30, activation="relu"),
+            Dropout(0.2),
+            Dense(1),
+        ]
+    )
     model.compile(optimizer="adam", loss="mse")
 
     model.fit(
-        X_train_r, y_train_norm,
+        X_train_r,
+        y_train_norm,
         epochs=epochs,
         batch_size=batch_size,
         validation_split=0.1,
@@ -158,6 +163,7 @@ def train_lstm(
     y_pred = y_pred_norm * std_val + mean_val
 
     from sklearn.metrics import mean_absolute_error, mean_squared_error
+
     mae = mean_absolute_error(y_test, y_pred)
     rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
 
@@ -193,6 +199,7 @@ def forecast_lstm(
 
     try:
         import tensorflow as tf
+
         tf.get_logger().setLevel("ERROR")
 
         keras_model = model.get("model")
@@ -207,11 +214,13 @@ def forecast_lstm(
             pred_norm = keras_model.predict(window_norm, verbose=0).flatten()[0]
             pred = pred_norm * std_val + mean_val
 
-            predictions.append({
-                "value": round(float(pred), 4),
-                "lower_bound": round(float(pred * 0.9), 4),
-                "upper_bound": round(float(pred * 1.1), 4),
-            })
+            predictions.append(
+                {
+                    "value": round(float(pred), 4),
+                    "lower_bound": round(float(pred * 0.9), 4),
+                    "upper_bound": round(float(pred * 1.1), 4),
+                }
+            )
             current_window.append(pred)
     except Exception:
         return []

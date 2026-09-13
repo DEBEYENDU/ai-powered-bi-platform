@@ -164,9 +164,15 @@ async def clean_single_dataset(request: CleanDatasetRequest) -> CleanResponse:
         if request.auto_clean:
             applied_suggestions = [s for s in suggestions if s.auto_applicable]
         else:
-            applied_suggestions = suggestions if request.rules is None else [
-                s for s in suggestions if s.transform_type in [r.get("type", "") for r in request.rules]
-            ]
+            applied_suggestions = (
+                suggestions
+                if request.rules is None
+                else [
+                    s
+                    for s in suggestions
+                    if s.transform_type in [r.get("type", "") for r in request.rules]
+                ]
+            )
 
         rows_before = len(df)
         if applied_suggestions:

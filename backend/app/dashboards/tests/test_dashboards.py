@@ -39,9 +39,7 @@ def test_widget_validation():
     from app.dashboards import service
 
     with pytest.raises(ValueError):
-        service.create_dashboard(
-            {"name": "Bad", "widgets": [{"widget_id": "w1", "kind": "nope"}]}
-        )
+        service.create_dashboard({"name": "Bad", "widgets": [{"widget_id": "w1", "kind": "nope"}]})
     with pytest.raises(ValueError):
         service.create_dashboard(
             {

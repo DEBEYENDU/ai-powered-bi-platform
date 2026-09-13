@@ -35,6 +35,7 @@ def _prepare_features(
             y = (y == unique_vals[1]).astype(int)
         else:
             from sklearn.preprocessing import LabelEncoder
+
             le = LabelEncoder()
             y = pd.Series(le.fit_transform(y), name=target)
 
@@ -79,6 +80,7 @@ def train_classifier(
     if model_type == "xgboost":
         try:
             import xgboost as xgb
+
             model = xgb.XGBClassifier(
                 n_estimators=kwargs.get("n_estimators", 100),
                 max_depth=kwargs.get("max_depth", 6),
@@ -92,6 +94,7 @@ def train_classifier(
     elif model_type == "lightgbm":
         try:
             import lightgbm as lgb
+
             model = lgb.LGBMClassifier(
                 n_estimators=kwargs.get("n_estimators", 100),
                 max_depth=kwargs.get("max_depth", 6),

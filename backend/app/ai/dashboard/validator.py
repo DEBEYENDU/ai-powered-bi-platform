@@ -10,9 +10,22 @@ from sqlalchemy.engine import Engine
 from app.ai.nlq.sql_validator import SQLValidationError, SQLValidator
 
 VALID_WIDGET_TYPES = {
-    "kpi", "line", "bar", "area", "pie", "donut", "scatter",
-    "heatmap", "treemap", "gauge", "table", "pivot", "map",
-    "timeline", "text", "forecast",
+    "kpi",
+    "line",
+    "bar",
+    "area",
+    "pie",
+    "donut",
+    "scatter",
+    "heatmap",
+    "treemap",
+    "gauge",
+    "table",
+    "pivot",
+    "map",
+    "timeline",
+    "text",
+    "forecast",
 }
 
 CHART_WIDGET_COMPAT: dict[str, set[str]] = {
@@ -67,7 +80,13 @@ class DashboardValidator:
                 issues.append({"severity": "error", "message": "Widget missing id"})
                 continue
             if wid in seen_ids:
-                issues.append({"severity": "error", "message": f"Duplicate widget id: {wid}", "widget_id": wid})
+                issues.append(
+                    {
+                        "severity": "error",
+                        "message": f"Duplicate widget id: {wid}",
+                        "widget_id": wid,
+                    }
+                )
             seen_ids.add(wid)
 
             widget_issues = self.validate_widget(widget)
@@ -82,32 +101,38 @@ class DashboardValidator:
 
         w_type = widget.get("type", "")
         if w_type not in VALID_WIDGET_TYPES:
-            issues.append({
-                "severity": "error",
-                "message": f"Invalid widget type: {w_type}",
-                "widget_id": wid,
-            })
+            issues.append(
+                {
+                    "severity": "error",
+                    "message": f"Invalid widget type: {w_type}",
+                    "widget_id": wid,
+                }
+            )
 
         chart = widget.get("chart", "number")
         compatible = CHART_WIDGET_COMPAT.get(w_type, set())
         if compatible and chart not in compatible:
-            issues.append({
-                "severity": "warning",
-                "message": f"Chart '{chart}' may not be optimal for widget type '{w_type}'",
-                "widget_id": wid,
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "message": f"Chart '{chart}' may not be optimal for widget type '{w_type}'",
+                    "widget_id": wid,
+                }
+            )
 
         sql = widget.get("sql", "")
         if sql and w_type != "text":
             try:
                 self.sql_validator.validate(sql)
             except SQLValidationError as exc:
-                issues.append({
-                    "severity": "error",
-                    "message": f"SQL validation failed: {exc}",
-                    "widget_id": wid,
-                    "code": exc.code,
-                })
+                issues.append(
+                    {
+                        "severity": "error",
+                        "message": f"SQL validation failed: {exc}",
+                        "widget_id": wid,
+                        "code": exc.code,
+                    }
+                )
 
         return issues
 
@@ -127,7 +152,11 @@ class DashboardValidator:
                 if result.returns_rows:
                     columns = list(result.keys())
                     row = result.fetchone()
-                    return {"success": True, "columns": columns, "sample_row": dict(row) if row else {}}
+                    return {
+                        "success": True,
+                        "columns": columns,
+                        "sample_row": dict(row) if row else {},
+                    }
                 return {"success": True, "columns": [], "sample_row": {}}
         except Exception as exc:  # noqa: BLE001
             return {"success": False, "error": str(exc)}

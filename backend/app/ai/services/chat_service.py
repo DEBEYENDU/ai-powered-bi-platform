@@ -134,9 +134,7 @@ class ChatService:
         )
         return list(self.db.scalars(stmt).all())
 
-    def _build_history(
-        self, conversation_id: str, max_messages: int = 50
-    ) -> list[ChatMessage]:
+    def _build_history(self, conversation_id: str, max_messages: int = 50) -> list[ChatMessage]:
         """Build LLM message history from DB."""
         conv = self.get_conversation(conversation_id)
         system = self._system_prompt(conv.system_prompt if conv else None)

@@ -120,7 +120,6 @@ DATA:
 {data_context}
 
 Include: Revenue, margins, costs, cash flow analysis, budget variance.""",
-
     "sales_analysis": """\
 Analyse the following sales data and produce a detailed section.
 
@@ -128,7 +127,6 @@ DATA:
 {data_context}
 
 Include: Pipeline health, conversion rates, regional performance, top/bottom performers.""",
-
     "marketing_analysis": """\
 Analyse the following marketing data and produce a detailed section.
 
@@ -136,7 +134,6 @@ DATA:
 {data_context}
 
 Include: Campaign performance, CAC, channel effectiveness, ROI.""",
-
     "customer_analysis": """\
 Analyse the following customer data and produce a detailed section.
 
@@ -144,7 +141,6 @@ DATA:
 {data_context}
 
 Include: Segments, retention, churn, lifetime value, satisfaction.""",
-
     "operations_analysis": """\
 Analyse the following operations data and produce a detailed section.
 
@@ -152,7 +148,6 @@ DATA:
 {data_context}
 
 Include: Efficiency metrics, throughput, quality, bottlenecks.""",
-
     "hr_analysis": """\
 Analyse the following HR data and produce a detailed section.
 
@@ -160,7 +155,6 @@ DATA:
 {data_context}
 
 Include: Headcount, turnover, hiring pipeline, satisfaction, productivity.""",
-
     "forecast_section": """\
 Generate a forecast section based on the following trends.
 
@@ -168,7 +162,6 @@ DATA:
 {data_context}
 
 Include: Predicted values, confidence intervals, key assumptions.""",
-
     "risk_analysis": """\
 Identify and analyse business risks from the following data.
 
@@ -176,14 +169,13 @@ DATA:
 {data_context}
 
 For each risk: title, description, severity, likelihood, mitigation strategy.""",
-
     "recommendations_section": """\
 Generate actionable recommendations based on the following analysis.
 
 DATA:
 {data_context}
 
-For each: title, description, priority, category, expected impact, confidence."""
+For each: title, description, priority, category, expected impact, confidence.""",
 }
 
 # ---------------------------------------------------------------------------

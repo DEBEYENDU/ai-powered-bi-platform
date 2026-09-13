@@ -63,9 +63,7 @@ class AIReportVersionRecord(Base):
     __tablename__ = "ai_report_versions"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    report_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
-    )
+    report_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     content_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
     formats_generated: Mapped[list] = mapped_column(JSON, default=list)

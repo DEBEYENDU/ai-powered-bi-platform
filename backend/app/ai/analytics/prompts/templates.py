@@ -128,7 +128,6 @@ Tone: formal, strategic, high-level.  Focus on:
 - Key risks and opportunities
 - Strategic recommendations
 - Quarter/year performance vs targets""",
-
     "ceo": """\
 Generate a CEO summary of the following analysis.
 
@@ -140,7 +139,6 @@ Tone: concise, action-oriented.  Focus on:
 - Critical decisions needed
 - Growth trajectory
 - Competitive position""",
-
     "finance": """\
 Generate a finance-focused summary of the following analysis.
 
@@ -152,7 +150,6 @@ Tone: precise, numbers-driven.  Focus on:
 - Budget variance
 - Cash flow implications
 - Financial risks""",
-
     "sales": """\
 Generate a sales-focused summary of the following analysis.
 
@@ -164,7 +161,6 @@ Tone: energetic, performance-driven.  Focus on:
 - Conversion rates
 - Top and bottom performers
 - Regional performance""",
-
     "marketing": """\
 Generate a marketing-focused summary of the following analysis.
 
@@ -176,7 +172,6 @@ Tone: creative, ROI-focused.  Focus on:
 - Customer acquisition cost
 - Channel effectiveness
 - Brand metrics""",
-
     "operations": """\
 Generate an operations-focused summary of the following analysis.
 
@@ -188,7 +183,6 @@ Tone: efficiency-focused.  Focus on:
 - Resource utilisation
 - Quality metrics
 - Bottlenecks and improvements""",
-
     "executive_brief": """\
 Generate a concise executive brief of the following analysis.
 

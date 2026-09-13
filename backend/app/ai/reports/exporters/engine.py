@@ -26,9 +26,9 @@ def _build_html(report: dict[str, Any]) -> str:
     kpi_html = ""
     if kpis:
         rows = "".join(
-            f"<tr><td>{k.get('name','')}</td><td>{k.get('value','')}</td>"
-            f"<td>{k.get('unit','')}</td><td>{k.get('change_pct',0):+.1f}%</td>"
-            f"<td>{k.get('trend','')}</td></tr>"
+            f"<tr><td>{k.get('name', '')}</td><td>{k.get('value', '')}</td>"
+            f"<td>{k.get('unit', '')}</td><td>{k.get('change_pct', 0):+.1f}%</td>"
+            f"<td>{k.get('trend', '')}</td></tr>"
             for k in kpis
         )
         kpi_html = f"<h2>Key Performance Indicators</h2><table><tr><th>Metric</th><th>Value</th><th>Unit</th><th>Change</th><th>Trend</th></tr>{rows}</table>"
@@ -36,21 +36,30 @@ def _build_html(report: dict[str, Any]) -> str:
     sections_html = ""
     for s in sections:
         content = s.get("content", "")
-        sections_html += f"<h2>{s.get('title','Section')}</h2><div>{content}</div>"
+        sections_html += f"<h2>{s.get('title', 'Section')}</h2><div>{content}</div>"
 
     insights_html = ""
     if insights:
-        items = "".join(f"<li><strong>{i.get('title','')}</strong>: {i.get('description','')}</li>" for i in insights)
+        items = "".join(
+            f"<li><strong>{i.get('title', '')}</strong>: {i.get('description', '')}</li>"
+            for i in insights
+        )
         insights_html = f"<h2>Key Insights</h2><ul>{items}</ul>"
 
     risks_html = ""
     if risks:
-        items = "".join(f"<li><strong>{r.get('title','')}</strong> [{r.get('severity','')}]: {r.get('description','')}</li>" for r in risks)
+        items = "".join(
+            f"<li><strong>{r.get('title', '')}</strong> [{r.get('severity', '')}]: {r.get('description', '')}</li>"
+            for r in risks
+        )
         risks_html = f"<h2>Risks</h2><ul>{items}</ul>"
 
     recs_html = ""
     if recs:
-        items = "".join(f"<li><strong>{r.get('title','')}</strong> [{r.get('priority','')}]: {r.get('description','')}</li>" for r in recs)
+        items = "".join(
+            f"<li><strong>{r.get('title', '')}</strong> [{r.get('priority', '')}]: {r.get('description', '')}</li>"
+            for r in recs
+        )
         recs_html = f"<h2>Recommendations</h2><ul>{items}</ul>"
 
     return f"""<!DOCTYPE html>
@@ -83,7 +92,9 @@ def _build_markdown(report: dict[str, Any]) -> str:
         lines.append("| Metric | Value | Unit | Change | Trend |")
         lines.append("|--------|-------|------|--------|-------|")
         for k in kpis:
-            lines.append(f"| {k.get('name','')} | {k.get('value','')} | {k.get('unit','')} | {k.get('change_pct',0):+.1f}% | {k.get('trend','')} |")
+            lines.append(
+                f"| {k.get('name', '')} | {k.get('value', '')} | {k.get('unit', '')} | {k.get('change_pct', 0):+.1f}% | {k.get('trend', '')} |"
+            )
         lines.append("")
 
     for s in report.get("sections", []):
@@ -93,21 +104,25 @@ def _build_markdown(report: dict[str, Any]) -> str:
     if insights:
         lines.append("## Key Insights\n")
         for i in insights:
-            lines.append(f"- **{i.get('title','')}**: {i.get('description','')}")
+            lines.append(f"- **{i.get('title', '')}**: {i.get('description', '')}")
         lines.append("")
 
     risks = report.get("risks", [])
     if risks:
         lines.append("## Risks\n")
         for r in risks:
-            lines.append(f"- **{r.get('title','')}** [{r.get('severity','')}]: {r.get('description','')}")
+            lines.append(
+                f"- **{r.get('title', '')}** [{r.get('severity', '')}]: {r.get('description', '')}"
+            )
         lines.append("")
 
     recs = report.get("recommendations", [])
     if recs:
         lines.append("## Recommendations\n")
         for r in recs:
-            lines.append(f"- **[{r.get('priority','').upper()}]** {r.get('title','')}: {r.get('description','')}")
+            lines.append(
+                f"- **[{r.get('priority', '').upper()}]** {r.get('title', '')}: {r.get('description', '')}"
+            )
         lines.append("")
 
     return "\n".join(lines)
@@ -134,11 +149,38 @@ def export_csv(report: dict[str, Any], path: Path) -> dict[str, Any]:
         writer = csv.writer(f)
         writer.writerow(["Type", "Title", "Content", "Priority", "Severity", "Confidence"])
         for i in report.get("insights", []):
-            writer.writerow(["insight", i.get("title", ""), i.get("description", ""), "", "", i.get("confidence", "")])
+            writer.writerow(
+                [
+                    "insight",
+                    i.get("title", ""),
+                    i.get("description", ""),
+                    "",
+                    "",
+                    i.get("confidence", ""),
+                ]
+            )
         for r in report.get("risks", []):
-            writer.writerow(["risk", r.get("title", ""), r.get("description", ""), "", r.get("severity", ""), ""])
+            writer.writerow(
+                [
+                    "risk",
+                    r.get("title", ""),
+                    r.get("description", ""),
+                    "",
+                    r.get("severity", ""),
+                    "",
+                ]
+            )
         for r in report.get("recommendations", []):
-            writer.writerow(["recommendation", r.get("title", ""), r.get("description", ""), r.get("priority", ""), "", r.get("confidence", "")])
+            writer.writerow(
+                [
+                    "recommendation",
+                    r.get("title", ""),
+                    r.get("description", ""),
+                    r.get("priority", ""),
+                    "",
+                    r.get("confidence", ""),
+                ]
+            )
         for k in report.get("kpis", []):
             writer.writerow(["kpi", k.get("name", ""), str(k.get("value", "")), "", "", ""])
     return {"format": "csv", "file_size": path.stat().st_size}
@@ -161,7 +203,12 @@ def export_pdf(report: dict[str, Any], path: Path) -> dict[str, Any]:
         story.append(Spacer(1, 12))
 
         for k in report.get("kpis", []):
-            story.append(Paragraph(f"{k.get('name', '')}: {k.get('value', '')} {k.get('unit', '')} ({k.get('change_pct', 0):+.1f}%)", styles["BodyText"]))
+            story.append(
+                Paragraph(
+                    f"{k.get('name', '')}: {k.get('value', '')} {k.get('unit', '')} ({k.get('change_pct', 0):+.1f}%)",
+                    styles["BodyText"],
+                )
+            )
 
         story.append(Spacer(1, 12))
         for s in report.get("sections", []):
@@ -173,7 +220,12 @@ def export_pdf(report: dict[str, Any], path: Path) -> dict[str, Any]:
         if recs:
             story.append(Paragraph("Recommendations", styles["Heading2"]))
             for r in recs:
-                story.append(Paragraph(f"[{r.get('priority', '').upper()}] {r.get('title', '')}: {r.get('description', '')}", styles["BodyText"]))
+                story.append(
+                    Paragraph(
+                        f"[{r.get('priority', '').upper()}] {r.get('title', '')}: {r.get('description', '')}",
+                        styles["BodyText"],
+                    )
+                )
 
         doc.build(story)
         return {"format": "pdf", "file_size": path.stat().st_size}
@@ -193,7 +245,9 @@ def export_docx(report: dict[str, Any], path: Path) -> dict[str, Any]:
         doc.add_paragraph(report.get("executive_summary", ""))
 
         for k in report.get("kpis", []):
-            doc.add_paragraph(f"{k.get('name', '')}: {k.get('value', '')} {k.get('unit', '')} ({k.get('change_pct', 0):+.1f}%)")
+            doc.add_paragraph(
+                f"{k.get('name', '')}: {k.get('value', '')} {k.get('unit', '')} ({k.get('change_pct', 0):+.1f}%)"
+            )
 
         for s in report.get("sections", []):
             doc.add_heading(s.get("title", ""), level=2)
@@ -203,7 +257,9 @@ def export_docx(report: dict[str, Any], path: Path) -> dict[str, Any]:
         if recs:
             doc.add_heading("Recommendations", level=2)
             for r in recs:
-                doc.add_paragraph(f"[{r.get('priority', '').upper()}] {r.get('title', '')}: {r.get('description', '')}")
+                doc.add_paragraph(
+                    f"[{r.get('priority', '').upper()}] {r.get('title', '')}: {r.get('description', '')}"
+                )
 
         doc.save(str(path))
         return {"format": "docx", "file_size": path.stat().st_size}
@@ -222,17 +278,40 @@ def export_xlsx(report: dict[str, Any], path: Path) -> dict[str, Any]:
         ws.title = "KPIs"
         ws.append(["Metric", "Value", "Unit", "Change %", "Trend"])
         for k in report.get("kpis", []):
-            ws.append([k.get("name", ""), k.get("value", ""), k.get("unit", ""), k.get("change_pct", 0), k.get("trend", "")])
+            ws.append(
+                [
+                    k.get("name", ""),
+                    k.get("value", ""),
+                    k.get("unit", ""),
+                    k.get("change_pct", 0),
+                    k.get("trend", ""),
+                ]
+            )
 
         ws2 = wb.create_sheet("Insights")
         ws2.append(["Title", "Description", "Type", "Confidence"])
         for i in report.get("insights", []):
-            ws2.append([i.get("title", ""), i.get("description", ""), i.get("insight_type", ""), i.get("confidence", "")])
+            ws2.append(
+                [
+                    i.get("title", ""),
+                    i.get("description", ""),
+                    i.get("insight_type", ""),
+                    i.get("confidence", ""),
+                ]
+            )
 
         ws3 = wb.create_sheet("Recommendations")
         ws3.append(["Title", "Description", "Priority", "Category", "Impact"])
         for r in report.get("recommendations", []):
-            ws3.append([r.get("title", ""), r.get("description", ""), r.get("priority", ""), r.get("category", ""), r.get("expected_impact", "")])
+            ws3.append(
+                [
+                    r.get("title", ""),
+                    r.get("description", ""),
+                    r.get("priority", ""),
+                    r.get("category", ""),
+                    r.get("expected_impact", ""),
+                ]
+            )
 
         wb.save(str(path))
         return {"format": "xlsx", "file_size": path.stat().st_size}
@@ -257,7 +336,9 @@ def export_pptx(report: dict[str, Any], path: Path) -> dict[str, Any]:
         for k in report.get("kpis", [])[:8]:
             slide = prs.slides.add_slide(prs.slide_layouts[5])
             slide.shapes.title.text = k.get("name", "")[:100]
-            slide.placeholders[1].text = f"Value: {k.get('value', '')} {k.get('unit', '')}\nChange: {k.get('change_pct', 0):+.1f}%\nTrend: {k.get('trend', '')}"
+            slide.placeholders[
+                1
+            ].text = f"Value: {k.get('value', '')} {k.get('unit', '')}\nChange: {k.get('change_pct', 0):+.1f}%\nTrend: {k.get('trend', '')}"
 
         for s in report.get("sections", [])[:10]:
             slide = prs.slides.add_slide(prs.slide_layouts[5])

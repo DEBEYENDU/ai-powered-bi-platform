@@ -159,13 +159,15 @@ async def list_datasets() -> dict[str, Any]:
         did = parts[0] if parts else f.stem
         try:
             df = pd.read_parquet(f)
-            datasets.append({
-                "dataset_id": did,
-                "name": f.name,
-                "row_count": len(df),
-                "column_count": len(df.columns),
-                "file_size": f.stat().st_size,
-            })
+            datasets.append(
+                {
+                    "dataset_id": did,
+                    "name": f.name,
+                    "row_count": len(df),
+                    "column_count": len(df.columns),
+                    "file_size": f.stat().st_size,
+                }
+            )
         except Exception:
             pass
 
@@ -194,6 +196,7 @@ async def get_schema(dataset_id: str) -> dict[str, Any]:
     try:
         df = data_loader.load_stored_dataset(dataset_id, "v1")
         from app.ai.data_engineering.schema.inferencer import infer_table_schema
+
         schema = infer_table_schema(df, dataset_id)
         return schema.model_dump()
     except FileNotFoundError:
@@ -209,4 +212,8 @@ async def get_schema(dataset_id: str) -> dict[str, Any]:
 async def discover_relationships(body: dict[str, Any] | None = None) -> dict[str, Any]:
     """Discover relationships across multiple datasets."""
     # For now, return single-table relationships
-    return {"relationships": [], "schema_type": "single_table", "message": "Upload multiple datasets to discover cross-table relationships"}
+    return {
+        "relationships": [],
+        "schema_type": "single_table",
+        "message": "Upload multiple datasets to discover cross-table relationships",
+    }

@@ -27,7 +27,9 @@ _URL_RE = re.compile(r"^https?://")
 _IP_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 _DATE_RE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}")
 _CURRENCY_RE = re.compile(r"^[\$€£¥₹][\s]?[\d,]+\.?\d*$")
-_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 def _detect_semantic_type(series: pd.Series) -> str:
@@ -327,13 +329,15 @@ def discover_relationships(tables: dict[str, pd.DataFrame]) -> list[Relationship
                             )
 
                     # Suffix pattern: e.g. customer_id in orders → customer.id
-                    elif (
-                        col1_lower.endswith("_id")
-                        and col2_lower in ("id", col1_lower.replace("_id", ""))
+                    elif col1_lower.endswith("_id") and col2_lower in (
+                        "id",
+                        col1_lower.replace("_id", ""),
                     ):
                         common = set(t1[col1].dropna().unique()) & set(t2[col2].dropna().unique())
                         if len(common) > 0:
-                            confidence = min(len(common) / max(len(t1[col1].dropna().unique()), 1), 1.0)
+                            confidence = min(
+                                len(common) / max(len(t1[col1].dropna().unique()), 1), 1.0
+                            )
                             if confidence > 0.3:
                                 relationships.append(
                                     Relationship(
@@ -343,7 +347,9 @@ def discover_relationships(tables: dict[str, pd.DataFrame]) -> list[Relationship
                                         target_column=col2,
                                         relationship_type="many_to_one",
                                         confidence=round(confidence, 3),
-                                        evidence=[f"Suffix pattern match, {len(common)} overlapping values"],
+                                        evidence=[
+                                            f"Suffix pattern match, {len(common)} overlapping values"
+                                        ],
                                     )
                                 )
 
@@ -387,6 +393,7 @@ def build_relationship_graph(
     if len(relationships) >= 2:
         # Star: one table connects to many others
         from collections import Counter
+
         table_counts: Counter[str] = Counter()
         for r in relationships:
             table_counts[r.source_table] += 1

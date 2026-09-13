@@ -92,6 +92,8 @@ def prepare_features(
                 feature_cols.extend(dummies.columns.tolist())
 
     if not feature_cols:
-        feature_cols = [c for c in df.columns if c != target and df[c].dtype in ("int64", "float64")]
+        feature_cols = [
+            c for c in df.columns if c != target and df[c].dtype in ("int64", "float64")
+        ]
 
     return df, target_type

@@ -67,5 +67,9 @@ def list_providers() -> list[dict[str, Any]]:
         {"id": "lmstudio", "name": "LM Studio (Local)", "models": ["local-model"]},
         {"id": "azure", "name": "Azure OpenAI", "models": ["gpt-4o", "gpt-4o-mini"]},
         {"id": "gemini", "name": "Google Gemini", "models": ["gemini-1.5-flash", "gemini-1.5-pro"]},
-        {"id": "anthropic", "name": "Anthropic Claude", "models": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]},
+        {
+            "id": "anthropic",
+            "name": "Anthropic Claude",
+            "models": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"],
+        },
     ]

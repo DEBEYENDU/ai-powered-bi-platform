@@ -65,9 +65,7 @@ async def chat(
     ]
 
     if conversation_history:
-        messages = (
-            [messages[0], *conversation_history[-6:], *messages[1:]]
-        )
+        messages = [messages[0], *conversation_history[-6:], *messages[1:]]
 
     try:
         llm = _get_llm()
@@ -172,6 +170,7 @@ async def get_cleaning_suggestions_ai(
         text = _extract_text(raw)
         # Try to parse as JSON
         import json
+
         try:
             return json.loads(text) if text.startswith("[") else [{"description": text}]
         except (json.JSONDecodeError, ValueError):
@@ -198,6 +197,7 @@ async def get_relationship_insights(
         )
         text = _extract_text(raw)
         import json
+
         try:
             return json.loads(text) if text.startswith("{") else [{"insight": text}]
         except (json.JSONDecodeError, ValueError):
@@ -225,6 +225,7 @@ async def get_transform_recommendations(
         )
         text = _extract_text(raw)
         import json
+
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, list) else [parsed]
@@ -253,6 +254,7 @@ async def infer_column_types_ai(
         )
         text = _extract_text(raw)
         import json
+
         try:
             return json.loads(text) if text.startswith("[") else []
         except (json.JSONDecodeError, ValueError):

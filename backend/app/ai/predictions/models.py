@@ -28,7 +28,9 @@ class PredictionModelRecord(Base):
     __tablename__ = "ai_prediction_models"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     owner_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -42,7 +44,9 @@ class PredictionModelRecord(Base):
     model_path: Mapped[str] = mapped_column(String(500), default="")
     current_version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -52,7 +56,9 @@ class PredictionRecord(Base):
     __tablename__ = "ai_predictions"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     model_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     dataset_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     target: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -108,7 +114,9 @@ class ScenarioRecord(Base):
     __tablename__ = "ai_scenarios"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     prediction_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     scenario_name: Mapped[str] = mapped_column(String(255), nullable=False)
     scenario_type: Mapped[str] = mapped_column(String(50), nullable=False)

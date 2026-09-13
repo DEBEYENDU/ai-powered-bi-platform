@@ -116,13 +116,16 @@ class AIDashboardService:
             "theme": improved.get("theme", {}),
         }
 
-        dashboard_service.update_dashboard(dashboard_id, {
-            "name": dashboard_data["title"],
-            "description": dashboard_data["description"],
-            "widgets": widgets,
-            "layout": layout,
-            "filters": dashboard_data["filters"],
-        })
+        dashboard_service.update_dashboard(
+            dashboard_id,
+            {
+                "name": dashboard_data["title"],
+                "description": dashboard_data["description"],
+                "widgets": widgets,
+                "layout": layout,
+                "filters": dashboard_data["filters"],
+            },
+        )
 
         self._save_version(dashboard_id, dashboard_data, instruction)
 
@@ -160,6 +163,7 @@ class AIDashboardService:
         if not self.db:
             return []
         from sqlalchemy import select
+
         stmt = (
             select(DashboardVersion)
             .where(DashboardVersion.dashboard_id == dashboard_id)
@@ -185,13 +189,16 @@ class AIDashboardService:
         if not version or version.dashboard_id != dashboard_id:
             return None
 
-        dashboard_service.update_dashboard(dashboard_id, {
-            "name": version.title,
-            "description": version.description,
-            "widgets": version.widgets,
-            "layout": version.layout,
-            "filters": version.filters,
-        })
+        dashboard_service.update_dashboard(
+            dashboard_id,
+            {
+                "name": version.title,
+                "description": version.description,
+                "widgets": version.widgets,
+                "layout": version.layout,
+                "filters": version.filters,
+            },
+        )
         return {"rolled_back_to": version.version_number}
 
     def _save_dashboard(
@@ -201,14 +208,16 @@ class AIDashboardService:
         organization_id: str,
     ) -> str:
         """Save generated dashboard to the database."""
-        result = dashboard_service.create_dashboard({
-            "name": data["title"],
-            "description": data.get("description", ""),
-            "organization_id": organization_id,
-            "layout": data.get("layout", {}),
-            "widgets": data.get("widgets", []),
-            "filters": data.get("filters", {}),
-        })
+        result = dashboard_service.create_dashboard(
+            {
+                "name": data["title"],
+                "description": data.get("description", ""),
+                "organization_id": organization_id,
+                "layout": data.get("layout", {}),
+                "widgets": data.get("widgets", []),
+                "filters": data.get("filters", {}),
+            }
+        )
         dashboard_id = result.get("id", "")
 
         if dashboard_id and self.db:
@@ -227,6 +236,7 @@ class AIDashboardService:
             return
 
         from sqlalchemy import func, select
+
         stmt = select(func.coalesce(func.max(DashboardVersion.version_number), 0)).where(
             DashboardVersion.dashboard_id == dashboard_id
         )

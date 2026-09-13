@@ -14,7 +14,9 @@ def _sid() -> str:
     return str(uuid.uuid4())[:8]
 
 
-def suggest_cleaning(df: pd.DataFrame, profile: list[dict[str, Any]] | None = None) -> list[CleaningSuggestion]:
+def suggest_cleaning(
+    df: pd.DataFrame, profile: list[dict[str, Any]] | None = None
+) -> list[CleaningSuggestion]:
     """Analyse a DataFrame and produce actionable cleaning suggestions."""
     suggestions: list[CleaningSuggestion] = []
 
@@ -176,7 +178,9 @@ def suggest_cleaning(df: pd.DataFrame, profile: list[dict[str, Any]] | None = No
     return suggestions
 
 
-def apply_cleaning(df: pd.DataFrame, suggestions: list[CleaningSuggestion]) -> tuple[pd.DataFrame, int]:
+def apply_cleaning(
+    df: pd.DataFrame, suggestions: list[CleaningSuggestion]
+) -> tuple[pd.DataFrame, int]:
     """Apply selected cleaning suggestions. Returns (cleaned_df, cells_modified)."""
     cleaned = df.copy()
     cells_modified = 0

@@ -141,9 +141,7 @@ async def get_conversation(
         raise HTTPException(status_code=404, detail="Conversation not found")
     messages = service.get_messages(conversation_id)
     data = ConversationDetail.model_validate(conv).model_dump()
-    data["messages"] = [
-        ConversationMessageOut.model_validate(m).model_dump() for m in messages
-    ]
+    data["messages"] = [ConversationMessageOut.model_validate(m).model_dump() for m in messages]
     return data
 
 

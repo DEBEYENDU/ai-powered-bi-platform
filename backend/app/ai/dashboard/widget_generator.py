@@ -106,16 +106,20 @@ class WidgetGenerator:
         for widget in widgets:
             try:
                 generated = await self.generate_widget(widget, schema_text, temperature)
-                results.append({
-                    **widget,
-                    "sql": generated.get("sql", widget.get("sql", "")),
-                    "columns": generated.get("columns", []),
-                    "chart_config": generated.get("chart_config", {}),
-                    "explanation": generated.get("explanation", widget.get("reasoning", "")),
-                })
+                results.append(
+                    {
+                        **widget,
+                        "sql": generated.get("sql", widget.get("sql", "")),
+                        "columns": generated.get("columns", []),
+                        "chart_config": generated.get("chart_config", {}),
+                        "explanation": generated.get("explanation", widget.get("reasoning", "")),
+                    }
+                )
             except Exception:  # noqa: BLE001
-                results.append({
-                    **widget,
-                    "sql_error": "Failed to generate SQL",
-                })
+                results.append(
+                    {
+                        **widget,
+                        "sql_error": "Failed to generate SQL",
+                    }
+                )
         return results

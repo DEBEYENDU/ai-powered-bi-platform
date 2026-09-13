@@ -142,23 +142,20 @@ class NL2SQLService:
         numeric_cols = [
             col
             for col in columns
-            if rows
-            and any(
-                isinstance(r.get(col), (int, float)) for r in rows[:10]
-            )
+            if rows and any(isinstance(r.get(col), (int, float)) for r in rows[:10])
         ]
 
-        categorical_cols = [
-            col
-            for col in columns
-            if col not in numeric_cols
-        ]
+        categorical_cols = [col for col in columns if col not in numeric_cols]
 
         if len(rows) > 20 and has_date and numeric_cols:
             return {
                 "type": "line",
                 "x_axis": next(
-                    (c for c in columns if any(kw in c.lower() for kw in ["date", "time", "created"])),
+                    (
+                        c
+                        for c in columns
+                        if any(kw in c.lower() for kw in ["date", "time", "created"])
+                    ),
                     columns[0],
                 ),
                 "y_axis": numeric_cols[0],

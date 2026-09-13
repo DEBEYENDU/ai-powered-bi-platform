@@ -65,9 +65,7 @@ def _build_analysis_context(
     if recommendations:
         lines.append("\nRECOMMENDATIONS:")
         for r in recommendations[:7]:
-            lines.append(
-                f"- [{r.priority}] {r.title}: {r.description}"
-            )
+            lines.append(f"- [{r.priority}] {r.title}: {r.description}")
 
     if forecast_summary:
         lines.append(f"\nFORECAST: {forecast_summary.get('trend', 'N/A')} trend")
@@ -144,7 +142,9 @@ async def generate_summary(
     provider: Any = None,
 ) -> Summary:
     """Generate an executive summary from analysis results."""
-    analysis_context = _build_analysis_context(insights, anomalies, recommendations, forecast_summary)
+    analysis_context = _build_analysis_context(
+        insights, anomalies, recommendations, forecast_summary
+    )
 
     content: str | None = None
     if provider is not None:
@@ -156,19 +156,19 @@ async def generate_summary(
     # Extract key metrics
     key_metrics: list[dict[str, Any]] = []
     for i in insights[:5]:
-        key_metrics.append({
-            "metric": i.metric,
-            "value": i.current_value,
-            "change_pct": i.change_pct,
-            "direction": "up" if i.change_pct > 0 else "down",
-        })
+        key_metrics.append(
+            {
+                "metric": i.metric,
+                "value": i.current_value,
+                "change_pct": i.change_pct,
+                "direction": "up" if i.change_pct > 0 else "down",
+            }
+        )
 
     # Extract risks and opportunities
-    risks = [
-        f"{a.title}: {a.description}"
-        for a in anomalies
-        if a.severity in ("high", "medium")
-    ][:5]
+    risks = [f"{a.title}: {a.description}" for a in anomalies if a.severity in ("high", "medium")][
+        :5
+    ]
     opportunities = [
         f"{i.title}: {i.description}"
         for i in insights

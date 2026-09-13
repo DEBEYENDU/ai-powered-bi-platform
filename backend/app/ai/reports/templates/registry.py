@@ -174,6 +174,11 @@ def get_template(report_type: str) -> dict[str, Any]:
 def list_templates() -> list[dict[str, Any]]:
     """List all available report templates."""
     return [
-        {"id": key, "name": val["name"], "description": val["description"], "sections": val["sections"]}
+        {
+            "id": key,
+            "name": val["name"],
+            "description": val["description"],
+            "sections": val["sections"],
+        }
         for key, val in REPORT_TEMPLATES.items()
     ]

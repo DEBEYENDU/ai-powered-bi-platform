@@ -12,7 +12,9 @@ from app.ai.data_engineering.schemas import SchemaInfo
 
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 _PHONE_RE = re.compile(r"^[\+]?[\d\s\-\(\)]{7,15}$")
-_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 def infer_column_schema(series: pd.Series, col_name: str) -> dict[str, Any]:

@@ -66,6 +66,7 @@ def train_regressor(
     if model_type == "xgboost":
         try:
             import xgboost as xgb
+
             model = xgb.XGBRegressor(
                 n_estimators=kwargs.get("n_estimators", 100),
                 max_depth=kwargs.get("max_depth", 6),
@@ -77,6 +78,7 @@ def train_regressor(
     elif model_type == "lightgbm":
         try:
             import lightgbm as lgb
+
             model = lgb.LGBMRegressor(
                 n_estimators=kwargs.get("n_estimators", 100),
                 max_depth=kwargs.get("max_depth", 6),
@@ -107,7 +109,9 @@ def train_regressor(
 
     # Cross-validation
     try:
-        cv_scores = cross_val_score(model, X, y, cv=min(cv_folds, max(2, len(y) // 5)), scoring="r2")
+        cv_scores = cross_val_score(
+            model, X, y, cv=min(cv_folds, max(2, len(y) // 5)), scoring="r2"
+        )
         cv_mean = float(np.mean(cv_scores))
         cv_std = float(np.std(cv_scores))
     except Exception:

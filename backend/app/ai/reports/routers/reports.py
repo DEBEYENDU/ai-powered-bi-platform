@@ -31,7 +31,9 @@ async def generate_report(
         result = await service.generate(
             prompt=request.prompt,
             dashboard_id=request.dashboard_id,
-            report_type=request.report_type.value if hasattr(request.report_type, "value") else request.report_type,
+            report_type=request.report_type.value
+            if hasattr(request.report_type, "value")
+            else request.report_type,
             formats=[f.value if hasattr(f, "value") else f for f in request.formats],
             branding=request.branding,
             organization_id=request.organization_id,
@@ -50,7 +52,9 @@ async def list_reports(
     service: ReportGeneratorService = Depends(_get_service),
 ):
     """List AI-generated reports with search, filter, and pagination."""
-    return service.list_reports(page=page, page_size=page_size, search=search, report_type=report_type)
+    return service.list_reports(
+        page=page, page_size=page_size, search=search, report_type=report_type
+    )
 
 
 @ai_reports_router.get("/{report_id}", response_model=dict[str, Any])
@@ -93,4 +97,5 @@ async def followup_question(
 async def list_templates():
     """List available report type templates."""
     from app.ai.reports.templates.registry import list_templates
+
     return list_templates()

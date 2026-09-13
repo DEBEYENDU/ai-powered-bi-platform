@@ -152,9 +152,13 @@ def train_auto_model(
     for model_type in model_types_to_try:
         try:
             if is_classification:
-                result = train_classifier(df, target, model_type, features, test_size, cv_folds, **kwargs)
+                result = train_classifier(
+                    df, target, model_type, features, test_size, cv_folds, **kwargs
+                )
             else:
-                result = train_regressor(df, target, model_type, features, test_size, cv_folds, **kwargs)
+                result = train_regressor(
+                    df, target, model_type, features, test_size, cv_folds, **kwargs
+                )
             if "error" not in result:
                 result["model_type"] = model_type
                 results.append(result)

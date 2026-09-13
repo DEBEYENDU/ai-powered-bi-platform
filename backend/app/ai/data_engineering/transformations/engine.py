@@ -89,12 +89,7 @@ def _apply_one(
 
     elif ttype == "normalize_text":
         if col in df.columns and df[col].dtype == object:
-            df[col] = (
-                df[col]
-                .str.lower()
-                .str.strip()
-                .str.replace(r"\s+", " ", regex=True)
-            )
+            df[col] = df[col].str.lower().str.strip().str.replace(r"\s+", " ", regex=True)
 
     elif ttype == "convert_type":
         if col not in df.columns:
@@ -109,7 +104,9 @@ def _apply_one(
         elif target == "string":
             df[col] = df[col].astype("string")
         elif target == "boolean":
-            df[col] = df[col].map({"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False})
+            df[col] = df[col].map(
+                {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
+            )
 
     elif ttype == "split_column":
         if col not in df.columns:
@@ -158,7 +155,9 @@ def _apply_one(
         value_col = params.get("values", "")
         agg = params.get("aggfunc", "first")
         if index_col in df.columns and pivot_col in df.columns and value_col in df.columns:
-            df = df.pivot_table(index=index_col, columns=pivot_col, values=value_col, aggfunc=agg).reset_index()
+            df = df.pivot_table(
+                index=index_col, columns=pivot_col, values=value_col, aggfunc=agg
+            ).reset_index()
             df.columns = [str(c) for c in df.columns]
 
     elif ttype == "unpivot":
@@ -201,7 +200,10 @@ def get_available_transforms() -> list[dict[str, Any]]:
             "type": "fill_missing",
             "name": "Fill Missing Values",
             "description": "Fill null values using mode, median, mean, or a custom value",
-            "parameters": {"method": "mode|median|mean|value|forward|backward", "fill_value": "optional"},
+            "parameters": {
+                "method": "mode|median|mean|value|forward|backward",
+                "fill_value": "optional",
+            },
         },
         {
             "type": "remove_duplicates",
@@ -249,7 +251,12 @@ def get_available_transforms() -> list[dict[str, Any]]:
             "type": "pivot",
             "name": "Pivot",
             "description": "Reshape data from long to wide format",
-            "parameters": {"index": "column", "columns": "column", "values": "column", "aggfunc": "first|sum|mean|count"},
+            "parameters": {
+                "index": "column",
+                "columns": "column",
+                "values": "column",
+                "aggfunc": "first|sum|mean|count",
+            },
         },
         {
             "type": "unpivot",

@@ -106,6 +106,7 @@ async def whatif_analysis(
         )
         text = _extract_text(raw)
         import json
+
         try:
             return json.loads(text) if text.startswith("{") else {"analysis": text}
         except (json.JSONDecodeError, ValueError):
@@ -137,6 +138,7 @@ async def root_cause_analysis(
         )
         text = _extract_text(raw)
         import json
+
         try:
             return json.loads(text) if text.startswith("{") else {"analysis": text}
         except (json.JSONDecodeError, ValueError):
@@ -176,6 +178,7 @@ async def generate_business_recommendations(
         )
         text = _extract_text(raw)
         import json
+
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, list) else [parsed]
@@ -247,6 +250,7 @@ async def assess_risk_ai(
         )
         text = _extract_text(raw)
         import json
+
         try:
             return json.loads(text) if text.startswith("{") else {"assessment": text}
         except (json.JSONDecodeError, ValueError):

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class InsightType(str, Enum):
     POSITIVE_TREND = "positive_trend"
     NEGATIVE_TREND = "negative_trend"
@@ -62,6 +63,7 @@ class SummaryType(str, Enum):
 # Request
 # ---------------------------------------------------------------------------
 
+
 class AnalyzeRequest(BaseModel):
     dashboard_id: str = Field(..., description="Dashboard to analyse")
     summary_type: SummaryType = Field(
@@ -85,6 +87,7 @@ class FollowUpRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Nested data
 # ---------------------------------------------------------------------------
+
 
 class Insight(BaseModel):
     id: str = ""
@@ -175,6 +178,7 @@ class Summary(BaseModel):
 # ---------------------------------------------------------------------------
 # Response
 # ---------------------------------------------------------------------------
+
 
 class AnalyzeResponse(BaseModel):
     success: bool

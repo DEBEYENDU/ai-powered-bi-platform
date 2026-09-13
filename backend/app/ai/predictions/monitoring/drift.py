@@ -42,23 +42,24 @@ def detect_data_drift(
 
         if ks_p < threshold or psi > 0.1:
             severity = "high" if psi > 0.25 or ks_p < 0.001 else "medium" if psi > 0.1 else "low"
-            drifts.append({
-                "drift_type": "data_drift",
-                "severity": severity,
-                "feature": col,
-                "description": (
-                    f"{col}: KS p-value={ks_p:.4f}, PSI={psi:.4f}, "
-                    f"mean shift={mean_shift:.2%}"
-                ),
-                "metrics": {
-                    "ks_statistic": round(float(ks_stat), 4),
-                    "ks_p_value": round(float(ks_p), 4),
-                    "psi": round(float(psi), 4),
-                    "mean_shift": round(float(mean_shift), 4),
-                    "variance_ratio": round(float(var_ratio), 4),
-                },
-                "recommended_action": f"Investigate distribution changes in '{col}' and consider retraining",
-            })
+            drifts.append(
+                {
+                    "drift_type": "data_drift",
+                    "severity": severity,
+                    "feature": col,
+                    "description": (
+                        f"{col}: KS p-value={ks_p:.4f}, PSI={psi:.4f}, mean shift={mean_shift:.2%}"
+                    ),
+                    "metrics": {
+                        "ks_statistic": round(float(ks_stat), 4),
+                        "ks_p_value": round(float(ks_p), 4),
+                        "psi": round(float(psi), 4),
+                        "mean_shift": round(float(mean_shift), 4),
+                        "variance_ratio": round(float(var_ratio), 4),
+                    },
+                    "recommended_action": f"Investigate distribution changes in '{col}' and consider retraining",
+                }
+            )
 
     return drifts
 
@@ -88,19 +89,21 @@ def detect_prediction_drift(
 
     if ks_p < 0.05 or mean_drift > threshold:
         severity = "high" if mean_drift > 0.3 else "medium" if mean_drift > 0.1 else "low"
-        drifts.append({
-            "drift_type": "prediction_drift",
-            "severity": severity,
-            "feature": "predictions",
-            "description": f"Prediction drift detected: mean shift={mean_drift:.2%}, KS p={ks_p:.4f}",
-            "metrics": {
-                "ks_statistic": round(float(ks_stat), 4),
-                "ks_p_value": round(float(ks_p), 4),
-                "mean_drift": round(float(mean_drift), 4),
-                "variance_drift": round(float(var_drift), 4),
-            },
-            "recommended_action": "Retrain model with recent data to capture distribution shift",
-        })
+        drifts.append(
+            {
+                "drift_type": "prediction_drift",
+                "severity": severity,
+                "feature": "predictions",
+                "description": f"Prediction drift detected: mean shift={mean_drift:.2%}, KS p={ks_p:.4f}",
+                "metrics": {
+                    "ks_statistic": round(float(ks_stat), 4),
+                    "ks_p_value": round(float(ks_p), 4),
+                    "mean_drift": round(float(mean_drift), 4),
+                    "variance_drift": round(float(var_drift), 4),
+                },
+                "recommended_action": "Retrain model with recent data to capture distribution shift",
+            }
+        )
 
     return drifts
 
@@ -116,7 +119,9 @@ def detect_concept_drift(
     drifts: list[dict[str, Any]] = []
 
     err_recent = np.abs(np.array(y_true_recent, dtype=float) - np.array(y_pred_recent, dtype=float))
-    err_historical = np.abs(np.array(y_true_historical, dtype=float) - np.array(y_pred_historical, dtype=float))
+    err_historical = np.abs(
+        np.array(y_true_historical, dtype=float) - np.array(y_pred_historical, dtype=float)
+    )
 
     if len(err_recent) < 5 or len(err_historical) < 5:
         return drifts
@@ -129,22 +134,23 @@ def detect_concept_drift(
 
     if u_p < threshold or error_ratio > 1.5:
         severity = "high" if error_ratio > 2 else "medium" if error_ratio > 1.3 else "low"
-        drifts.append({
-            "drift_type": "concept_drift",
-            "severity": severity,
-            "feature": "model_performance",
-            "description": (
-                f"Concept drift detected: error ratio={error_ratio:.2f}x, "
-                f"U-test p={u_p:.4f}"
-            ),
-            "metrics": {
-                "error_ratio": round(float(error_ratio), 4),
-                "mann_whitney_p": round(float(u_p), 4),
-                "mean_error_recent": round(float(np.mean(err_recent)), 4),
-                "mean_error_historical": round(float(np.mean(err_historical)), 4),
-            },
-            "recommended_action": "Concept has shifted — retrain model with recent labeled data",
-        })
+        drifts.append(
+            {
+                "drift_type": "concept_drift",
+                "severity": severity,
+                "feature": "model_performance",
+                "description": (
+                    f"Concept drift detected: error ratio={error_ratio:.2f}x, U-test p={u_p:.4f}"
+                ),
+                "metrics": {
+                    "error_ratio": round(float(error_ratio), 4),
+                    "mann_whitney_p": round(float(u_p), 4),
+                    "mean_error_recent": round(float(np.mean(err_recent)), 4),
+                    "mean_error_historical": round(float(np.mean(err_historical)), 4),
+                },
+                "recommended_action": "Concept has shifted — retrain model with recent labeled data",
+            }
+        )
 
     return drifts
 

@@ -183,12 +183,14 @@ def generate_forecast(
     # Build points (using index-based dates — caller should map to real dates)
     points: list[dict[str, Any]] = []
     for i, (f, (lower, upper)) in enumerate(zip(forecasts, intervals, strict=False)):
-        points.append({
-            "index": n + i,
-            "value": f,
-            "lower_bound": lower,
-            "upper_bound": upper,
-        })
+        points.append(
+            {
+                "index": n + i,
+                "value": f,
+                "lower_bound": lower,
+                "upper_bound": upper,
+            }
+        )
 
     # Confidence assessment
     r2 = trend_info.get("r_squared", 0)

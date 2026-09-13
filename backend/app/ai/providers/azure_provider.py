@@ -82,9 +82,10 @@ class AzureOpenAIProvider(LLMProvider):
             "max_tokens": max_tokens,
             "stream": True,
         }
-        async with httpx.AsyncClient(timeout=self.timeout) as client, client.stream(
-            "POST", self._url(model), headers=self._headers(), json=payload
-        ) as r:
+        async with (
+            httpx.AsyncClient(timeout=self.timeout) as client,
+            client.stream("POST", self._url(model), headers=self._headers(), json=payload) as r,
+        ):
             r.raise_for_status()
             async for line in r.aiter_lines():
                 if not line or not line.startswith("data: "):

@@ -28,9 +28,7 @@ class AnthropicProvider(LLMProvider):
             "anthropic-version": "2023-06-01",
         }
 
-    def _convert_messages(
-        self, messages: list[ChatMessage]
-    ) -> tuple[str, list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[ChatMessage]) -> tuple[str, list[dict[str, Any]]]:
         system = ""
         converted: list[dict[str, Any]] = []
         for m in messages:
@@ -94,12 +92,15 @@ class AnthropicProvider(LLMProvider):
         }
         if system:
             payload["system"] = system
-        async with httpx.AsyncClient(timeout=self.timeout) as client, client.stream(
-            "POST",
-            f"{self.base_url}/messages",
-            headers=self._headers(),
-            json=payload,
-        ) as r:
+        async with (
+            httpx.AsyncClient(timeout=self.timeout) as client,
+            client.stream(
+                "POST",
+                f"{self.base_url}/messages",
+                headers=self._headers(),
+                json=payload,
+            ) as r,
+        ):
             r.raise_for_status()
             event_type = ""
             async for line in r.aiter_lines():

@@ -87,9 +87,7 @@ class SQLGenerator:
             ChatMessage(
                 role="user",
                 content=(
-                    f"DATABASE SCHEMA:\n{schema_text}\n\n"
-                    f"SQL QUERY:\n{sql}\n\n"
-                    "Explain this query."
+                    f"DATABASE SCHEMA:\n{schema_text}\n\nSQL QUERY:\n{sql}\n\nExplain this query."
                 ),
             ),
         ]
@@ -122,9 +120,7 @@ class SQLGenerator:
             sql = " ".join(sql_lines)
 
         if not explanation:
-            expl_match = re.search(
-                r"EXPLANATION:\s*(.*)", content, re.IGNORECASE | re.DOTALL
-            )
+            expl_match = re.search(r"EXPLANATION:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
             if expl_match:
                 explanation = expl_match.group(1).strip()
 

@@ -65,7 +65,9 @@ async def compare_models(request: ModelComparisonRequest) -> dict[str, Any]:
         for model_type in models_to_try:
             try:
                 if target_type == "classification":
-                    result = train_classifier(df, request.target, model_type.value, request.features)
+                    result = train_classifier(
+                        df, request.target, model_type.value, request.features
+                    )
                 else:
                     result = train_regressor(df, request.target, model_type.value, request.features)
                 if "error" not in result:

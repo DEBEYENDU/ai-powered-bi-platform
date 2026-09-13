@@ -31,15 +31,19 @@ def detect_zscore_anomalies(
     for i, val in enumerate(arr):
         z = (float(val) - mean_val) / std_val
         if abs(z) > threshold:
-            anomalies.append({
-                "index": i,
-                "value": float(val),
-                "expected": round(mean_val, 2),
-                "z_score": round(float(z), 4),
-                "deviation_pct": round(((float(val) - mean_val) / abs(mean_val)) * 100, 2) if mean_val != 0 else 0,
-                "severity": "high" if abs(z) > 4 else "medium" if abs(z) > 3 else "low",
-                "metric": metric_name,
-            })
+            anomalies.append(
+                {
+                    "index": i,
+                    "value": float(val),
+                    "expected": round(mean_val, 2),
+                    "z_score": round(float(z), 4),
+                    "deviation_pct": round(((float(val) - mean_val) / abs(mean_val)) * 100, 2)
+                    if mean_val != 0
+                    else 0,
+                    "severity": "high" if abs(z) > 4 else "medium" if abs(z) > 3 else "low",
+                    "metric": metric_name,
+                }
+            )
 
     return anomalies
 
@@ -68,18 +72,20 @@ def detect_iqr_anomalies(
         fv = float(val)
         if fv < lower_bound or fv > upper_bound:
             direction = "below" if fv < lower_bound else "above"
-            anomalies.append({
-                "index": i,
-                "value": fv,
-                "lower_bound": round(lower_bound, 2),
-                "upper_bound": round(upper_bound, 2),
-                "deviation_pct": round(
-                    ((fv - (q1 + q3) / 2) / abs((q1 + q3) / 2)) * 100, 2
-                ) if (q1 + q3) != 0 else 0,
-                "severity": "high" if abs(fv - (q1 + q3) / 2) > 2 * iqr else "medium",
-                "metric": metric_name,
-                "direction": direction,
-            })
+            anomalies.append(
+                {
+                    "index": i,
+                    "value": fv,
+                    "lower_bound": round(lower_bound, 2),
+                    "upper_bound": round(upper_bound, 2),
+                    "deviation_pct": round(((fv - (q1 + q3) / 2) / abs((q1 + q3) / 2)) * 100, 2)
+                    if (q1 + q3) != 0
+                    else 0,
+                    "severity": "high" if abs(fv - (q1 + q3) / 2) > 2 * iqr else "medium",
+                    "metric": metric_name,
+                    "direction": direction,
+                }
+            )
 
     return anomalies
 
@@ -106,16 +112,18 @@ def detect_rolling_anomalies(
 
         z = (float(arr[i]) - rolling_mean) / rolling_std
         if abs(z) > threshold:
-            anomalies.append({
-                "index": i,
-                "value": float(arr[i]),
-                "rolling_mean": round(rolling_mean, 2),
-                "rolling_std": round(rolling_std, 2),
-                "z_score": round(float(z), 4),
-                "severity": "high" if abs(z) > 3 else "medium",
-                "metric": metric_name,
-                "window": window,
-            })
+            anomalies.append(
+                {
+                    "index": i,
+                    "value": float(arr[i]),
+                    "rolling_mean": round(rolling_mean, 2),
+                    "rolling_std": round(rolling_std, 2),
+                    "z_score": round(float(z), 4),
+                    "severity": "high" if abs(z) > 3 else "medium",
+                    "metric": metric_name,
+                    "window": window,
+                }
+            )
 
     return anomalies
 
@@ -143,22 +151,22 @@ def detect_mad_anomalies(
     for i, val in enumerate(arr):
         modified_z = 0.6745 * (float(val) - median_val) / mad
         if abs(modified_z) > threshold:
-            anomalies.append({
-                "index": i,
-                "value": float(val),
-                "median": round(median_val, 2),
-                "mad": round(mad, 2),
-                "modified_z_score": round(float(modified_z), 4),
-                "severity": "high" if abs(modified_z) > 5 else "medium",
-                "metric": metric_name,
-            })
+            anomalies.append(
+                {
+                    "index": i,
+                    "value": float(val),
+                    "median": round(median_val, 2),
+                    "mad": round(mad, 2),
+                    "modified_z_score": round(float(modified_z), 4),
+                    "severity": "high" if abs(modified_z) > 5 else "medium",
+                    "metric": metric_name,
+                }
+            )
 
     return anomalies
 
 
-def detect_missing_values(
-    data: list[dict[str, Any]], columns: list[str]
-) -> list[dict[str, Any]]:
+def detect_missing_values(data: list[dict[str, Any]], columns: list[str]) -> list[dict[str, Any]]:
     """Detect missing values in specified columns."""
     anomalies: list[dict[str, Any]] = []
     total = len(data)
@@ -167,21 +175,21 @@ def detect_missing_values(
         missing_count = sum(1 for row in data if row.get(col) is None or row.get(col) == "")
         if missing_count > 0:
             pct = (missing_count / total) * 100 if total > 0 else 0
-            anomalies.append({
-                "type": "missing_values",
-                "metric": col,
-                "missing_count": missing_count,
-                "total_rows": total,
-                "missing_pct": round(pct, 2),
-                "severity": "high" if pct > 10 else "medium" if pct > 5 else "low",
-            })
+            anomalies.append(
+                {
+                    "type": "missing_values",
+                    "metric": col,
+                    "missing_count": missing_count,
+                    "total_rows": total,
+                    "missing_pct": round(pct, 2),
+                    "severity": "high" if pct > 10 else "medium" if pct > 5 else "low",
+                }
+            )
 
     return anomalies
 
 
-def detect_duplicates(
-    data: list[dict[str, Any]], key_columns: list[str]
-) -> list[dict[str, Any]]:
+def detect_duplicates(data: list[dict[str, Any]], key_columns: list[str]) -> list[dict[str, Any]]:
     """Detect duplicate records based on key columns."""
     seen: dict[str, int] = {}
     for row in data:
@@ -194,13 +202,15 @@ def detect_duplicates(
         return []
 
     total_dupes = sum(v - 1 for v in duplicates.values())
-    return [{
-        "type": "duplicate_records",
-        "duplicate_groups": len(duplicates),
-        "duplicate_rows": total_dupes,
-        "key_columns": key_columns,
-        "severity": "medium" if total_dupes < len(data) * 0.05 else "high",
-    }]
+    return [
+        {
+            "type": "duplicate_records",
+            "duplicate_groups": len(duplicates),
+            "duplicate_rows": total_dupes,
+            "key_columns": key_columns,
+            "severity": "medium" if total_dupes < len(data) * 0.05 else "high",
+        }
+    ]
 
 
 def detect_all_anomalies(
@@ -227,9 +237,7 @@ def detect_all_anomalies(
     if date_column and numeric_columns:
         first_metric = numeric_columns[0]
         values = [row.get(first_metric) for row in data]
-        all_anomalies.extend(
-            detect_rolling_anomalies(values, metric_name=first_metric)
-        )
+        all_anomalies.extend(detect_rolling_anomalies(values, metric_name=first_metric))
 
     # Missing values
     all_anomalies.extend(detect_missing_values(data, numeric_columns))

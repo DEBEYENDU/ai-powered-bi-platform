@@ -35,8 +35,13 @@ def validate_dataset(
     total_rows = len(df)
     if total_rows == 0:
         return issues, QualityScore(
-            overall=100, completeness=100, consistency=100,
-            accuracy=100, uniqueness=100, validity=100, timeliness=100,
+            overall=100,
+            completeness=100,
+            consistency=100,
+            accuracy=100,
+            uniqueness=100,
+            validity=100,
+            timeliness=100,
         )
 
     for col in df.columns:
@@ -102,9 +107,7 @@ def validate_dataset(
         if non_null.dtype == object and len(non_null) > 0:
             sample = non_null.head(200)
             if sample.str.contains(r"@").any():
-                invalid_emails = int(
-                    (~sample.astype(str).str.match(_EMAIL_RE, na=False)).sum()
-                )
+                invalid_emails = int((~sample.astype(str).str.match(_EMAIL_RE, na=False)).sum())
                 if invalid_emails > 0 and invalid_emails < len(sample) * 0.5:
                     issues.append(
                         QualityIssue(

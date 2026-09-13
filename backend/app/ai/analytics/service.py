@@ -132,9 +132,7 @@ class BusinessAnalystService:
         dashboard["datasets"] = datasets
         return dashboard
 
-    def _extract_numeric_columns(
-        self, rows: list[dict[str, Any]]
-    ) -> tuple[list[str], list[str]]:
+    def _extract_numeric_columns(self, rows: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
         """Identify numeric and non-numeric columns from data rows."""
         if not rows:
             return [], []
@@ -152,7 +150,9 @@ class BusinessAnalystService:
                     pass
             if numeric_count > len(values) * 0.6:
                 numeric_cols.append(col)
-            elif any(kw in col.lower() for kw in ("date", "time", "day", "month", "year", "period")):
+            elif any(
+                kw in col.lower() for kw in ("date", "time", "day", "month", "year", "period")
+            ):
                 date_cols.append(col)
 
         return numeric_cols, date_cols
@@ -223,11 +223,10 @@ class BusinessAnalystService:
     def _get_provider(self) -> Any:
         """Get the configured AI provider."""
         from app.ai.providers.registry import get_provider
+
         return get_provider()
 
-    async def _llm_insights(
-        self, data_context: str, comparison_context: str = ""
-    ) -> list[Insight]:
+    async def _llm_insights(self, data_context: str, comparison_context: str = "") -> list[Insight]:
         """Generate insights via LLM."""
         try:
             provider = self._get_provider()
@@ -420,61 +419,75 @@ class BusinessAnalystService:
                         if trend["direction"] == "up"
                         else InsightType.NEGATIVE_TREND
                     )
-                    insights.append(Insight(
-                        id=_uid(),
-                        type=insight_type,
-                        title=f"{title} — {col} {'increasing' if trend['direction'] == 'up' else 'decreasing'}",
-                        description=(
-                            f"{col} shows a {trend['direction']} trend "
-                            f"({trend['change_pct']:+.1f}% change, R²={trend['r_squared']:.2f})"
-                        ),
-                        evidence=[f"Trend direction: {trend['direction']}", f"Change: {trend['change_pct']:.1f}%"],
-                        confidence=Confidence.HIGH if trend["r_squared"] > 0.7 else Confidence.MEDIUM,
-                        metric=f"{title}.{col}",
-                        current_value=trend["last_value"],
-                        previous_value=trend["first_value"],
-                        change_pct=trend["change_pct"],
-                        impact=f"{'Positive' if trend['direction'] == 'up' else 'Negative'} impact on {title}",
-                    ))
+                    insights.append(
+                        Insight(
+                            id=_uid(),
+                            type=insight_type,
+                            title=f"{title} — {col} {'increasing' if trend['direction'] == 'up' else 'decreasing'}",
+                            description=(
+                                f"{col} shows a {trend['direction']} trend "
+                                f"({trend['change_pct']:+.1f}% change, R²={trend['r_squared']:.2f})"
+                            ),
+                            evidence=[
+                                f"Trend direction: {trend['direction']}",
+                                f"Change: {trend['change_pct']:.1f}%",
+                            ],
+                            confidence=Confidence.HIGH
+                            if trend["r_squared"] > 0.7
+                            else Confidence.MEDIUM,
+                            metric=f"{title}.{col}",
+                            current_value=trend["last_value"],
+                            previous_value=trend["first_value"],
+                            change_pct=trend["change_pct"],
+                            impact=f"{'Positive' if trend['direction'] == 'up' else 'Negative'} impact on {title}",
+                        )
+                    )
 
                 # Growth rate analysis
                 growth = compute_growth_rate(values)
                 if growth["avg_growth"] != 0:
-                    insights.append(Insight(
-                        id=_uid(),
-                        type=(
-                            InsightType.HIGHEST_GROWTH
-                            if growth["avg_growth"] > 0
-                            else InsightType.LOWEST_GROWTH
-                        ),
-                        title=f"{title} — {col} growth rate",
-                        description=(
-                            f"Average growth: {growth['avg_growth']:+.1f}%, "
-                            f"range: [{growth['min_growth']:.1f}%, {growth['max_growth']:.1f}%]"
-                        ),
-                        evidence=[f"Average growth: {growth['avg_growth']:.1f}%"],
-                        confidence=Confidence.MEDIUM,
-                        metric=f"{title}.{col}",
-                        current_value=growth["avg_growth"],
-                        change_pct=growth["avg_growth"],
-                    ))
+                    insights.append(
+                        Insight(
+                            id=_uid(),
+                            type=(
+                                InsightType.HIGHEST_GROWTH
+                                if growth["avg_growth"] > 0
+                                else InsightType.LOWEST_GROWTH
+                            ),
+                            title=f"{title} — {col} growth rate",
+                            description=(
+                                f"Average growth: {growth['avg_growth']:+.1f}%, "
+                                f"range: [{growth['min_growth']:.1f}%, {growth['max_growth']:.1f}%]"
+                            ),
+                            evidence=[f"Average growth: {growth['avg_growth']:.1f}%"],
+                            confidence=Confidence.MEDIUM,
+                            metric=f"{title}.{col}",
+                            current_value=growth["avg_growth"],
+                            change_pct=growth["avg_growth"],
+                        )
+                    )
 
                 # Volatility analysis
                 vol = compute_volatility(values)
                 if vol["volatility"] == "high":
-                    insights.append(Insight(
-                        id=_uid(),
-                        type=InsightType.NEGATIVE_TREND,
-                        title=f"{title} — {col} high volatility",
-                        description=(
-                            f"{col} shows high volatility (CV={vol['cv']:.1f}%, "
-                            f"max drawdown={vol['max_drawdown']:.1f}%)"
-                        ),
-                        evidence=[f"CV: {vol['cv']:.1f}%", f"Max drawdown: {vol['max_drawdown']:.1f}%"],
-                        confidence=Confidence.HIGH,
-                        metric=f"{title}.{col}",
-                        impact="High volatility indicates instability",
-                    ))
+                    insights.append(
+                        Insight(
+                            id=_uid(),
+                            type=InsightType.NEGATIVE_TREND,
+                            title=f"{title} — {col} high volatility",
+                            description=(
+                                f"{col} shows high volatility (CV={vol['cv']:.1f}%, "
+                                f"max drawdown={vol['max_drawdown']:.1f}%)"
+                            ),
+                            evidence=[
+                                f"CV: {vol['cv']:.1f}%",
+                                f"Max drawdown: {vol['max_drawdown']:.1f}%",
+                            ],
+                            confidence=Confidence.HIGH,
+                            metric=f"{title}.{col}",
+                            impact="High volatility indicates instability",
+                        )
+                    )
 
             # Ranking analysis
             if len(rows) > 1:
@@ -490,16 +503,18 @@ class BusinessAnalystService:
                     )
                     if ranked["top"]:
                         top_names = [str(r.get(name_col, "?")) for r in ranked["top"][:3]]
-                        insights.append(Insight(
-                            id=_uid(),
-                            type=InsightType.TOP_PRODUCT,
-                            title=f"{title} — Top performers by {rank_col}",
-                            description=f"Top performers: {', '.join(top_names)}",
-                            evidence=[f"Top by {rank_col}: {', '.join(top_names)}"],
-                            confidence=Confidence.HIGH,
-                            metric=f"{title}.{rank_col}",
-                            current_value=ranked["max_value"],
-                        ))
+                        insights.append(
+                            Insight(
+                                id=_uid(),
+                                type=InsightType.TOP_PRODUCT,
+                                title=f"{title} — Top performers by {rank_col}",
+                                description=f"Top performers: {', '.join(top_names)}",
+                                evidence=[f"Top by {rank_col}: {', '.join(top_names)}"],
+                                confidence=Confidence.HIGH,
+                                metric=f"{title}.{rank_col}",
+                                current_value=ranked["max_value"],
+                            )
+                        )
 
         return insights
 
@@ -536,29 +551,30 @@ class BusinessAnalystService:
                 raw_type = raw.get("type", "outlier")
                 anomaly_type = atype_map.get(raw_type, AnomalyType.OUTLIER)
 
-                all_anomalies.append(Anomaly(
-                    id=_uid(),
-                    type=anomaly_type,
-                    title=f"{ds.get('title', ds_id)} — {raw.get('metric', 'data')} anomaly",
-                    description=(
-                        f"Detected {raw_type} in {raw.get('metric', 'data')}. "
-                        f"Severity: {raw.get('severity', 'medium')}"
-                    ),
-                    severity=raw.get("severity", "medium"),
-                    metric=raw.get("metric", ""),
-                    expected_value=float(raw.get("expected", raw.get("median", 0))),
-                    actual_value=float(raw.get("value", 0)),
-                    deviation_pct=float(raw.get("deviation_pct", 0)),
-                    confidence=(
-                        Confidence.HIGH if raw.get("severity") == "high"
-                        else Confidence.MEDIUM
-                    ),
-                    evidence=[
-                        f"{k}: {v}"
-                        for k, v in raw.items()
-                        if k not in ("type", "severity", "metric")
-                    ],
-                ))
+                all_anomalies.append(
+                    Anomaly(
+                        id=_uid(),
+                        type=anomaly_type,
+                        title=f"{ds.get('title', ds_id)} — {raw.get('metric', 'data')} anomaly",
+                        description=(
+                            f"Detected {raw_type} in {raw.get('metric', 'data')}. "
+                            f"Severity: {raw.get('severity', 'medium')}"
+                        ),
+                        severity=raw.get("severity", "medium"),
+                        metric=raw.get("metric", ""),
+                        expected_value=float(raw.get("expected", raw.get("median", 0))),
+                        actual_value=float(raw.get("value", 0)),
+                        deviation_pct=float(raw.get("deviation_pct", 0)),
+                        confidence=(
+                            Confidence.HIGH if raw.get("severity") == "high" else Confidence.MEDIUM
+                        ),
+                        evidence=[
+                            f"{k}: {v}"
+                            for k, v in raw.items()
+                            if k not in ("type", "severity", "metric")
+                        ],
+                    )
+                )
 
         return all_anomalies
 
@@ -583,23 +599,25 @@ class BusinessAnalystService:
                 result = generate_forecast(values, horizon=forecast_days, metric_name=col)
 
                 if result.get("points"):
-                    forecasts.append(Forecast(
-                        metric=f"{ds.get('title', ds_id)}.{col}",
-                        horizon_days=forecast_days,
-                        points=[
-                            ForecastPoint(
-                                date=str(p.get("index", "")),
-                                value=p["value"],
-                                lower_bound=p.get("lower_bound", p["value"]),
-                                upper_bound=p.get("upper_bound", p["value"]),
-                            )
-                            for p in result["points"]
-                        ],
-                        trend=result.get("trend", ""),
-                        seasonality_detected=result.get("seasonality_detected", False),
-                        confidence=Confidence(result.get("confidence", "medium")),
-                        accuracy_score=result.get("accuracy_score", 0),
-                    ))
+                    forecasts.append(
+                        Forecast(
+                            metric=f"{ds.get('title', ds_id)}.{col}",
+                            horizon_days=forecast_days,
+                            points=[
+                                ForecastPoint(
+                                    date=str(p.get("index", "")),
+                                    value=p["value"],
+                                    lower_bound=p.get("lower_bound", p["value"]),
+                                    upper_bound=p.get("upper_bound", p["value"]),
+                                )
+                                for p in result["points"]
+                            ],
+                            trend=result.get("trend", ""),
+                            seasonality_detected=result.get("seasonality_detected", False),
+                            confidence=Confidence(result.get("confidence", "medium")),
+                            accuracy_score=result.get("accuracy_score", 0),
+                        )
+                    )
 
         return forecasts
 
@@ -698,14 +716,16 @@ class BusinessAnalystService:
 
             data_summary = json.dumps(rows[:5], default=str)
             explanation = await self._llm_chart_explanation(title, chart_type, data_summary)
-            chart_explanations.append(ChartExplanation(
-                chart_id=ds_id,
-                title=title,
-                meaning=explanation.get("meaning", ""),
-                action=explanation.get("action", ""),
-                importance=explanation.get("importance", ""),
-                confidence=Confidence(explanation.get("confidence", "medium")),
-            ))
+            chart_explanations.append(
+                ChartExplanation(
+                    chart_id=ds_id,
+                    title=title,
+                    meaning=explanation.get("meaning", ""),
+                    action=explanation.get("action", ""),
+                    importance=explanation.get("importance", ""),
+                    confidence=Confidence(explanation.get("confidence", "medium")),
+                )
+            )
 
         # 11. Risk and opportunity scores
         risk_score = min(
@@ -716,7 +736,8 @@ class BusinessAnalystService:
         )
         opportunity_score = min(
             100,
-            len([i for i in all_insights if i.type.value in ("positive_trend", "highest_growth")]) * 15
+            len([i for i in all_insights if i.type.value in ("positive_trend", "highest_growth")])
+            * 15
             + len([r for r in recs if r.category == "growth"]) * 10,
         )
 

@@ -84,13 +84,15 @@ class LayoutGenerator:
             x, y = self._find_position(cols, w, h, occupied)
             occupied.append((x, y, w, h))
 
-            positions.append({
-                "widget_id": widget.get("id", ""),
-                "x": x,
-                "y": y,
-                "w": w,
-                "h": h,
-            })
+            positions.append(
+                {
+                    "widget_id": widget.get("id", ""),
+                    "x": x,
+                    "y": y,
+                    "w": w,
+                    "h": h,
+                }
+            )
 
         return positions
 
@@ -110,7 +112,10 @@ class LayoutGenerator:
 
     def _overlaps(
         self,
-        x: int, y: int, w: int, h: int,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
         occupied: list[tuple[int, int, int, int]],
     ) -> bool:
         for ox, oy, ow, oh in occupied:
@@ -123,9 +128,21 @@ class LayoutGenerator:
 
     def _priority(self, widget_type: str) -> int:
         order = {
-            "kpi": 0, "gauge": 1, "text": 2,
-            "line": 10, "bar": 11, "area": 12, "pie": 13, "donut": 14,
-            "scatter": 15, "heatmap": 16, "treemap": 17, "forecast": 18,
-            "timeline": 20, "table": 30, "pivot": 31, "map": 25,
+            "kpi": 0,
+            "gauge": 1,
+            "text": 2,
+            "line": 10,
+            "bar": 11,
+            "area": 12,
+            "pie": 13,
+            "donut": 14,
+            "scatter": 15,
+            "heatmap": 16,
+            "treemap": 17,
+            "forecast": 18,
+            "timeline": 20,
+            "table": 30,
+            "pivot": 31,
+            "map": 25,
         }
         return order.get(widget_type, 99)

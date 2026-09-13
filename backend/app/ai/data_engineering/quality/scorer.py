@@ -22,8 +22,13 @@ def compute_quality_score(
 
     if n_rows == 0 or n_cols == 0:
         return QualityScore(
-            overall=100, completeness=100, consistency=100,
-            accuracy=100, uniqueness=100, validity=100, timeliness=100,
+            overall=100,
+            completeness=100,
+            consistency=100,
+            accuracy=100,
+            uniqueness=100,
+            validity=100,
+            timeliness=100,
         )
 
     # ---- Completeness ----
@@ -139,9 +144,7 @@ def compute_quality_score(
             "medium": 3,
             "low": 1,
         }
-        total_deduction = sum(
-            severity_deduction.get(i.get("severity", "low"), 2) for i in issues
-        )
+        total_deduction = sum(severity_deduction.get(i.get("severity", "low"), 2) for i in issues)
         overall = max(0, overall - min(total_deduction, 30))
 
     return QualityScore(
@@ -170,6 +173,8 @@ def score_dimension_breakdown(df: pd.DataFrame) -> dict[str, Any]:
         "missing_cells": sum(missing_per_col.values()),
         "duplicate_rows": dup_rows,
         "missing_per_column": missing_per_col,
-        "completeness_pct": round((1 - sum(missing_per_col.values()) / max(total_cells, 1)) * 100, 2),
+        "completeness_pct": round(
+            (1 - sum(missing_per_col.values()) / max(total_cells, 1)) * 100, 2
+        ),
         "uniqueness_pct": round((1 - dup_rows / max(n_rows, 1)) * 100, 2),
     }

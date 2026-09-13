@@ -59,6 +59,4 @@ async def nlq_schema(
         schema = service.get_schema(force_refresh=force_refresh)
         return schema
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Schema introspection failed: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Schema introspection failed: {exc}") from exc

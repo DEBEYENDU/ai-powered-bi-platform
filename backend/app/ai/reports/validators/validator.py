@@ -5,9 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 ALLOWED_REPORT_TYPES = {
-    "executive", "sales", "marketing", "finance", "operations",
-    "customer", "inventory", "hr", "manufacturing", "healthcare",
-    "retail", "custom",
+    "executive",
+    "sales",
+    "marketing",
+    "finance",
+    "operations",
+    "customer",
+    "inventory",
+    "hr",
+    "manufacturing",
+    "healthcare",
+    "retail",
+    "custom",
 }
 
 ALLOWED_EXPORT_FORMATS = {"pdf", "docx", "pptx", "xlsx", "csv", "json", "markdown", "html"}
@@ -15,8 +24,17 @@ ALLOWED_EXPORT_FORMATS = {"pdf", "docx", "pptx", "xlsx", "csv", "json", "markdow
 ALLOWED_SCHEDULE_FREQUENCIES = {"daily", "weekly", "monthly", "quarterly", "yearly", "cron"}
 
 BLOCKED_SQL_PATTERNS = {
-    "DROP", "DELETE", "TRUNCATE", "ALTER", "INSERT", "UPDATE",
-    "CREATE", "GRANT", "REVOKE", "EXEC", "EXECUTE",
+    "DROP",
+    "DELETE",
+    "TRUNCATE",
+    "ALTER",
+    "INSERT",
+    "UPDATE",
+    "CREATE",
+    "GRANT",
+    "REVOKE",
+    "EXEC",
+    "EXECUTE",
 }
 
 MAX_PROMPT_LENGTH = 10000
@@ -49,7 +67,16 @@ def validate_prompt(prompt: str) -> str | None:
 
 def validate_branding(branding: dict[str, Any]) -> str | None:
     """Validate branding configuration."""
-    allowed_keys = {"logo", "colors", "font", "page_size", "orientation", "header", "footer", "watermark"}
+    allowed_keys = {
+        "logo",
+        "colors",
+        "font",
+        "page_size",
+        "orientation",
+        "header",
+        "footer",
+        "watermark",
+    }
     unknown = set(branding.keys()) - allowed_keys
     if unknown:
         return f"Unknown branding options: {sorted(unknown)}"

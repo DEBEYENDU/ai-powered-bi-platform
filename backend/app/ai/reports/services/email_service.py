@@ -46,10 +46,12 @@ class EmailService:
 
             if attachment_path:
                 import os
+
                 if os.path.exists(attachment_path):
                     with open(attachment_path, "rb") as f:
                         from email import encoders
                         from email.mime.base import MIMEBase
+
                         part = MIMEBase("application", "octet-stream")
                         part.set_payload(f.read())
                         encoders.encode_base64(part)

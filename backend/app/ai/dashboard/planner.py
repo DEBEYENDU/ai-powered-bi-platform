@@ -155,6 +155,7 @@ class DashboardPlanner:
             return json.loads(cleaned)
         except json.JSONDecodeError:
             import re
+
             match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
                 return json.loads(match.group())

@@ -111,9 +111,6 @@ class SchemaExplorer:
             for rel in schema["relationships"]:
                 from_cols = ", ".join(rel["from_columns"])
                 to_cols = ", ".join(rel["to_columns"])
-                lines.append(
-                    f"  {rel['from_table']}.{from_cols} -> "
-                    f"{rel['to_table']}.{to_cols}"
-                )
+                lines.append(f"  {rel['from_table']}.{from_cols} -> {rel['to_table']}.{to_cols}")
 
         return "\n".join(lines)

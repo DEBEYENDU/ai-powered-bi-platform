@@ -28,6 +28,7 @@ class ScheduleService:
     ) -> dict[str, Any]:
         """Create a schedule for a report."""
         import uuid
+
         schedule_id = str(uuid.uuid4())
         try:
             self._db.execute(
@@ -50,7 +51,12 @@ class ScheduleService:
                 },
             )
             self._db.commit()
-            return {"id": schedule_id, "report_id": report_id, "frequency": frequency, "enabled": enabled}
+            return {
+                "id": schedule_id,
+                "report_id": report_id,
+                "frequency": frequency,
+                "enabled": enabled,
+            }
         except Exception:  # noqa: BLE001
             self._db.rollback()
             return {"error": "Failed to create schedule"}
@@ -60,15 +66,25 @@ class ScheduleService:
         try:
             if report_id:
                 result = self._db.execute(
-                    text("SELECT id, report_id, frequency, timezone, enabled FROM ai_report_schedules WHERE report_id = :rid"),
+                    text(
+                        "SELECT id, report_id, frequency, timezone, enabled FROM ai_report_schedules WHERE report_id = :rid"
+                    ),
                     {"rid": report_id},
                 )
             else:
                 result = self._db.execute(
-                    text("SELECT id, report_id, frequency, timezone, enabled FROM ai_report_schedules LIMIT 100")
+                    text(
+                        "SELECT id, report_id, frequency, timezone, enabled FROM ai_report_schedules LIMIT 100"
+                    )
                 )
             return [
-                {"id": str(r[0]), "report_id": str(r[1]), "frequency": r[2], "timezone": r[3], "enabled": r[4]}
+                {
+                    "id": str(r[0]),
+                    "report_id": str(r[1]),
+                    "frequency": r[2],
+                    "timezone": r[3],
+                    "enabled": r[4],
+                }
                 for r in result.fetchall()
             ]
         except Exception:  # noqa: BLE001
@@ -77,7 +93,9 @@ class ScheduleService:
     def delete_schedule(self, schedule_id: str) -> bool:
         """Delete a schedule."""
         try:
-            self._db.execute(text("DELETE FROM ai_report_schedules WHERE id = :id"), {"id": schedule_id})
+            self._db.execute(
+                text("DELETE FROM ai_report_schedules WHERE id = :id"), {"id": schedule_id}
+            )
             self._db.commit()
             return True
         except Exception:  # noqa: BLE001

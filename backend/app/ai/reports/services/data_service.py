@@ -105,14 +105,16 @@ class DataService:
                 if values:
                     total = sum(values)
                     total / len(values)
-                    kpis.append({
-                        "name": f"{title} — {col}",
-                        "value": round(total, 2),
-                        "unit": "",
-                        "change_pct": 0.0,
-                        "trend": "stable",
-                        "description": f"Sum of {col} in {title}",
-                    })
+                    kpis.append(
+                        {
+                            "name": f"{title} — {col}",
+                            "value": round(total, 2),
+                            "unit": "",
+                            "change_pct": 0.0,
+                            "trend": "stable",
+                            "description": f"Sum of {col} in {title}",
+                        }
+                    )
                     if len(kpis) >= 20:
                         return kpis
         return kpis
@@ -125,13 +127,15 @@ class DataService:
             if chart_type in ("table", "text"):
                 continue
             rows = ds.get("rows", [])
-            charts.append({
-                "id": ds_id,
-                "title": ds.get("title", ds_id),
-                "chart_type": chart_type,
-                "data": rows[:50],
-                "config": {},
-            })
+            charts.append(
+                {
+                    "id": ds_id,
+                    "title": ds.get("title", ds_id),
+                    "chart_type": chart_type,
+                    "data": rows[:50],
+                    "config": {},
+                }
+            )
             if len(charts) >= 10:
                 break
         return charts

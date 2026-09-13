@@ -20,9 +20,7 @@ class GeminiProvider(LLMProvider):
         self.timeout = timeout
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
 
-    def _convert_messages(
-        self, messages: list[ChatMessage]
-    ) -> tuple[str, list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[ChatMessage]) -> tuple[str, list[dict[str, Any]]]:
         """Convert to Gemini format: system instruction + contents."""
         system = ""
         contents: list[dict[str, Any]] = []

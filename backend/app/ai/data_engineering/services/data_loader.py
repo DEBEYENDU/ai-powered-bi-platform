@@ -122,7 +122,11 @@ def export_dataframe(
         with open("/tmp/_export.xlsx", "rb") as f:
             content = f.read()
         os.remove("/tmp/_export.xlsx")
-        return content, f"export_{dataset_id}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        return (
+            content,
+            f"export_{dataset_id}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     elif format == "parquet":
         buf = "/tmp/_export.parquet"
         df.to_parquet(buf, index=False)
@@ -153,4 +157,4 @@ def _sql_literal(val: Any) -> str:
         return "NULL"
     if isinstance(val, (int, float)):
         return str(val)
-    return f"'{str(val).replace(chr(39), chr(39)+chr(39))}'"
+    return f"'{str(val).replace(chr(39), chr(39) + chr(39))}'"

@@ -38,14 +38,17 @@ def compute_regression_metrics(
 
     # Explained variance
     from sklearn.metrics import explained_variance_score
+
     evs = float(explained_variance_score(y_true, y_pred))
 
     # Max error
     from sklearn.metrics import max_error
+
     me = float(max_error(y_true, y_pred))
 
     # Median absolute error
     from sklearn.metrics import median_absolute_error
+
     med_ae = float(median_absolute_error(y_true, y_pred))
 
     return {
@@ -90,7 +93,9 @@ def compute_classification_metrics(
             if y_proba_arr.ndim == 1:
                 roc_auc = float(roc_auc_score(y_true, y_proba_arr))
             else:
-                roc_auc = float(roc_auc_score(y_true, y_proba_arr, multi_class="ovr", average="weighted"))
+                roc_auc = float(
+                    roc_auc_score(y_true, y_proba_arr, multi_class="ovr", average="weighted")
+                )
         except ValueError:
             pass
 
@@ -102,6 +107,7 @@ def compute_classification_metrics(
 
     # Log loss
     from sklearn.metrics import log_loss
+
     try:
         ll = float(log_loss(y_true, y_proba if y_proba is not None else y_pred))
     except Exception:
@@ -143,7 +149,7 @@ def compute_time_series_metrics(
     # Theil's U
     if len(y_true) > 1:
         numerator = np.sqrt(np.mean((y_true - y_pred) ** 2))
-        denominator = np.sqrt(np.mean(y_true ** 2)) + np.sqrt(np.mean(y_pred ** 2))
+        denominator = np.sqrt(np.mean(y_true**2)) + np.sqrt(np.mean(y_pred**2))
         theils_u = float(numerator / max(denominator, 1e-10))
     else:
         theils_u = 0.0
@@ -151,7 +157,12 @@ def compute_time_series_metrics(
     # Weighted MAPE
     nonzero = y_true != 0
     if nonzero.sum() > 0:
-        wmape = float(np.sum(np.abs(y_true[nonzero] - y_pred[nonzero])) / np.sum(np.abs(y_true[nonzero]))) * 100
+        wmape = (
+            float(
+                np.sum(np.abs(y_true[nonzero] - y_pred[nonzero])) / np.sum(np.abs(y_true[nonzero]))
+            )
+            * 100
+        )
     else:
         wmape = 0.0
 
@@ -208,6 +219,6 @@ def compute_residual_analysis(
         "skewness": round(float(pd.Series(residuals).skew()), 4),
         "kurtosis": round(float(pd.Series(residuals).kurtosis()), 4),
         "normality_test": {
-            "jarque_bera": round(float(np.mean(residuals ** 3)), 4),
+            "jarque_bera": round(float(np.mean(residuals**3)), 4),
         },
     }

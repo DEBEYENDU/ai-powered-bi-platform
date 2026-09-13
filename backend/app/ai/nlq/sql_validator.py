@@ -65,9 +65,7 @@ class SQLValidator:
                 raise SQLValidationError(message, "WRITE_NOT_ALLOWED")
 
         if not re.match(r"^\s*SELECT\b", upper):
-            raise SQLValidationError(
-                "Only SELECT statements are allowed", "SELECT_ONLY"
-            )
+            raise SQLValidationError("Only SELECT statements are allowed", "SELECT_ONLY")
 
     def _check_injection(self, sql: str) -> None:
         for pattern in _MULTI_STATEMENT_PATTERNS:
@@ -89,9 +87,7 @@ class SQLValidator:
         upper = sql.upper()
         for func in dangerous_functions:
             if func in upper:
-                raise SQLValidationError(
-                    f"Function {func} is not allowed", "DANGEROUS_FUNCTION"
-                )
+                raise SQLValidationError(f"Function {func} is not allowed", "DANGEROUS_FUNCTION")
 
     def _check_length(self, sql: str) -> None:
         if len(sql) > 10000:

@@ -127,10 +127,7 @@ def detect_cross_table_relationships(
                             )
 
                     # FK pattern: orders.customer_id → customers.id
-                    elif (
-                        col1_lower.endswith("_id")
-                        and col1_lower.replace("_id", "") == col2_lower
-                    ):
+                    elif col1_lower.endswith("_id") and col1_lower.replace("_id", "") == col2_lower:
                         common = set(df1[col1].dropna()) & set(df2[col2].dropna())
                         if len(common) > 0:
                             conf = min(len(common) / max(len(df1[col1].dropna()), 1), 1.0)

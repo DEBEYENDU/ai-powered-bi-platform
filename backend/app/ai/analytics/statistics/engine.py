@@ -135,7 +135,7 @@ def compute_correlation(x_values: list[Any], y_values: list[Any]) -> dict[str, A
         strength = "none"
 
     # Simplified p-value approximation using t-distribution
-    t_stat = corr * math.sqrt((min_len - 2) / (1 - corr ** 2)) if abs(corr) < 1.0 else float("inf")
+    t_stat = corr * math.sqrt((min_len - 2) / (1 - corr**2)) if abs(corr) < 1.0 else float("inf")
 
     return {
         "correlation": round(corr, 4),
@@ -168,7 +168,11 @@ def detect_seasonality(values: list[Any], period: int = 12) -> dict[str, Any]:
         "seasonal": abs(autocorr) > 0.3,
         "period": period,
         "autocorrelation": round(autocorr, 4),
-        "strength": "strong" if abs(autocorr) > 0.6 else "moderate" if abs(autocorr) > 0.3 else "weak",
+        "strength": "strong"
+        if abs(autocorr) > 0.6
+        else "moderate"
+        if abs(autocorr) > 0.3
+        else "weak",
     }
 
 
@@ -207,9 +211,7 @@ def compute_volatility(values: list[Any]) -> dict[str, Any]:
     }
 
 
-def compare_periods(
-    current: list[Any], previous: list[Any]
-) -> dict[str, Any]:
+def compare_periods(current: list[Any], previous: list[Any]) -> dict[str, Any]:
     """Compare two periods and compute absolute and percentage changes."""
     curr_stats = compute_basic_stats(current)
     prev_stats = compute_basic_stats(previous)
@@ -236,9 +238,7 @@ def compare_periods(
     }
 
 
-def rank_values(
-    data: list[dict[str, Any]], key: str, top_n: int = 5
-) -> dict[str, Any]:
+def rank_values(data: list[dict[str, Any]], key: str, top_n: int = 5) -> dict[str, Any]:
     """Rank items by a numeric key and return top/bottom N."""
     valid = []
     for item in data:

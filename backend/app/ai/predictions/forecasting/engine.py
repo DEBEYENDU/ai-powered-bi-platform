@@ -77,14 +77,16 @@ def forecast_prophet(
 
     predictions: list[dict[str, Any]] = []
     for _, row in forecast_future.iterrows():
-        predictions.append({
-            "date": row["ds"].strftime("%Y-%m-%d"),
-            "value": round(float(row["yhat"]), 4),
-            "lower_bound": round(float(row["yhat_lower"]), 4),
-            "upper_bound": round(float(row["yhat_upper"]), 4),
-            "best_case": round(float(row["yhat_upper"]), 4),
-            "worst_case": round(float(row["yhat_lower"]), 4),
-        })
+        predictions.append(
+            {
+                "date": row["ds"].strftime("%Y-%m-%d"),
+                "value": round(float(row["yhat"]), 4),
+                "lower_bound": round(float(row["yhat_lower"]), 4),
+                "upper_bound": round(float(row["yhat_upper"]), 4),
+                "best_case": round(float(row["yhat_upper"]), 4),
+                "worst_case": round(float(row["yhat_lower"]), 4),
+            }
+        )
 
     # Compute trend
     if len(predictions) >= 2:
@@ -156,19 +158,24 @@ def forecast_arima(
         val = float(pred_mean.iloc[i]) if i < len(pred_mean) else float(pred_mean.iloc[-1])
         lower = float(conf_int.iloc[i, 0]) if i < len(conf_int) else val * 0.9
         upper = float(conf_int.iloc[i, 1]) if i < len(conf_int) else val * 1.1
-        predictions.append({
-            "date": dt.strftime("%Y-%m-%d"),
-            "value": round(val, 4),
-            "lower_bound": round(lower, 4),
-            "upper_bound": round(upper, 4),
-            "best_case": round(upper, 4),
-            "worst_case": round(lower, 4),
-        })
+        predictions.append(
+            {
+                "date": dt.strftime("%Y-%m-%d"),
+                "value": round(val, 4),
+                "lower_bound": round(lower, 4),
+                "upper_bound": round(upper, 4),
+                "best_case": round(upper, 4),
+                "worst_case": round(lower, 4),
+            }
+        )
 
     growth_pct = 0.0
     trend = "stable"
     if len(predictions) >= 2:
-        growth_pct = ((predictions[-1]["value"] - predictions[0]["value"]) / max(abs(predictions[0]["value"]), 1e-10)) * 100
+        growth_pct = (
+            (predictions[-1]["value"] - predictions[0]["value"])
+            / max(abs(predictions[0]["value"]), 1e-10)
+        ) * 100
         trend = "increasing" if growth_pct > 1 else "decreasing" if growth_pct < -1 else "stable"
 
     return {
@@ -225,19 +232,24 @@ def forecast_sarima(
         val = float(pred_mean.iloc[i]) if i < len(pred_mean) else float(pred_mean.iloc[-1])
         lower = float(conf_int.iloc[i, 0]) if i < len(conf_int) else val * 0.9
         upper = float(conf_int.iloc[i, 1]) if i < len(conf_int) else val * 1.1
-        predictions.append({
-            "date": dt.strftime("%Y-%m-%d"),
-            "value": round(val, 4),
-            "lower_bound": round(lower, 4),
-            "upper_bound": round(upper, 4),
-            "best_case": round(upper, 4),
-            "worst_case": round(lower, 4),
-        })
+        predictions.append(
+            {
+                "date": dt.strftime("%Y-%m-%d"),
+                "value": round(val, 4),
+                "lower_bound": round(lower, 4),
+                "upper_bound": round(upper, 4),
+                "best_case": round(upper, 4),
+                "worst_case": round(lower, 4),
+            }
+        )
 
     growth_pct = 0.0
     trend = "stable"
     if len(predictions) >= 2:
-        growth_pct = ((predictions[-1]["value"] - predictions[0]["value"]) / max(abs(predictions[0]["value"]), 1e-10)) * 100
+        growth_pct = (
+            (predictions[-1]["value"] - predictions[0]["value"])
+            / max(abs(predictions[0]["value"]), 1e-10)
+        ) * 100
         trend = "increasing" if growth_pct > 1 else "decreasing" if growth_pct < -1 else "stable"
 
     return {
@@ -280,19 +292,24 @@ def _fallback_forecast(
     for i in range(1, periods + 1):
         val = slope * (len(values) + i) + intercept
         margin = std_val * (1.96 if i <= 30 else 2.5)
-        predictions.append({
-            "date": f"day_{i}",
-            "value": round(float(val), 4),
-            "lower_bound": round(float(val - margin), 4),
-            "upper_bound": round(float(val + margin), 4),
-            "best_case": round(float(val + margin * 1.5), 4),
-            "worst_case": round(float(val - margin * 1.5), 4),
-        })
+        predictions.append(
+            {
+                "date": f"day_{i}",
+                "value": round(float(val), 4),
+                "lower_bound": round(float(val - margin), 4),
+                "upper_bound": round(float(val + margin), 4),
+                "best_case": round(float(val + margin * 1.5), 4),
+                "worst_case": round(float(val - margin * 1.5), 4),
+            }
+        )
 
     growth_pct = 0.0
     trend = "stable"
     if len(predictions) >= 2:
-        growth_pct = ((predictions[-1]["value"] - predictions[0]["value"]) / max(abs(predictions[0]["value"]), 1e-10)) * 100
+        growth_pct = (
+            (predictions[-1]["value"] - predictions[0]["value"])
+            / max(abs(predictions[0]["value"]), 1e-10)
+        ) * 100
         trend = "increasing" if growth_pct > 1 else "decreasing" if growth_pct < -1 else "stable"
 
     return {

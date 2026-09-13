@@ -28,7 +28,9 @@ class DatasetRecord(Base):
     __tablename__ = "de_datasets"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     owner_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -44,7 +46,9 @@ class DatasetRecord(Base):
     tags: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(50), default="uploaded", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -71,7 +75,9 @@ class PipelineRecord(Base):
     __tablename__ = "de_pipelines"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     dataset_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -82,7 +88,9 @@ class PipelineRecord(Base):
     last_run_status: Mapped[str] = mapped_column(String(50), default="")
     run_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -92,7 +100,9 @@ class AuditLogRecord(Base):
     __tablename__ = "de_audit_logs"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
-    organization_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    organization_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
     dataset_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     details: Mapped[dict] = mapped_column(JSON, default=dict)

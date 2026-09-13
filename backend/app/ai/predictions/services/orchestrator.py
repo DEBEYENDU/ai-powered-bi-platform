@@ -66,9 +66,7 @@ async def predict(request: PredictRequest) -> PredictResponse:
         return PredictResponse(success=False, error=str(exc))
 
 
-async def _forecast_time_series(
-    df: pd.DataFrame, request: PredictRequest
-) -> PredictionResult:
+async def _forecast_time_series(df: pd.DataFrame, request: PredictRequest) -> PredictionResult:
     """Handle time series forecasting."""
     # Find date column
     date_col = None
@@ -88,11 +86,17 @@ async def _forecast_time_series(
 
     # Try forecasting
     if model_type == "prophet":
-        result = forecast_prophet(df, date_col, request.target, request.horizon, request.confidence_level)
+        result = forecast_prophet(
+            df, date_col, request.target, request.horizon, request.confidence_level
+        )
     elif model_type == "sarima":
-        result = forecast_sarima(df, date_col, request.target, request.horizon, request.confidence_level)
+        result = forecast_sarima(
+            df, date_col, request.target, request.horizon, request.confidence_level
+        )
     else:
-        result = forecast_arima(df, date_col, request.target, request.horizon, request.confidence_level)
+        result = forecast_arima(
+            df, date_col, request.target, request.horizon, request.confidence_level
+        )
 
     predictions = [ForecastPoint(**p) for p in result.get("predictions", [])]
 
@@ -118,10 +122,12 @@ async def _forecast_time_series(
     )
 
     # AI recommendations
-    forecast_summary = "\n".join([
-        f"  {p.date}: {p.value:.2f} [{p.lower_bound:.2f}-{p.upper_bound:.2f}]"
-        for p in predictions[:10]
-    ])
+    forecast_summary = "\n".join(
+        [
+            f"  {p.date}: {p.value:.2f} [{p.lower_bound:.2f}-{p.upper_bound:.2f}]"
+            for p in predictions[:10]
+        ]
+    )
 
     ai_recs = await ai_service.generate_business_recommendations(
         target=request.target,
@@ -143,16 +149,16 @@ async def _forecast_time_series(
         trend=result.get("trend", "stable"),
         growth_percentage=result.get("growth_percentage", 0),
         risk_score=risk["risk_score"],
-        metrics=ModelMetrics(**{k: v for k, v in metrics.items() if k in ModelMetrics.model_fields}),
+        metrics=ModelMetrics(
+            **{k: v for k, v in metrics.items() if k in ModelMetrics.model_fields}
+        ),
         explainability=explainability,
         recommendations=recommendations,
         created_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
     )
 
 
-async def _predict_regression(
-    df: pd.DataFrame, request: PredictRequest
-) -> PredictionResult:
+async def _predict_regression(df: pd.DataFrame, request: PredictRequest) -> PredictionResult:
     """Handle regression prediction."""
     model_type = request.model_type.value if request.model_type else "auto"
 
@@ -195,24 +201,26 @@ async def _predict_regression(
         noise = np.random.normal(0, metrics_data.get("rmse", 0) * 0.1)
         val = last_val * (1 + (i * avg_importance * 0.01)) + noise
         margin = metrics_data.get("rmse", 0) * (1 + i * 0.02)
-        predictions.append(ForecastPoint(
-            date=f"day_{i}",
-            value=round(float(val), 4),
-            lower_bound=round(float(val - margin), 4),
-            upper_bound=round(float(val + margin), 4),
-            best_case=round(float(val + margin * 1.5), 4),
-            worst_case=round(float(val - margin * 1.5), 4),
-        ))
+        predictions.append(
+            ForecastPoint(
+                date=f"day_{i}",
+                value=round(float(val), 4),
+                lower_bound=round(float(val - margin), 4),
+                upper_bound=round(float(val + margin), 4),
+                best_case=round(float(val + margin * 1.5), 4),
+                worst_case=round(float(val - margin * 1.5), 4),
+            )
+        )
 
     growth_pct = 0.0
     trend = "stable"
     if len(predictions) >= 2:
-        growth_pct = ((predictions[-1].value - predictions[0].value) / max(abs(predictions[0].value), 1e-10)) * 100
+        growth_pct = (
+            (predictions[-1].value - predictions[0].value) / max(abs(predictions[0].value), 1e-10)
+        ) * 100
         trend = "increasing" if growth_pct > 1 else "decreasing" if growth_pct < -1 else "stable"
 
-    risk = assess_risk(
-        [p.model_dump() for p in predictions], trend, metrics_data
-    )
+    risk = assess_risk([p.model_dump() for p in predictions], trend, metrics_data)
 
     explainability = Explainability(
         feature_importances=importances,
@@ -229,16 +237,16 @@ async def _predict_regression(
         trend=trend,
         growth_percentage=round(growth_pct, 2),
         risk_score=risk["risk_score"],
-        metrics=ModelMetrics(**{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}),
+        metrics=ModelMetrics(
+            **{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}
+        ),
         explainability=explainability,
         recommendations=[],
         created_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
     )
 
 
-async def _predict_classification(
-    df: pd.DataFrame, request: PredictRequest
-) -> PredictionResult:
+async def _predict_classification(df: pd.DataFrame, request: PredictRequest) -> PredictionResult:
     """Handle classification prediction."""
     model_type = request.model_type.value if request.model_type else "random_forest"
 
@@ -272,7 +280,9 @@ async def _predict_classification(
         trend="stable",
         growth_percentage=0,
         risk_score=0,
-        metrics=ModelMetrics(**{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}),
+        metrics=ModelMetrics(
+            **{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}
+        ),
         explainability=explainability,
         recommendations=[],
         created_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -293,14 +303,20 @@ async def train_model(request: TrainModelRequest) -> TrainResponse:
             )
         elif target_type == "classification":
             result = train_classifier(
-                df, request.target, request.model_type.value,
-                request.features, request.test_size,
+                df,
+                request.target,
+                request.model_type.value,
+                request.features,
+                request.test_size,
                 request.cross_validation_folds,
             )
         else:
             result = train_regressor(
-                df, request.target, request.model_type.value,
-                request.features, request.test_size,
+                df,
+                request.target,
+                request.model_type.value,
+                request.features,
+                request.test_size,
                 request.cross_validation_folds,
             )
 
@@ -314,7 +330,9 @@ async def train_model(request: TrainModelRequest) -> TrainResponse:
             success=True,
             model_id=model_id,
             model_type=result.get("model_type", request.model_type.value),
-            metrics=ModelMetrics(**{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}),
+            metrics=ModelMetrics(
+                **{k: v for k, v in metrics_data.items() if k in ModelMetrics.model_fields}
+            ),
             training_time_ms=round((time.perf_counter() - t0) * 1000, 1),
         )
     except FileNotFoundError:

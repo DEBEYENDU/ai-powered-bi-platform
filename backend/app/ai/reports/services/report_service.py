@@ -33,6 +33,7 @@ class ReportGeneratorService:
     def _get_ai_service(self) -> AIService:
         try:
             from app.ai.providers.registry import get_provider
+
             return AIService(provider=get_provider())
         except Exception:  # noqa: BLE001
             return AIService(provider=None)
@@ -40,6 +41,7 @@ class ReportGeneratorService:
     def _get_storage_dir(self) -> str:
         import os
         from pathlib import Path
+
         base = os.getenv("REPORTS_PATH", str(Path(__file__).resolve().parents[4] / "reports"))
         path = Path(base)
         path.mkdir(parents=True, exist_ok=True)
@@ -87,7 +89,9 @@ class ReportGeneratorService:
         except Exception:  # noqa: BLE001
             self._db.rollback()
 
-    def _save_version(self, report_id: str, version: int, data: dict[str, Any], formats: list[str]) -> None:
+    def _save_version(
+        self, report_id: str, version: int, data: dict[str, Any], formats: list[str]
+    ) -> None:
         """Persist a version snapshot."""
         try:
             self._db.execute(
@@ -204,11 +208,13 @@ class ReportGeneratorService:
             file_path = f"{storage_dir}/{report_id}/{report_id}.{fmt}"
             try:
                 result = export_report(report_data, fmt, __import__("pathlib").Path(file_path))
-                download_urls.append({
-                    "format": fmt,
-                    "url": f"/api/v1/ai/reports/{report_id}/download?format={fmt}",
-                    "file_size": result.get("file_size", 0),
-                })
+                download_urls.append(
+                    {
+                        "format": fmt,
+                        "url": f"/api/v1/ai/reports/{report_id}/download?format={fmt}",
+                        "file_size": result.get("file_size", 0),
+                    }
+                )
             except Exception as e:  # noqa: BLE001
                 download_urls.append({"format": fmt, "url": "", "error": str(e)})
 
@@ -217,7 +223,9 @@ class ReportGeneratorService:
         report_data["status"] = "completed"
 
         # Persist
-        self._save_report(report_id, {**report_data, "owner_id": "00000000-0000-0000-0000-000000000000"})
+        self._save_report(
+            report_id, {**report_data, "owner_id": "00000000-0000-0000-0000-000000000000"}
+        )
         self._save_version(report_id, 1, report_data, formats)
 
         get_template(report_type)
@@ -243,7 +251,9 @@ class ReportGeneratorService:
         """Answer a follow-up question about a report."""
         try:
             result = self._db.execute(
-                text("SELECT title, executive_summary, sections, insights, recommendations FROM ai_reports WHERE id = :id"),
+                text(
+                    "SELECT title, executive_summary, sections, insights, recommendations FROM ai_reports WHERE id = :id"
+                ),
                 {"id": report_id},
             )
             row = result.fetchone()
@@ -286,23 +296,26 @@ class ReportGeneratorService:
                 text(
                     "SELECT id, title, report_type, status, executive_summary,"
                     " generation_time_ms, created_at, tags"
-                    " FROM ai_reports WHERE " + where +
-                    " ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
+                    " FROM ai_reports WHERE "
+                    + where
+                    + " ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
                 ),
                 params,
             )
             reports = []
             for row in result.fetchall():
-                reports.append({
-                    "id": str(row[0]),
-                    "title": row[1],
-                    "report_type": row[2],
-                    "status": row[3],
-                    "executive_summary": (row[4] or "")[:200],
-                    "generation_time_ms": row[5],
-                    "created_at": str(row[6]) if row[6] else "",
-                    "tags": row[7] or [],
-                })
+                reports.append(
+                    {
+                        "id": str(row[0]),
+                        "title": row[1],
+                        "report_type": row[2],
+                        "status": row[3],
+                        "executive_summary": (row[4] or "")[:200],
+                        "generation_time_ms": row[5],
+                        "created_at": str(row[6]) if row[6] else "",
+                        "tags": row[7] or [],
+                    }
+                )
 
             return {"reports": reports, "total": total, "page": page, "page_size": page_size}
         except Exception:  # noqa: BLE001
