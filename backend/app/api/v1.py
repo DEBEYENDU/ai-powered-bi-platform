@@ -14,6 +14,7 @@ from app.ai.routers.ai_assistant import ai_router
 from app.ai.routers.dashboard_gen import dashboard_gen_router
 from app.ai.routers.nlq import nlq_router
 from app.analytics.routers.analytics import router as analytics_router
+from app.copilot.routers.copilot import copilot_router
 from app.dashboards.router import router as dashboards_router
 from app.dataset.routers.dataset import router as dataset_router
 from app.etl.routers.etl import router as etl_router
@@ -50,6 +51,7 @@ for _router in (
     agents_router,
     workflow_router,
     knowledge_router,
+    copilot_router,
 ):
     api_router.include_router(_router)
 
@@ -73,5 +75,6 @@ for _router in (
     agents_router,
     workflow_router,
     knowledge_router,
+    copilot_router,
 ):
     legacy_router.include_router(_router)

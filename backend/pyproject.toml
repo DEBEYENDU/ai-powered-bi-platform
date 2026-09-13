@@ -177,6 +177,9 @@ ignore = [
 "app/knowledge/services/retrieval_service.py" = ["F401"]
 "app/knowledge/services/chunking_service.py" = ["B007"]
 "app/knowledge/tasks.py" = ["BLE001", "S110", "F841", "SIM105"]
+"app/copilot/services/*.py" = ["BLE001", "S110"]
+"app/copilot/routers/*.py" = ["BLE001", "S110"]
+"app/copilot/tools/registry.py" = ["BLE001"]
 
 [build-system]
 requires = ["poetry-core"]

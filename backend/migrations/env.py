@@ -26,6 +26,7 @@ import app.reports.models.report  # noqa: F401
 import app.knowledge.models.document
 import app.knowledge.models.collection
 import app.knowledge.models.chunk
+import app.copilot.models.session
 from app.core.config import get_settings
 from app.db.base import Base
 

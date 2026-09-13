@@ -40,6 +40,7 @@ RESOURCE_ACTIONS: dict[str, list[str]] = {
     "audit": ["view", "export"],
     "jobs": ["view", "execute", "delete"],
     "knowledge": ["view", "upload", "update", "delete", "search", "manage"],
+    "copilot": ["view", "execute", "manage"],
 }
 
 # Legacy "resource:action" codes expand to these canonical grants.
@@ -76,6 +77,7 @@ LEGACY_ALIASES: dict[str, set[str]] = {
         "knowledge.search",
         "knowledge.manage",
     },
+    "copilot:use": {"copilot.view", "copilot.execute"},
 }
 
 
@@ -145,6 +147,8 @@ class RBACService:
                 "reports.create",
                 "ai.view",
                 "ai.execute",
+                "copilot.view",
+                "copilot.execute",
                 "pipelines.view",
                 "pipelines.execute",
                 "metrics.view",
