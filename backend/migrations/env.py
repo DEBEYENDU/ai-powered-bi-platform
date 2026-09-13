@@ -23,6 +23,9 @@ import app.dataset.models.dataset
 import app.etl.models.job
 import app.iam.models.user
 import app.reports.models.report  # noqa: F401
+import app.knowledge.models.document
+import app.knowledge.models.collection
+import app.knowledge.models.chunk
 from app.core.config import get_settings
 from app.db.base import Base
 

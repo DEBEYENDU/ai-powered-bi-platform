@@ -284,6 +284,134 @@ class EvaluateConditionAction(BaseAction):
         return {"condition": condition, "evaluated": True}
 
 
+class KnowledgeSearchAction(BaseAction):
+    """Search the knowledge base and return relevant chunks."""
+
+    action_type = ActionType.KNOWLEDGE_SEARCH
+
+    async def execute(self, config, prior_results, input_data, is_test):
+        query = config.get("query", "")
+        collection_ids = config.get("collection_ids")
+        top_k = config.get("top_k", 10)
+        search_type = config.get("search_type", "hybrid")
+        organization_id = input_data.get("organization_id", "")
+
+        if is_test:
+            return {"query": query, "results": [], "total": 0, "mode": "test"}
+
+        from app.db.session import get_db_session
+        from app.knowledge.services.retrieval_service import RetrievalService
+
+        with get_db_session() as db:
+            service = RetrievalService(db)
+            results = await service.hybrid_search(
+                query=query,
+                org_id=organization_id,
+                collection_ids=collection_ids,
+                top_k=top_k,
+            )
+            return {
+                "query": query,
+                "results": [
+                    {
+                        "chunk_id": r.get("chunk_id", ""),
+                        "text": r.get("text", "")[:500],
+                        "score": r.get("score", 0.0),
+                        "document_id": r.get("document_id", ""),
+                    }
+                    for r in results
+                ],
+                "total": len(results),
+                "search_type": search_type,
+            }
+
+
+class RAGQueryAction(BaseAction):
+    """Run a RAG query against the knowledge base and generate a grounded answer."""
+
+    action_type = ActionType.RAG_QUERY
+
+    async def execute(self, config, prior_results, input_data, is_test):
+        query = config.get("query", "")
+        collection_ids = config.get("collection_ids")
+        top_k = config.get("top_k", 8)
+        organization_id = input_data.get("organization_id", "")
+        user_id = input_data.get("user_id", "")
+
+        if is_test:
+            return {"query": query, "answer": "Test mode", "sources": [], "mode": "test"}
+
+        from app.db.session import get_db_session
+        from app.knowledge.schemas.answer import RAGQueryRequest
+        from app.knowledge.services.rag_service import RAGService
+
+        with get_db_session() as db:
+            service = RAGService(db)
+            request = RAGQueryRequest(
+                query=query,
+                collection_ids=collection_ids,
+                top_k=top_k,
+            )
+            result = await service.query(request, organization_id, user_id)
+            return {
+                "query": result.query,
+                "answer": result.answer,
+                "evidence_status": result.evidence_status,
+                "confidence": result.confidence.confidence,
+                "sources": [
+                    {
+                        "document_id": s.document_id,
+                        "document_title": s.document_title,
+                        "chunk_id": s.chunk_id,
+                        "page_number": s.page_number,
+                    }
+                    for s in result.sources
+                ],
+            }
+
+
+class DocumentIngestionAction(BaseAction):
+    """Trigger document ingestion/indexing."""
+
+    action_type = ActionType.DOCUMENT_INGESTION
+
+    async def execute(self, config, prior_results, input_data, is_test):
+        document_id = config.get("document_id", "")
+        organization_id = input_data.get("organization_id", "")
+
+        if is_test:
+            return {"document_id": document_id, "status": "test", "mode": "test"}
+
+        from app.db.session import get_db_session
+        from app.knowledge.services.indexing_service import IndexingService
+
+        with get_db_session() as db:
+            service = IndexingService(db)
+            result = await service.index_document(document_id, organization_id)
+            return result
+
+
+class DocumentReindexAction(BaseAction):
+    """Re-index a document: delete old chunks, re-chunk, re-embed."""
+
+    action_type = ActionType.DOCUMENT_REINDEX
+
+    async def execute(self, config, prior_results, input_data, is_test):
+        document_id = config.get("document_id", "")
+        organization_id = input_data.get("organization_id", "")
+
+        if is_test:
+            return {"document_id": document_id, "status": "test", "mode": "test"}
+
+        from app.db.session import get_db_session
+        from app.knowledge.services.indexing_service import IndexingService
+
+        with get_db_session() as db:
+            service = IndexingService(db)
+            result = await service.reindex_document(document_id, organization_id)
+            return result
+
+
 # --- Registry ---
 
 _ACTION_HANDLERS: dict[ActionType, BaseAction] = {}
@@ -308,6 +436,10 @@ def _init_registry() -> None:
         RunPipelineAction,
         HumanApprovalAction,
         EvaluateConditionAction,
+        KnowledgeSearchAction,
+        RAGQueryAction,
+        DocumentIngestionAction,
+        DocumentReindexAction,
     ]:
         instance = cls()
         _ACTION_HANDLERS[instance.action_type] = instance

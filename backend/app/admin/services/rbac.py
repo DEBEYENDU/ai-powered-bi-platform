@@ -39,6 +39,7 @@ RESOURCE_ACTIONS: dict[str, list[str]] = {
     "metrics": ["view", "export"],
     "audit": ["view", "export"],
     "jobs": ["view", "execute", "delete"],
+    "knowledge": ["view", "upload", "update", "delete", "search", "manage"],
 }
 
 # Legacy "resource:action" codes expand to these canonical grants.
@@ -63,6 +64,18 @@ LEGACY_ALIASES: dict[str, set[str]] = {
     "admin:settings": {"settings.view", "settings.update"},
     "admin:flags": {"settings.view", "settings.update"},
     "admin:alerts": {"alerts.view", "alerts.update"},
+    "knowledge:read": {"knowledge.view"},
+    "knowledge:upload": {"knowledge.upload"},
+    "knowledge:write": {"knowledge.update", "knowledge.upload"},
+    "knowledge:search": {"knowledge.search"},
+    "knowledge:manage": {
+        "knowledge.view",
+        "knowledge.upload",
+        "knowledge.update",
+        "knowledge.delete",
+        "knowledge.search",
+        "knowledge.manage",
+    },
 }
 
 

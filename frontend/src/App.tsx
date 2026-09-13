@@ -28,6 +28,13 @@ import { Flags } from "./pages/Flags";
 import { Forecasting } from "./pages/Forecasting";
 import { Health } from "./pages/Health";
 import { Jobs } from "./pages/Jobs";
+import { KnowledgeBase } from "./pages/KnowledgeBase";
+import { KnowledgeCollections } from "./pages/KnowledgeCollections";
+import { KnowledgeDocumentDetail } from "./pages/KnowledgeDocumentDetail";
+import { KnowledgeDocuments } from "./pages/KnowledgeDocuments";
+import { KnowledgeRAGChat } from "./pages/KnowledgeRAGChat";
+import { KnowledgeSearch } from "./pages/KnowledgeSearch";
+import { KnowledgeUpload } from "./pages/KnowledgeUpload";
 import { MemoryViewer } from "./pages/MemoryViewer";
 import { Metrics } from "./pages/Metrics";
 import { ModelManagement } from "./pages/ModelManagement";
@@ -81,6 +88,13 @@ export default function App() {
           <Route path="/workflows/:id/history" element={<WorkflowHistory />} />
           <Route path="/workflows/executions/:executionId" element={<WorkflowExecutionDetails />} />
           <Route path="/workflows/approvals" element={<WorkflowApprovals />} />
+          <Route path="/knowledge" element={<KnowledgeBase />} />
+          <Route path="/knowledge/documents" element={<KnowledgeDocuments />} />
+          <Route path="/knowledge/documents/:id" element={<KnowledgeDocumentDetail />} />
+          <Route path="/knowledge/upload" element={<KnowledgeUpload />} />
+          <Route path="/knowledge/collections" element={<KnowledgeCollections />} />
+          <Route path="/knowledge/search" element={<KnowledgeSearch />} />
+          <Route path="/knowledge/rag" element={<KnowledgeRAGChat />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

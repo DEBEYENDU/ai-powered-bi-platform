@@ -61,6 +61,10 @@ class ActionType(str, Enum):
     RUN_PIPELINE = "run_pipeline"
     HUMAN_APPROVAL = "human_approval"
     EVALUATE_CONDITION = "evaluate_condition"
+    KNOWLEDGE_SEARCH = "knowledge_search"
+    RAG_QUERY = "rag_query"
+    DOCUMENT_INGESTION = "document_ingestion"
+    DOCUMENT_REINDEX = "document_reindex"
 
 
 class StepStatus(str, Enum):

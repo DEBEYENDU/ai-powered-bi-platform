@@ -104,6 +104,22 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
+    # Knowledge Base / RAG settings
+    knowledge_max_upload_size: int = int(
+        os.getenv("KNOWLEDGE_MAX_UPLOAD_SIZE", str(50 * 1024 * 1024))
+    )  # 50MB
+    knowledge_chunk_size: int = int(os.getenv("KNOWLEDGE_CHUNK_SIZE", "500"))
+    knowledge_chunk_overlap: int = int(os.getenv("KNOWLEDGE_CHUNK_OVERLAP", "100"))
+    knowledge_default_top_k: int = int(os.getenv("KNOWLEDGE_DEFAULT_TOP_K", "10"))
+    knowledge_semantic_weight: float = float(os.getenv("KNOWLEDGE_SEMANTIC_WEIGHT", "0.7"))
+    knowledge_keyword_weight: float = float(os.getenv("KNOWLEDGE_KEYWORD_WEIGHT", "0.3"))
+    knowledge_embedding_model: str = os.getenv(
+        "KNOWLEDGE_EMBEDDING_MODEL", "text-embedding-3-large"
+    )
+    knowledge_embedding_dimensions: int = int(os.getenv("KNOWLEDGE_EMBEDDING_DIMENSIONS", "1536"))
+    knowledge_rag_model: str = os.getenv("KNOWLEDGE_RAG_MODEL", "")  # empty means use ai_model
+    knowledge_indexing_retries: int = int(os.getenv("KNOWLEDGE_INDEXING_RETRIES", "3"))
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
