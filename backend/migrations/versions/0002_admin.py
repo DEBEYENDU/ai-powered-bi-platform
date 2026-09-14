@@ -49,17 +49,20 @@ def upgrade() -> None:
     op.create_table(
         "role_permissions",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id"),
-                  nullable=False, index=True),
-        sa.Column("permission_id", sa.String(36), sa.ForeignKey("permissions.id"),
-                  nullable=False, index=True),
+        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id"), nullable=False, index=True),
+        sa.Column(
+            "permission_id",
+            sa.String(36),
+            sa.ForeignKey("permissions.id"),
+            nullable=False,
+            index=True,
+        ),
     )
     op.create_table(
         "user_roles",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("user_id", sa.String(255), nullable=False, index=True),
-        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id"),
-                  nullable=False, index=True),
+        sa.Column("role_id", sa.String(36), sa.ForeignKey("roles.id"), nullable=False, index=True),
         sa.Column("organization_id", sa.String(36), nullable=True, index=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
     )
@@ -98,8 +101,9 @@ def upgrade() -> None:
     op.create_table(
         "alert_incidents",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("rule_id", sa.String(36), sa.ForeignKey("alert_rules.id"),
-                  nullable=False, index=True),
+        sa.Column(
+            "rule_id", sa.String(36), sa.ForeignKey("alert_rules.id"), nullable=False, index=True
+        ),
         sa.Column("metric", sa.String(150), nullable=True),
         sa.Column("observed_value", sa.Float(), nullable=True),
         sa.Column("severity", sa.String(20), nullable=True),
@@ -161,8 +165,20 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table in ("notifications", "maintenance_windows", "organization_quotas",
-                  "user_sessions", "api_keys", "alert_incidents", "alert_rules",
-                  "system_settings", "feature_flags", "user_roles",
-                  "role_permissions", "permissions", "roles", "admin_audit_logs"):
+    for table in (
+        "notifications",
+        "maintenance_windows",
+        "organization_quotas",
+        "user_sessions",
+        "api_keys",
+        "alert_incidents",
+        "alert_rules",
+        "system_settings",
+        "feature_flags",
+        "user_roles",
+        "role_permissions",
+        "permissions",
+        "roles",
+        "admin_audit_logs",
+    ):
         op.drop_table(table)

@@ -21,9 +21,7 @@ def upgrade() -> None:
     op.create_unique_constraint("uq_users_username", "users", ["username"])
     op.add_column("users", sa.Column("suspended", sa.Boolean(), nullable=True))
     op.execute("UPDATE users SET suspended = false WHERE suspended IS NULL")
-    op.add_column(
-        "users", sa.Column("updated_at", sa.DateTime(), nullable=True)
-    )
+    op.add_column("users", sa.Column("updated_at", sa.DateTime(), nullable=True))
     op.add_column(
         "organizations",
         sa.Column("owner_id", sa.String(), sa.ForeignKey("users.id"), nullable=True),

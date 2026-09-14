@@ -53,6 +53,10 @@ import { MLOpsTraining } from "./pages/MLOpsTraining";
 import { MLOpsDeployments } from "./pages/MLOpsDeployments";
 import { MLOpsMonitoring } from "./pages/MLOpsMonitoring";
 import { MLOpsDrift } from "./pages/MLOpsDrift";
+import { Governance } from "./pages/Governance";
+import { GovernancePolicies } from "./pages/GovernancePolicies";
+import { GovernanceSecurity } from "./pages/GovernanceSecurity";
+import { GovernanceClassifications } from "./pages/GovernanceClassifications";
 import { Settings } from "./pages/Settings";
 import { TaskHistory } from "./pages/TaskHistory";
 import { Users } from "./pages/Users";
@@ -111,6 +115,10 @@ export default function App() {
           <Route path="/mlops/deployments" element={<MLOpsDeployments />} />
           <Route path="/mlops/monitoring" element={<MLOpsMonitoring />} />
           <Route path="/mlops/drift" element={<MLOpsDrift />} />
+          <Route path="/governance" element={<Governance />} />
+          <Route path="/governance/policies" element={<GovernancePolicies />} />
+          <Route path="/governance/security" element={<GovernanceSecurity />} />
+          <Route path="/governance/classifications" element={<GovernanceClassifications />} />
           <Route path="/health" element={<Health />} />
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/audit" element={<Audit />} />

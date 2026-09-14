@@ -48,7 +48,13 @@ def upgrade() -> None:
     op.create_table(
         "ai_report_versions",
         sa.Column("id", PG_UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", PG_UUID(as_uuid=True), sa.ForeignKey("ai_reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            PG_UUID(as_uuid=True),
+            sa.ForeignKey("ai_reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("version_number", sa.Integer, nullable=False),
         sa.Column("content_snapshot", JSON, nullable=False, server_default="{}"),
         sa.Column("formats_generated", JSON, nullable=False, server_default="[]"),
@@ -60,12 +66,18 @@ def upgrade() -> None:
     op.create_table(
         "ai_report_schedules",
         sa.Column("id", PG_UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", PG_UUID(as_uuid=True), sa.ForeignKey("ai_reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            PG_UUID(as_uuid=True),
+            sa.ForeignKey("ai_reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("frequency", sa.String(50), server_default="daily"),
         sa.Column("cron_expression", sa.String(100), server_default=""),
         sa.Column("timezone", sa.String(64), server_default="UTC"),
         sa.Column("recipients", JSON, nullable=False, server_default="[]"),
-        sa.Column("formats", JSON, nullable=False, server_default="[\"pdf\"]"),
+        sa.Column("formats", JSON, nullable=False, server_default='["pdf"]'),
         sa.Column("enabled", sa.Boolean, server_default="true"),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
     )

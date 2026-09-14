@@ -4,9 +4,8 @@ Revision ID: 0006_ai_chat
 Revises: 0005_dashboards
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0006_ai_chat"
 down_revision = "0005_dashboards"

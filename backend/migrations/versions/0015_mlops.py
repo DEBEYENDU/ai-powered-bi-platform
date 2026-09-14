@@ -4,12 +4,12 @@ Revision ID: 0015
 Revises: 0014
 Create Date: 2026-09-13
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "0015"

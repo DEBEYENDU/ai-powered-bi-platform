@@ -4,15 +4,14 @@ Revision ID: 0013
 Revises: 0012
 Create Date: 2026-09-13
 """
+
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "0013"
 down_revision = "0012"
@@ -42,7 +41,13 @@ def upgrade() -> None:
         "knowledge_documents",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("organization_id", sa.String(36), nullable=False, index=True),
-        sa.Column("collection_id", sa.String(36), sa.ForeignKey("knowledge_collections.id"), nullable=True, index=True),
+        sa.Column(
+            "collection_id",
+            sa.String(36),
+            sa.ForeignKey("knowledge_collections.id"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("filename", sa.String(255), nullable=False),
         sa.Column("original_filename", sa.String(255), nullable=False),
         sa.Column("content_type", sa.String(100), nullable=False),
@@ -72,7 +77,13 @@ def upgrade() -> None:
     op.create_table(
         "knowledge_chunks",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("document_id", sa.String(36), sa.ForeignKey("knowledge_documents.id"), nullable=False, index=True),
+        sa.Column(
+            "document_id",
+            sa.String(36),
+            sa.ForeignKey("knowledge_documents.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("organization_id", sa.String(36), nullable=False, index=True),
         sa.Column("collection_id", sa.String(36), nullable=True, index=True),
         sa.Column("chunk_index", sa.Integer(), nullable=False),

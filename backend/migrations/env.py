@@ -11,23 +11,6 @@ from alembic import context  # type: ignore
 from sqlalchemy import create_engine
 
 # Import models so metadata is complete.
-import app.admin.models.admin
-import app.ai.agents.models
-import app.workflows.models
-import app.ai.dashboard.models
-import app.ai.models.conversation
-import app.ai.models.message
-import app.ai.reports.models
-import app.dashboards.models
-import app.dataset.models.dataset
-import app.etl.models.job
-import app.iam.models.user
-import app.reports.models.report  # noqa: F401
-import app.knowledge.models.document
-import app.knowledge.models.collection
-import app.knowledge.models.chunk
-import app.copilot.models.session
-import app.mlops.models.model
 from app.core.config import get_settings
 from app.db.base import Base
 
@@ -35,8 +18,9 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    context.configure(url=get_settings().database_url,
-                      target_metadata=target_metadata, literal_binds=True)
+    context.configure(
+        url=get_settings().database_url, target_metadata=target_metadata, literal_binds=True
+    )
     with context.begin_transaction():
         context.run_migrations()
 

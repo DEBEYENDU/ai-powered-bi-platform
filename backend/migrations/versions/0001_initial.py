@@ -28,8 +28,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.String(), primary_key=True),
-        sa.Column("organization_id", sa.String(),
-                  sa.ForeignKey("organizations.id"), nullable=True),
+        sa.Column("organization_id", sa.String(), sa.ForeignKey("organizations.id"), nullable=True),
         sa.Column("email", sa.String(320), nullable=False, unique=True),
         sa.Column("password_hash", sa.String(255), nullable=False),
         sa.Column("full_name", sa.String(255), nullable=True),
@@ -48,9 +47,21 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("category", sa.String(100), nullable=True),
-        sa.Column("status", sa.Enum("DRAFT", "UPLOADED", "VALIDATED", "PROCESSING",
-                                    "PROCESSED", "PUBLISHED", "ARCHIVED", "DELETED",
-                                    name="datasetstatus"), nullable=True),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "DRAFT",
+                "UPLOADED",
+                "VALIDATED",
+                "PROCESSING",
+                "PROCESSED",
+                "PUBLISHED",
+                "ARCHIVED",
+                "DELETED",
+                name="datasetstatus",
+            ),
+            nullable=True,
+        ),
         sa.Column("file_size", sa.BigInteger(), nullable=True),
         sa.Column("row_count", sa.Integer(), nullable=True),
         sa.Column("column_count", sa.Integer(), nullable=True),
@@ -65,8 +76,11 @@ def upgrade() -> None:
         sa.Column("id", sa.String(), primary_key=True),
         sa.Column("dataset_id", sa.String(), nullable=False),
         sa.Column("organization_id", sa.String(), nullable=False, index=True),
-        sa.Column("status", sa.Enum("PENDING", "RUNNING", "SUCCESS", "FAILED",
-                                    "CANCELLED", name="jobstatus"), nullable=True),
+        sa.Column(
+            "status",
+            sa.Enum("PENDING", "RUNNING", "SUCCESS", "FAILED", "CANCELLED", name="jobstatus"),
+            nullable=True,
+        ),
         sa.Column("config", sa.JSON(), nullable=True),
         sa.Column("records_processed", sa.Integer(), nullable=True),
         sa.Column("error_message", sa.String(), nullable=True),
@@ -96,8 +110,13 @@ def upgrade() -> None:
     op.create_table(
         "report_versions",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("version_number", sa.Integer(), nullable=False),
         sa.Column("definition_snapshot", sa.JSON(), nullable=True),
         sa.Column("rendered_formats", sa.JSON(), nullable=True),
@@ -125,8 +144,13 @@ def upgrade() -> None:
     op.create_table(
         "report_schedules",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("organization_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("frequency", sa.String(50), nullable=True),
         sa.Column("cron_expression", sa.String(100), nullable=True),
@@ -142,8 +166,13 @@ def upgrade() -> None:
     op.create_table(
         "report_deliveries",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("version_number", sa.Integer(), nullable=True),
         sa.Column("channel", sa.String(50), nullable=True),
         sa.Column("recipient", sa.String(255), nullable=True),
@@ -155,8 +184,13 @@ def upgrade() -> None:
     op.create_table(
         "report_shares",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("report_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("reports.id"), nullable=False, index=True),
+        sa.Column(
+            "report_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("reports.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("granted_to", sa.String(255), nullable=False),
         sa.Column("role", sa.String(50), nullable=True),
         sa.Column("can_export", sa.Boolean(), nullable=True),
@@ -168,7 +202,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table in ("report_shares", "report_deliveries", "report_schedules",
-                  "report_templates", "report_versions", "reports",
-                  "etl_jobs", "datasets", "users", "organizations"):
+    for table in (
+        "report_shares",
+        "report_deliveries",
+        "report_schedules",
+        "report_templates",
+        "report_versions",
+        "reports",
+        "etl_jobs",
+        "datasets",
+        "users",
+        "organizations",
+    ):
         op.drop_table(table)

@@ -18,6 +18,11 @@ from app.copilot.routers.copilot import copilot_router
 from app.dashboards.router import router as dashboards_router
 from app.dataset.routers.dataset import router as dataset_router
 from app.etl.routers.etl import router as etl_router
+from app.governance.routers.classifications import governance_classifications_router
+from app.governance.routers.governance import governance_router
+from app.governance.routers.policies import governance_policies_router
+from app.governance.routers.retention import governance_retention_router
+from app.governance.routers.security import governance_security_router
 from app.iam.routers.auth import router as auth_router
 from app.knowledge.routers.collections import collections_router
 from app.knowledge.routers.documents import documents_router
@@ -64,6 +69,11 @@ for _router in (
     mlops_deployments_router,
     mlops_monitoring_router,
     mlops_drift_router,
+    governance_router,
+    governance_policies_router,
+    governance_security_router,
+    governance_classifications_router,
+    governance_retention_router,
 ):
     api_router.include_router(_router)
 
@@ -94,5 +104,10 @@ for _router in (
     mlops_deployments_router,
     mlops_monitoring_router,
     mlops_drift_router,
+    governance_router,
+    governance_policies_router,
+    governance_security_router,
+    governance_classifications_router,
+    governance_retention_router,
 ):
     legacy_router.include_router(_router)

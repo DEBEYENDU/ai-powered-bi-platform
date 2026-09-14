@@ -4,15 +4,15 @@ Revision ID: 0009
 Revises: 0008
 Create Date: 2026-09-10
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "0009"
 down_revision = "0008"

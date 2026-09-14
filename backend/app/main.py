@@ -15,6 +15,7 @@ from app.api.v1 import api_router, legacy_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.exceptions.handlers import register_exception_handlers
+from app.governance.middleware.security_headers import GovernanceSecurityHeadersMiddleware
 from app.middleware.middleware import RequestContextMiddleware, SecurityHeadersMiddleware
 
 settings = get_settings()
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.add_middleware(MaintenanceMiddleware)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(GovernanceSecurityHeadersMiddleware)
     register_exception_handlers(app)
     app.include_router(api_router)
     app.include_router(legacy_router)

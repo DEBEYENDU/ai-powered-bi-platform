@@ -182,6 +182,9 @@ ignore = [
 "app/copilot/tools/registry.py" = ["BLE001"]
 "app/mlops/services/*.py" = ["BLE001", "S110"]
 "app/mlops/routers/*.py" = ["BLE001", "S110"]
+"app/governance/routers/*.py" = ["BLE001", "S110"]
+"app/governance/services/*.py" = ["BLE001", "S110"]
+"app/governance/middleware/*.py" = ["BLE001", "S110"]
 
 [build-system]
 requires = ["poetry-core"]
