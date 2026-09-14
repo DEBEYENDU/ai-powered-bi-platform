@@ -1,0 +1,49 @@
+# .dockerignore — keep build context small and exclude secrets/dev artifacts.
+.git
+.github
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# Frontend (not needed in backend image)
+frontend/
+frontend-server.log
+
+# Infra docs and templates (not needed in image)
+infra/helm
+infra/terraform
+infra/nginx
+infra/monitoring
+infra/scripts
+infra/docs
+infra/security
+
+# Launcher (desktop app, not needed in image)
+launcher/
+
+# Documentation
+docs/
+reports/
+README.md
+
+# Runtime logs
+*-server.log
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Environment files (NEVER bake secrets into image)
+backend/.env
+.env
+.env.*
+!.env.example
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -16,11 +16,16 @@ updates:
   - package-ecosystem: docker
     directory: /infra/docker
     schedule: { interval: weekly }
-    # Hold the Node 24 line: Node 26 cannot be validated here yet (no Docker
-    # daemon for image builds; local toolchain is Node 24). Revisit once 26
-    # is LTS-proven or CI image builds cover it. Other images update normally.
+    # Pin Python to stable 3.13 line; 3.14 is pre-release and not yet
+    # suitable for production base images.
     ignore:
-      - dependency-name: node
+      - dependency-name: python
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: docker
+    directory: /backend
+    schedule: { interval: weekly }
+    ignore:
+      - dependency-name: python
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
