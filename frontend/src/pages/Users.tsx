@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Chip, MenuItem, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { del, get, patch, post } from "../api";
@@ -79,6 +79,9 @@ export function Users() {
         organization_id: form.organization_id,
       };
       await mutation.run(() => patch(`/users/${editing.id}`, patchBody), "User updated.");
+      if (roleIds.length) {
+        await mutation.run(() => post(`/users/${editing.id}/change-role`, { role_ids: roleIds }), "Roles updated.");
+      }
     } else {
       await mutation.run(
         () =>
@@ -88,6 +91,7 @@ export function Users() {
             full_name: form.full_name,
             username: form.username,
             organization_id: form.organization_id,
+            role_ids: roleIds,
           }),
         "User created."
       );
@@ -221,7 +225,26 @@ export function Users() {
             </MenuItem>
           ))}
         </TextField>
-        <TextField label="Available roles (assign after save)" value={(roles?.data ?? []).map((r: any) => r.name).join(", ")} size="small" fullWidth disabled helperText="Use Roles page or change-role to assign." />
+        <FormControl size="small" fullWidth>
+          <InputLabel>Roles</InputLabel>
+          <Select
+            multiple
+            value={roleIds}
+            onChange={(e) => setRoleIds(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value as string[])}
+            label="Roles"
+            renderValue={(selected) =>
+              ((roles?.data ?? []).filter((r: any) => selected.includes(r.id)) as any[])
+                .map((r: any) => r.name)
+                .join(", ")
+            }
+          >
+            {(roles?.data ?? []).map((r: any) => (
+              <MenuItem key={r.id} value={r.id}>
+                {r.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </FormDialog>
       <ConfirmDialog
         open={confirm !== null}

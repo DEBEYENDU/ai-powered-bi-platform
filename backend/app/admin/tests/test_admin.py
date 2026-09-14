@@ -95,6 +95,458 @@ class TestMaintenanceEscapeHatch:
         assert first.settings is second.settings
 
 
+class TestMaintenanceModeMatrix:
+    """Comprehensive tests covering every combination of maintenance mode x HTTP method.
+
+    Matrix:
+    1. OFF + GET -> allowed
+    2. OFF + POST -> allowed
+    3. OFF + PUT -> allowed
+    4. OFF + PATCH -> allowed
+    5. OFF + DELETE -> allowed
+
+    6. READONLY + GET -> allowed
+    7. READONLY + HEAD -> allowed
+    8. READONLY + OPTIONS -> allowed
+    9. READONLY + POST -> 503
+    10. READONLY + PUT -> 503
+    11. READONLY + PATCH -> 503
+    12. READONLY + DELETE -> 503
+
+    13. MAINTENANCE + GET -> 503
+    14. MAINTENANCE + POST -> 503
+    15. MAINTENANCE + PUT -> 503
+    16. MAINTENANCE + DELETE -> 503
+
+    Escape hatches:
+    17. MAINTENANCE + /health -> allowed
+    18. MAINTENANCE + /docs -> allowed
+    19. MAINTENANCE + /admin/maintenance -> allowed
+    20. MAINTENANCE + override-token -> allowed
+    21. READONLY + override-token -> allowed
+    """
+
+    def _middleware(self, mode: str):
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        settings = SettingsService()
+        settings.set_maintenance(mode, "test")
+        return MaintenanceMiddleware(app=None, settings_service=settings)
+
+    def _request(self, method: str, path: str, headers: list[tuple[bytes, bytes]] | None = None):
+        from starlette.requests import Request
+
+        return Request(
+            {
+                "type": "http",
+                "method": method,
+                "path": path,
+                "headers": headers or [],
+                "query_string": b"",
+            }
+        )
+
+    async def _dispatch(self, middleware, method: str, path: str, headers=None) -> int:
+        from starlette.responses import PlainTextResponse
+
+        async def call_next(request):
+            return PlainTextResponse("ok")
+
+        response = await middleware.dispatch(self._request(method, path, headers), call_next)
+        return response.status_code
+
+    # OFF mode
+    def test_off_get(self):
+        import asyncio
+
+        assert asyncio.run(self._dispatch(self._middleware("off"), "GET", "/admin/users")) == 200
+
+    def test_off_post(self):
+        import asyncio
+
+        assert asyncio.run(self._dispatch(self._middleware("off"), "POST", "/admin/users")) == 200
+
+    def test_off_put(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("off"), "PUT", "/admin/settings/x")) == 200
+        )
+
+    def test_off_patch(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("off"), "PATCH", "/admin/settings/x"))
+            == 200
+        )
+
+    def test_off_delete(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("off"), "DELETE", "/admin/users/1")) == 200
+        )
+
+    # READONLY mode
+    def test_readonly_get(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "GET", "/admin/users")) == 200
+        )
+
+    def test_readonly_head(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "HEAD", "/admin/users")) == 200
+        )
+
+    def test_readonly_options(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "OPTIONS", "/admin/users"))
+            == 200
+        )
+
+    def test_readonly_post(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "POST", "/admin/users")) == 503
+        )
+
+    def test_readonly_put(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "PUT", "/admin/settings/x"))
+            == 503
+        )
+
+    def test_readonly_patch(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "PATCH", "/admin/settings/x"))
+            == 503
+        )
+
+    def test_readonly_delete(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "DELETE", "/admin/users/1"))
+            == 503
+        )
+
+    # MAINTENANCE mode
+    def test_maintenance_get(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("maintenance"), "GET", "/admin/users"))
+            == 503
+        )
+
+    def test_maintenance_post(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("maintenance"), "POST", "/admin/users"))
+            == 503
+        )
+
+    def test_maintenance_put(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("maintenance"), "PUT", "/admin/settings/x"))
+            == 503
+        )
+
+    def test_maintenance_delete(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("maintenance"), "DELETE", "/admin/users/1"))
+            == 503
+        )
+
+    # Escape hatches
+    def test_maintenance_health_allowed(self):
+        import asyncio
+
+        assert asyncio.run(self._dispatch(self._middleware("maintenance"), "GET", "/health")) == 200
+
+    def test_maintenance_docs_allowed(self):
+        import asyncio
+
+        assert asyncio.run(self._dispatch(self._middleware("maintenance"), "GET", "/docs")) == 200
+
+    def test_maintenance_redoc_allowed(self):
+        import asyncio
+
+        assert asyncio.run(self._dispatch(self._middleware("maintenance"), "GET", "/redoc")) == 200
+
+    def test_maintenance_openapi_allowed(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("maintenance"), "GET", "/openapi.json"))
+            == 200
+        )
+
+    def test_maintenance_endpoint_allowed(self):
+        import asyncio
+
+        assert (
+            asyncio.run(
+                self._dispatch(self._middleware("maintenance"), "POST", "/admin/maintenance")
+            )
+            == 200
+        )
+        assert (
+            asyncio.run(
+                self._dispatch(self._middleware("maintenance"), "GET", "/admin/maintenance")
+            )
+            == 200
+        )
+        assert (
+            asyncio.run(
+                self._dispatch(self._middleware("maintenance"), "POST", "/api/v1/admin/maintenance")
+            )
+            == 200
+        )
+
+    def test_readonly_maintenance_endpoint_allowed(self):
+        import asyncio
+
+        assert (
+            asyncio.run(self._dispatch(self._middleware("readonly"), "POST", "/admin/maintenance"))
+            == 200
+        )
+
+    # Override token
+    def test_override_token_bypasses_maintenance(self):
+        import asyncio
+
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        settings = SettingsService()
+        settings.set_maintenance("maintenance", "test")
+        token = settings.mint_override_token("admin")
+        middleware = MaintenanceMiddleware(app=None, settings_service=settings)
+
+        assert (
+            asyncio.run(
+                self._dispatch(
+                    middleware, "GET", "/admin/users", [(b"x-admin-override", token.encode())]
+                )
+            )
+            == 200
+        )
+        assert (
+            asyncio.run(
+                self._dispatch(
+                    middleware, "POST", "/admin/users", [(b"x-admin-override", token.encode())]
+                )
+            )
+            == 200
+        )
+
+    def test_override_token_bypasses_readonly(self):
+        import asyncio
+
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        settings = SettingsService()
+        settings.set_maintenance("readonly", "test")
+        token = settings.mint_override_token("admin")
+        middleware = MaintenanceMiddleware(app=None, settings_service=settings)
+
+        assert (
+            asyncio.run(
+                self._dispatch(
+                    middleware, "POST", "/admin/users", [(b"x-admin-override", token.encode())]
+                )
+            )
+            == 200
+        )
+
+    def test_invalid_override_token_blocked(self):
+        import asyncio
+
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        settings = SettingsService()
+        settings.set_maintenance("maintenance", "test")
+        middleware = MaintenanceMiddleware(app=None, settings_service=settings)
+
+        assert (
+            asyncio.run(
+                self._dispatch(
+                    middleware, "POST", "/admin/users", [(b"x-admin-override", b"bogus-token")]
+                )
+            )
+            == 503
+        )
+
+
+class TestMaintenanceStatusResponse:
+    """Verify maintenance_status() returns correct shape and is_write_blocked flag."""
+
+    def _fresh_settings(self, mode: str = "off"):
+        s = SettingsService()
+        # Prevent DB hydration in unit tests: mark as loaded so
+        # maintenance_status() returns the in-memory state only.
+        s._maintenance_loaded = True
+        if mode != "off":
+            s.set_maintenance(mode, "test")
+        return s
+
+    def test_off_returns_write_not_blocked(self):
+        settings = self._fresh_settings("off")
+        status = settings.maintenance_status()
+        assert status["mode"] == "off"
+        assert status["is_write_blocked"] is False
+
+    def test_readonly_returns_write_blocked(self):
+        settings = self._fresh_settings("readonly")
+        status = settings.maintenance_status()
+        assert status["mode"] == "readonly"
+        assert status["is_write_blocked"] is True
+
+    def test_maintenance_returns_write_blocked(self):
+        settings = self._fresh_settings("maintenance")
+        status = settings.maintenance_status()
+        assert status["mode"] == "maintenance"
+        assert status["is_write_blocked"] is True
+
+    def test_status_contains_expected_keys(self):
+        settings = self._fresh_settings()
+        status = settings.maintenance_status()
+        for key in ("mode", "message", "starts_at", "ends_at", "is_write_blocked"):
+            assert key in status
+
+    def test_roundtrip_mode_change(self):
+        settings = self._fresh_settings()
+        settings.set_maintenance("readonly", "test")
+        assert settings.maintenance_status()["mode"] == "readonly"
+        settings.set_maintenance("off", "")
+        assert settings.maintenance_status()["mode"] == "off"
+        assert settings.maintenance_status()["is_write_blocked"] is False
+
+
+class TestMaintenanceAPIResponse:
+    """Verify the 503 response body includes mode and hint fields."""
+
+    def _middleware_for(self, mode: str):
+        from app.admin.middleware.maintenance import MaintenanceMiddleware
+
+        s = SettingsService()
+        s._maintenance_loaded = True
+        s.set_maintenance(mode, "")
+        return MaintenanceMiddleware(app=None, settings_service=s)
+
+    def test_readonly_503_includes_mode_and_hint(self):
+        import asyncio
+
+        middleware = self._middleware_for("readonly")
+
+        async def _run():
+            from starlette.requests import Request
+
+            async def call_next(request):
+                from starlette.responses import PlainTextResponse
+
+                return PlainTextResponse("ok")
+
+            req = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "path": "/admin/users",
+                    "headers": [],
+                    "query_string": b"",
+                }
+            )
+            resp = await middleware.dispatch(req, call_next)
+            return resp
+
+        resp = asyncio.run(_run())
+        assert resp.status_code == 503
+        import json
+
+        body = json.loads(resp.body)
+        assert body["mode"] == "readonly"
+        assert "hint" in body
+        assert "off" in body["hint"]
+
+    def test_maintenance_503_includes_mode_and_hint(self):
+        import asyncio
+
+        middleware = self._middleware_for("maintenance")
+
+        async def _run():
+            from starlette.requests import Request
+
+            async def call_next(request):
+                from starlette.responses import PlainTextResponse
+
+                return PlainTextResponse("ok")
+
+            req = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "path": "/admin/users",
+                    "headers": [],
+                    "query_string": b"",
+                }
+            )
+            resp = await middleware.dispatch(req, call_next)
+            return resp
+
+        resp = asyncio.run(_run())
+        assert resp.status_code == 503
+        import json
+
+        body = json.loads(resp.body)
+        assert body["mode"] == "maintenance"
+        assert "hint" in body
+
+    def test_off_no_503(self):
+        import asyncio
+
+        middleware = self._middleware_for("off")
+
+        async def _run():
+            from starlette.requests import Request
+
+            async def call_next(request):
+                from starlette.responses import PlainTextResponse
+
+                return PlainTextResponse("ok")
+
+            req = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "path": "/admin/users",
+                    "headers": [],
+                    "query_string": b"",
+                }
+            )
+            resp = await middleware.dispatch(req, call_next)
+            return resp
+
+        resp = asyncio.run(_run())
+        assert resp.status_code == 200
+
+
 class TestAudit:
     def test_append_query_verify(self):
         audit = AuditService()
@@ -341,8 +793,11 @@ class TestAlerts:
 
 class TestUsersOrgs:
     def test_user_lifecycle(self):
+        import uuid
+
         users = UserAdminService()
-        user = users.create("a@x.com", "password123")
+        uid = uuid.uuid4().hex[:8]
+        user = users.create(f"a-{uid}@x.com", "password123")
         assert users.suspend(user["id"])["suspended"] is True
         assert users.reset_password(user["id"], "newpassword123") is True
         assert users.restore(user["id"])["is_active"] is True
@@ -354,8 +809,10 @@ class TestUsersOrgs:
         assert users.login_history(user["id"])
 
     def test_org_quotas(self):
+        import uuid
+
         orgs = OrganizationAdminService()
-        org = orgs.create("Acme")
+        org = orgs.create(f"Acme-{uuid.uuid4().hex[:8]}")
         assert orgs.quotas(org["id"])["storage_mb"] == 10240
         assert orgs.update_quotas(org["id"], {"storage_mb": 512})["storage_mb"] == 512
         with pytest.raises(ValueError):

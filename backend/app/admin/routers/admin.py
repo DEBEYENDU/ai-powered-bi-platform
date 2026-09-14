@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -53,6 +54,10 @@ def status(platform: PlatformAdmin = Depends(get_platform)):
 def create_user(
     payload: AdminUserCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)
 ):
+    if payload.organization_id:
+        org = platform.orgs.get(payload.organization_id)
+        if org is None:
+            raise HTTPException(400, "Organization not found")
     try:
         user = platform.users.create(
             payload.email,
@@ -63,6 +68,9 @@ def create_user(
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    for role_id in payload.role_ids:
+        with contextlib.suppress(ValueError):
+            platform.rbac.assign_role(user["id"], role_id)
     platform.audit.append("user_created", "user", user["id"], details={"email": user["email"]})
     return user
 
@@ -86,7 +94,15 @@ def get_user(user_id: str, platform: PlatformAdmin = Depends(get_platform)):
 def update_user(
     user_id: str, patch: dict[str, Any] = Body(...), platform: PlatformAdmin = Depends(get_platform)
 ):
-    return _not_found(platform.users.update(user_id, patch), "User")
+    _not_found(platform.users.get(user_id), "User")
+    if patch.get("organization_id"):
+        org = platform.orgs.get(patch["organization_id"])
+        if org is None:
+            raise HTTPException(400, "Organization not found")
+    try:
+        return _not_found(platform.users.update(user_id, patch), "User")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @admin_router.post("/users/{user_id}/suspend", summary="Suspend user")
@@ -161,10 +177,16 @@ def revoke_api_key(key_id: str, platform: PlatformAdmin = Depends(get_platform))
 # -- organizations --
 @admin_router.post("/organizations", summary="Create organization")
 def create_org(payload: OrgCreate = Body(...), platform: PlatformAdmin = Depends(get_platform)):
+    if payload.owner_id:
+        owner = platform.users.get(payload.owner_id)
+        if owner is None:
+            raise HTTPException(400, "Owner user not found")
     try:
-        return platform.orgs.create(payload.name, payload.slug, payload.owner_id)
+        org = platform.orgs.create(payload.name, payload.slug, payload.owner_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    platform.audit.append("org_created", "organization", org["id"], details={"name": org["name"]})
+    return org
 
 
 @admin_router.get("/organizations", summary="List organizations")
@@ -188,6 +210,16 @@ def get_org(org_id: str, platform: PlatformAdmin = Depends(get_platform)):
 def update_org(
     org_id: str, patch: dict[str, Any] = Body(...), platform: PlatformAdmin = Depends(get_platform)
 ):
+    _not_found(platform.orgs.get(org_id), "Organization")
+    if patch.get("owner_id"):
+        owner = platform.users.get(patch["owner_id"])
+        if owner is None:
+            raise HTTPException(400, "Owner user not found")
+    if patch.get("slug"):
+        existing = platform.orgs._merged()
+        for o in existing.values():
+            if o["slug"] == patch["slug"] and o["id"] != org_id:
+                raise HTTPException(400, f"Organization with slug '{patch['slug']}' already exists")
     return _not_found(platform.orgs.update(org_id, patch), "Organization")
 
 
@@ -389,11 +421,18 @@ def set_maintenance(
     payload: MaintenanceUpdate = Body(...), platform: PlatformAdmin = Depends(get_platform)
 ):
     try:
-        return platform.settings.set_maintenance(
+        result = platform.settings.set_maintenance(
             payload.mode, payload.message, payload.starts_at, payload.ends_at
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    platform.audit.append(
+        "maintenance_mode_changed",
+        "system",
+        "maintenance",
+        details={"mode": payload.mode, "message": payload.message},
+    )
+    return result
 
 
 @admin_router.post("/maintenance/override-token", summary="Mint admin override")

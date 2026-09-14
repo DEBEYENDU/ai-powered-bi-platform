@@ -124,11 +124,21 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
         detail = status.get("message") or (
             "Platform is in maintenance mode."
             if mode == "maintenance"
-            else "Platform is read-only."
+            else "Platform is read-only. Use GET requests only or set maintenance_mode to 'off' via POST /api/v1/admin/maintenance."
         )
         return JSONResponse(
             status_code=503,
-            content={"title": "Maintenance", "status": 503, "detail": detail},
+            content={
+                "title": "Maintenance",
+                "status": 503,
+                "detail": detail,
+                "mode": mode,
+                "hint": (
+                    'POST /api/v1/admin/maintenance {"mode": "off"} to restore write access.'
+                    if mode == "readonly"
+                    else 'POST /api/v1/admin/maintenance {"mode": "off"} to restore access.'
+                ),
+            },
         )
 
     def _resolve_settings(self):  # type: ignore[no-untyped-def]

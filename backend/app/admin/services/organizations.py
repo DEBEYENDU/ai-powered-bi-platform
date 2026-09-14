@@ -38,8 +38,10 @@ class OrganizationAdminService:
 
     def create(self, name: str, slug: str = "", owner_id: str = "") -> dict[str, Any]:
         slug = slug or name.lower().replace(" ", "-")
+        if not slug or len(slug) < 2:
+            raise ValueError("Slug must be at least 2 characters")
         if any(o["slug"] == slug for o in self._merged().values()):
-            raise ValueError("Slug already exists")
+            raise ValueError(f"Organization with slug '{slug}' already exists")
         oid = str(uuid4())
         org = {
             "id": oid,
@@ -71,6 +73,10 @@ class OrganizationAdminService:
         org = self._merged().get(org_id)
         if org is None:
             return None
+        if patch.get("slug"):
+            for o in self._merged().values():
+                if o["slug"] == patch["slug"] and o["id"] != org_id:
+                    raise ValueError(f"Organization with slug '{patch['slug']}' already exists")
         for key in ("name", "slug", "owner_id"):
             if key in patch:
                 org[key] = patch[key]

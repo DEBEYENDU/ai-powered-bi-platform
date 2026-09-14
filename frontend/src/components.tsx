@@ -86,6 +86,34 @@ const NAV: Array<[string, string]> = [
 
 const DRAWER_WIDTH = 220;
 
+function MaintenanceBanner() {
+  const [mode, setMode] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/v1/admin/maintenance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (live && d && d.mode && d.mode !== "off") {
+          setMode(d.mode);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!mode) return null;
+  return (
+    <Alert severity="warning" sx={{ borderRadius: 0, fontWeight: 600 }}>
+      Platform is in <strong>{mode.toUpperCase()}</strong> mode. Write operations are restricted.{" "}
+      <Link to="/settings" style={{ color: "inherit", fontWeight: 700 }}>
+        Go to Settings
+      </Link>{" "}
+      to restore normal operation.
+    </Alert>
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -126,6 +154,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
+        <MaintenanceBanner />
         {children}
       </Box>
     </Box>

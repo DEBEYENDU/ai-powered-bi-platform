@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Card, CardContent, Chip, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, MenuItem, TextField, Typography } from "@mui/material";
 import { get, patch, post } from "../api";
 import { ErrorBanner, Field, Loading, NoticeBanner, useFetch, useMutation } from "../components";
 
@@ -25,6 +25,7 @@ export function Settings() {
   if (error || !data) return <ErrorBanner error={error ?? "No data"} />;
   if (maintError || !maint) return <ErrorBanner error={maintError ?? "No data"} />;
   const currentMode = maint.mode as string;
+  const isWriteBlocked = maint.is_write_blocked as boolean;
 
   async function applyMaintenance() {
     await mutation.run(
@@ -52,17 +53,30 @@ export function Settings() {
       </Typography>
       <ErrorBanner error={mutation.error} />
       <NoticeBanner notice={mutation.notice} />
+      {isWriteBlocked && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Platform is currently in <strong>{currentMode.toUpperCase()}</strong> mode. Organization and user creation are disabled. Only GET requests are allowed.
+          Set maintenance mode to "off" via the control below to restore write access.
+        </Alert>
+      )}
       <Card sx={{ mb: 2 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             Maintenance mode
           </Typography>
           <Typography gutterBottom>
-            Current mode:{" "}
+            Current status:{" "}
             <Chip
-              label={currentMode}
+              label={currentMode === "off" ? "INACTIVE" : currentMode.toUpperCase()}
               color={currentMode === "off" ? "success" : currentMode === "readonly" ? "warning" : "error"}
             />
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {currentMode === "off"
+              ? "All read and write operations are allowed."
+              : currentMode === "readonly"
+                ? "Only read (GET/HEAD/OPTIONS) operations are allowed. All writes return 503."
+                : "All requests are blocked except /health, /docs, and maintenance endpoints."}
           </Typography>
           <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
             <TextField
@@ -92,11 +106,11 @@ export function Settings() {
           </Box>
           {confirm && (
             <Box sx={{ mt: 1 }}>
-              <Typography color="warning.main" gutterBottom>
+              <Alert severity="warning">
                 Switch from "{currentMode}" to "{confirm}"?{" "}
                 {confirm !== "off" && "Writes will return 503 until you switch back."}
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              </Alert>
+              <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
                 <Button
                   color={confirm === "off" ? "primary" : "error"}
                   variant="contained"

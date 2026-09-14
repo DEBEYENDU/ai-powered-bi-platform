@@ -115,7 +115,14 @@ class SettingsService:
                 if latest and latest.get("mode") in ("off", "readonly", "maintenance"):
                     self._maintenance.update({k: v for k, v in latest.items() if v is not None})
                     self._settings["maintenance_mode"] = self._maintenance["mode"]
-        return dict(self._maintenance)
+                    log.info(
+                        "maintenance_hydrated_from_db",
+                        mode=self._maintenance["mode"],
+                        settings_id=id(self),
+                    )
+        result = dict(self._maintenance)
+        result["is_write_blocked"] = self.is_write_blocked()
+        return result
 
     def is_write_blocked(self) -> bool:
         return self._maintenance["mode"] in ("readonly", "maintenance")

@@ -15,6 +15,7 @@ class AdminUserCreate(BaseModel):
     full_name: str = ""
     username: str = ""
     organization_id: str = ""
+    role_ids: list[str] = Field(default_factory=list)
 
 
 class AdminUserOut(BaseModel):

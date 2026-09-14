@@ -20,6 +20,8 @@ def get_current_user(authorization: str | None = Header(None)) -> dict[str, Any]
         raise UnauthorizedError("Invalid or expired token") from None
     if payload.get("type") != "access":
         raise UnauthorizedError("Not an access token")
+    payload["organization_id"] = payload.get("organization_id") or ""
+    payload["roles"] = payload.get("roles", [])
     return payload
 
 
