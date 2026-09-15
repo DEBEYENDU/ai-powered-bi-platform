@@ -80,8 +80,8 @@ export function GovernanceClassifications() {
     setLoading(true);
     setError("");
     try {
-      const res = await rget<{ classifications: Classification[] }>("/governance/classifications");
-      setClassifications(res.classifications || []);
+      const res = await rget<{ data: Classification[] }>("/governance/classifications");
+      setClassifications(res.data || []);
     } catch (e: any) {
       setError(e.message || "Failed to load classifications");
     } finally {

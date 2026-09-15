@@ -135,19 +135,19 @@ export function MLOps() {
     setError("");
     try {
       const [ov, mdl, exp, trn, dep, mon, drf] = await Promise.allSettled([
-        rget<OverviewData>("/mlops/overview"),
-        rget<{ models: ModelSummary[] }>("/mlops/models"),
-        rget<{ experiments: ExperimentSummary[] }>("/mlops/experiments"),
-        rget<{ training_runs: TrainingRunSummary[] }>("/mlops/training"),
-        rget<{ deployments: DeploymentSummary[] }>("/mlops/deployments"),
-        rget<MonitoringSummary>("/mlops/monitoring/summary"),
-        rget<DriftSummary>("/mlops/drift/summary"),
+        rget<OverviewData>("/mlops/models/overview"),
+        rget<{ data: ModelSummary[] }>("/mlops/models"),
+        rget<{ data: ExperimentSummary[] }>("/mlops/experiments"),
+        rget<{ data: TrainingRunSummary[] }>("/mlops/training"),
+        rget<{ data: DeploymentSummary[] }>("/mlops/deployments"),
+        rget<MonitoringSummary>("/mlops/models/monitoring/summary"),
+        rget<DriftSummary>("/mlops/models/drift/summary"),
       ]);
       if (ov.status === "fulfilled") setOverview(ov.value);
-      if (mdl.status === "fulfilled") setModels(mdl.value.models || []);
-      if (exp.status === "fulfilled") setExperiments(exp.value.experiments || []);
-      if (trn.status === "fulfilled") setTrainingRuns(trn.value.training_runs || []);
-      if (dep.status === "fulfilled") setDeployments(dep.value.deployments || []);
+      if (mdl.status === "fulfilled") setModels(mdl.value.data || []);
+      if (exp.status === "fulfilled") setExperiments(exp.value.data || []);
+      if (trn.status === "fulfilled") setTrainingRuns(trn.value.data || []);
+      if (dep.status === "fulfilled") setDeployments(dep.value.data || []);
       if (mon.status === "fulfilled") setMonitoring(mon.value);
       if (drf.status === "fulfilled") setDrift(drf.value);
     } catch (e: any) {

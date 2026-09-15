@@ -59,8 +59,8 @@ export function KnowledgeCollections() {
     setLoading(true);
     setError("");
     try {
-      const res = await rget<{ collections: Collection[] }>("/knowledge/collections");
-      setCollections(res.collections || []);
+      const res = await rget<{ data: Collection[]; total: number }>("/knowledge/collections");
+      setCollections(res.data || []);
     } catch (e: any) {
       setError(e.message || "Failed to load collections");
     } finally {

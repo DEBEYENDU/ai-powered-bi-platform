@@ -95,12 +95,12 @@ export function KnowledgeBase() {
     setError("");
     try {
       const [docsRes, collsRes] = await Promise.all([
-        rget<{ documents: RecentDocument[]; total: number }>("/knowledge/documents?pageSize=10"),
-        rget<{ collections: CollectionSummary[] }>("/knowledge/collections"),
+        rget<{ data: RecentDocument[]; total: number }>("/knowledge/documents?pageSize=10"),
+        rget<{ data: CollectionSummary[]; total: number }>("/knowledge/collections"),
       ]);
 
-      const docs = docsRes.documents || [];
-      const colls = collsRes.collections || [];
+      const docs = docsRes.data || [];
+      const colls = collsRes.data || [];
 
       const indexed = docs.filter((d) => d.status === "indexed").length;
       const processing = docs.filter((d) => d.status === "processing").length;

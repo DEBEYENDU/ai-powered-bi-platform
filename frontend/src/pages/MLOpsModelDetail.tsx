@@ -145,18 +145,18 @@ export function MLOpsModelDetail() {
     try {
       const [mdl, ver, trn, evals, dep, mon] = await Promise.allSettled([
         rget<ModelDetail>(`/mlops/models/${id}`),
-        rget<{ versions: ModelVersion[] }>(`/mlops/models/${id}/versions`),
-        rget<{ training_runs: TrainingRun[] }>(`/mlops/models/${id}/training`),
-        rget<{ evaluations: Evaluation[] }>(`/mlops/models/${id}/evaluations`),
-        rget<{ deployments: Deployment[] }>(`/mlops/models/${id}/deployments`),
-        rget<{ monitoring: MonitoringEntry[] }>(`/mlops/models/${id}/monitoring`),
+        rget<{ data: ModelVersion[] }>(`/mlops/models/${id}/versions`),
+        rget<{ data: TrainingRun[] }>(`/mlops/models/${id}/training`),
+        rget<{ data: Evaluation[] }>(`/mlops/models/${id}/evaluations`),
+        rget<{ data: Deployment[] }>(`/mlops/models/${id}/deployments`),
+        rget<{ data: MonitoringEntry[] }>(`/mlops/models/${id}/monitoring`),
       ]);
       if (mdl.status === "fulfilled") setModel(mdl.value);
-      if (ver.status === "fulfilled") setVersions(ver.value.versions || []);
-      if (trn.status === "fulfilled") setTrainingRuns(trn.value.training_runs || []);
-      if (evals.status === "fulfilled") setEvaluations(evals.value.evaluations || []);
-      if (dep.status === "fulfilled") setDeployments(dep.value.deployments || []);
-      if (mon.status === "fulfilled") setMonitoring(mon.value.monitoring || []);
+      if (ver.status === "fulfilled") setVersions(ver.value.data || []);
+      if (trn.status === "fulfilled") setTrainingRuns(trn.value.data || []);
+      if (evals.status === "fulfilled") setEvaluations(evals.value.data || []);
+      if (dep.status === "fulfilled") setDeployments(dep.value.data || []);
+      if (mon.status === "fulfilled") setMonitoring(mon.value.data || []);
     } catch (e: any) {
       setError(e.message || "Failed to load model details");
     } finally {
@@ -186,7 +186,7 @@ export function MLOpsModelDetail() {
 
   const handlePromote = async (versionId: string) => {
     try {
-      await rpost(`/mlops/versions/${versionId}/promote`, { target_stage: "production" });
+      await rpost(`/mlops/models/${id}/versions/${versionId}/promote`, { target_environment: "production" });
       await fetchAll();
     } catch (e: any) {
       setError(e.message || "Failed to promote version");
@@ -195,19 +195,10 @@ export function MLOpsModelDetail() {
 
   const handleArchive = async (versionId: string) => {
     try {
-      await rpost(`/mlops/versions/${versionId}/archive`, {});
+      await rpost(`/mlops/models/${id}/versions/${versionId}/archive`, {});
       await fetchAll();
     } catch (e: any) {
       setError(e.message || "Failed to archive version");
-    }
-  };
-
-  const handleRollback = async (versionId: string) => {
-    try {
-      await rpost(`/mlops/versions/${versionId}/rollback`, {});
-      await fetchAll();
-    } catch (e: any) {
-      setError(e.message || "Failed to rollback version");
     }
   };
 
@@ -305,9 +296,6 @@ export function MLOpsModelDetail() {
                           </Tooltip>
                           <Tooltip title="Archive this version">
                             <Button size="small" onClick={() => handleArchive(v.id)}>Archive</Button>
-                          </Tooltip>
-                          <Tooltip title="Rollback to this version">
-                            <Button size="small" color="warning" onClick={() => handleRollback(v.id)}>Rollback</Button>
                           </Tooltip>
                         </TableCell>
                       </TableRow>

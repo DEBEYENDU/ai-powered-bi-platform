@@ -77,8 +77,8 @@ export function GovernancePolicies() {
     setLoading(true);
     setError("");
     try {
-      const res = await rget<{ policies: Policy[] }>("/governance/policies");
-      setPolicies(res.policies || []);
+      const res = await rget<{ data: Policy[] }>("/governance/policies");
+      setPolicies(res.data || []);
     } catch (e: any) {
       setError(e.message || "Failed to load policies");
     } finally {
@@ -108,7 +108,7 @@ export function GovernancePolicies() {
 
   const handleToggle = async (policy: Policy) => {
     try {
-      await rpatch(`/governance/policies/${policy.id}`, { enabled: !policy.enabled });
+      await rpost(`/governance/policies/${policy.id}/toggle`);
       await fetchPolicies();
     } catch (e: any) {
       setError(e.message || "Failed to toggle policy");

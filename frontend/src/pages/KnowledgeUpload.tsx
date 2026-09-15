@@ -68,8 +68,8 @@ export function KnowledgeUpload() {
 
   const fetchCollections = useCallback(async () => {
     try {
-      const res = await rget<{ collections: Collection[] }>("/knowledge/collections");
-      setCollections(res.collections || []);
+      const res = await rget<{ data: Collection[]; total: number }>("/knowledge/collections");
+      setCollections(res.data || []);
     } catch {
       /* ignore */
     }
@@ -133,7 +133,7 @@ export function KnowledgeUpload() {
 
         xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
 
-        xhr.open("POST", "/api/v1/knowledge/documents/upload");
+        xhr.open("POST", "/api/v1/knowledge/documents");
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         xhr.send(formData);
       });

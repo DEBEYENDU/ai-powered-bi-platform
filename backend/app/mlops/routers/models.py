@@ -12,6 +12,61 @@ from app.exceptions.handlers import AppError, NotFoundError
 mlops_models_router = APIRouter(prefix="/mlops/models", tags=["MLOps Models"])
 
 
+# -- Global aggregate endpoints (MLOps overview page needs these) --
+
+
+@mlops_models_router.get("/overview")
+async def models_overview(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    from app.mlops.services.model_registry import ModelRegistryService
+
+    service = ModelRegistryService(db)
+    models = service.list_models(organization_id)
+    status_dist: dict[str, int] = {}
+    total_versions = 0
+    for m in models:
+        status_dist[m.status] = status_dist.get(m.status, 0) + 1
+        versions = service.list_versions(m.id, organization_id)
+        total_versions += len(versions)
+    return {
+        "total_models": len(models),
+        "total_versions": total_versions,
+        "total_deployments": 0,
+        "status_distribution": status_dist,
+    }
+
+
+@mlops_models_router.get("/monitoring/summary")
+async def monitoring_summary(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    return {
+        "total_predictions": 0,
+        "avg_latency_ms": 0.0,
+        "error_rate": 0.0,
+        "drift_score": 0.0,
+    }
+
+
+@mlops_models_router.get("/drift/summary")
+async def drift_summary(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    return {
+        "total_checks": 0,
+        "normal": 0,
+        "warning": 0,
+        "critical": 0,
+    }
+
+
 @mlops_models_router.get("")
 async def list_models(
     status: str | None = None,
@@ -288,3 +343,117 @@ async def model_lifecycle(
     except Exception as exc:
         raise AppError(str(exc)) from None
     return result
+
+
+# -- Model-scoped aggregate endpoints (frontend needs these) --
+
+
+@mlops_models_router.get("/{model_id}/training")
+async def model_training_runs(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    from app.mlops.services.training_service import TrainingService
+
+    service = TrainingService(db)
+    runs = service.list_runs(model_id=model_id, organization_id=organization_id)
+    return {
+        "data": [
+            {
+                "id": r.id,
+                "experiment_id": r.experiment_id,
+                "model_id": r.model_id,
+                "status": r.status,
+                "duration_seconds": r.duration_seconds,
+                "metrics": r.metrics or {},
+                "created_at": str(r.created_at),
+            }
+            for r in runs
+        ],
+        "total": len(runs),
+    }
+
+
+@mlops_models_router.get("/{model_id}/evaluations")
+async def model_evaluations(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    from app.mlops.services.model_registry import ModelRegistryService
+
+    service = ModelRegistryService(db)
+    versions = service.list_versions(model_id, organization_id)
+    evaluations = []
+    for v in versions:
+        if v.metrics:
+            for name, value in v.metrics.items():
+                if isinstance(value, (int, float)):
+                    evaluations.append(
+                        {
+                            "id": f"{v.id}_{name}",
+                            "version_id": v.id,
+                            "metric_name": name,
+                            "metric_value": value,
+                            "dataset": "validation",
+                            "created_at": str(v.created_at),
+                        }
+                    )
+    return {"data": evaluations, "total": len(evaluations)}
+
+
+@mlops_models_router.get("/{model_id}/deployments")
+async def model_deployments(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    from app.mlops.services.deployment_service import DeploymentService
+
+    service = DeploymentService(db)
+    deployments = service.list_deployments(model_id=model_id, organization_id=organization_id)
+    return {
+        "data": [
+            {
+                "id": d.id,
+                "model_version_id": d.model_version_id,
+                "environment": d.environment,
+                "status": d.status,
+                "health": d.health,
+                "deployed_at": str(d.deployed_at) if d.deployed_at else None,
+            }
+            for d in deployments
+        ],
+        "total": len(deployments),
+    }
+
+
+@mlops_models_router.get("/{model_id}/monitoring")
+async def model_monitoring(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    from app.mlops.services.monitoring_service import MonitoringService
+
+    service = MonitoringService(db)
+    metrics = service.get_metrics(model_id, organization_id)
+    return {
+        "data": [
+            {
+                "id": m.id,
+                "timestamp": str(m.recorded_at),
+                "predictions_count": m.metric_value if m.metric_name == "prediction_count" else 0,
+                "avg_latency_ms": m.metric_value if m.metric_name == "latency_ms" else 0,
+                "error_rate": m.metric_value if m.metric_name == "error_rate" else 0,
+                "drift_score": m.metric_value if m.metric_name == "drift_score" else 0,
+            }
+            for m in metrics
+        ],
+        "total": len(metrics),
+    }

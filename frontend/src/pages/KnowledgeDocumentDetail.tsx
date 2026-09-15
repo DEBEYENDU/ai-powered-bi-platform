@@ -131,10 +131,12 @@ export function KnowledgeDocumentDetail() {
   const fetchStatusHistory = useCallback(async () => {
     if (!id) return;
     try {
-      const res = await rget<{ history: StatusHistoryEntry[] }>(
-        `/knowledge/documents/${id}/history`
+      const res = await rget<{ status: string; embedding_status?: Record<string, string> }>(
+        `/knowledge/documents/${id}/status`
       );
-      setStatusHistory(res.history || []);
+      if (res.status) {
+        setStatusHistory([{ status: res.status, changed_at: new Date().toISOString() }]);
+      }
     } catch {
       /* ignore */
     }

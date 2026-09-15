@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import { rget } from "../api";
+import { rget, rpost } from "../api";
 import { ErrorBanner, EmptyState } from "../components";
 
 /* ------------------------------------------------------------------ */
@@ -61,8 +61,8 @@ export function KnowledgeSearch() {
 
   const fetchCollections = useCallback(async () => {
     try {
-      const res = await rget<{ collections: Collection[] }>("/knowledge/collections");
-      setCollections(res.collections || []);
+      const res = await rget<{ data: Collection[]; total: number }>("/knowledge/collections");
+      setCollections(res.data || []);
     } catch {
       /* ignore */
     }
@@ -79,13 +79,12 @@ export function KnowledgeSearch() {
     setHasSearched(true);
 
     try {
-      const params = new URLSearchParams();
-      params.set("q", query.trim());
-      params.set("top_k", String(topK));
-      params.set("search_type", searchType);
-      if (collectionFilter !== "all") params.set("collection_id", collectionFilter);
-
-      const res = await rget<SearchResponse>(`/knowledge/search?${params.toString()}`);
+      const res = await rpost<SearchResponse>("/knowledge/search", {
+        query: query.trim(),
+        collection_ids: collectionFilter !== "all" ? [collectionFilter] : undefined,
+        top_k: topK,
+        search_type: searchType,
+      });
       setResults(res.results || []);
       setSearchTime(res.search_time_ms || null);
     } catch (e: any) {

@@ -93,10 +93,10 @@ export function KnowledgeDocuments() {
       if (collectionFilter !== "all") params.set("collection_id", collectionFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
 
-      const res = await rget<{ documents: KnowledgeDocument[]; total: number }>(
+      const res = await rget<{ data: KnowledgeDocument[]; total: number }>(
         `/knowledge/documents?${params.toString()}`
       );
-      setDocuments(res.documents || []);
+      setDocuments(res.data || []);
       setTotalCount(res.total || 0);
     } catch (e: any) {
       setError(e.message || "Failed to load documents");
@@ -107,8 +107,8 @@ export function KnowledgeDocuments() {
 
   const fetchCollections = useCallback(async () => {
     try {
-      const res = await rget<{ collections: Collection[] }>("/knowledge/collections");
-      setCollections(res.collections || []);
+      const res = await rget<{ data: Collection[]; total: number }>("/knowledge/collections");
+      setCollections(res.data || []);
     } catch {
       /* ignore */
     }

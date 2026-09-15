@@ -156,8 +156,8 @@ export function KnowledgeRAGChat() {
 
   const fetchCollections = useCallback(async () => {
     try {
-      const res = await rget<{ collections: Collection[] }>("/knowledge/collections");
-      setCollections(res.collections || []);
+      const res = await rget<{ data: Collection[]; total: number }>("/knowledge/collections");
+      setCollections(res.data || []);
     } catch {
       /* ignore */
     }
@@ -198,7 +198,7 @@ export function KnowledgeRAGChat() {
 
     try {
       const token = localStorage.getItem("bi_token") || "";
-      const res = await fetch("/api/v1/knowledge/rag/chat", {
+      const res = await fetch("/api/v1/knowledge/rag/query", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

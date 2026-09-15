@@ -95,10 +95,10 @@ export function GovernanceSecurity() {
       const qs = params.toString() ? `?${params.toString()}` : "";
 
       const [evRes, sumRes] = await Promise.allSettled([
-        rget<{ events: SecurityEvent[] }>(`/governance/security-events${qs}`),
-        rget<SecuritySummary>("/governance/security-events/summary"),
+        rget<{ data: SecurityEvent[] }>(`/governance/security/events${qs}`),
+        rget<SecuritySummary>("/governance/security/summary"),
       ]);
-      if (evRes.status === "fulfilled") setEvents(evRes.value.events || []);
+      if (evRes.status === "fulfilled") setEvents(evRes.value.data || []);
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
     } catch (e: any) {
       setError(e.message || "Failed to load security events");
@@ -116,9 +116,9 @@ export function GovernanceSecurity() {
     setChecking(true);
     setError("");
     try {
-      const res = await rpost<{ authorized: boolean; reason: string }>("/governance/check-authorization", checkForm);
+      const res = await rpost<{ allowed: boolean; reason: string }>("/governance/security/check", checkForm);
       setCheckDialogOpen(false);
-      alert(res.authorized ? `Authorized: ${res.reason}` : `Denied: ${res.reason}`);
+      alert(res.allowed ? `Authorized: ${res.reason}` : `Denied: ${res.reason}`);
     } catch (e: any) {
       setError(e.message || "Failed to check authorization");
     } finally {
