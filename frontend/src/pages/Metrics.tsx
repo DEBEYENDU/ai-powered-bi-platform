@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Card, CardContent, Grid, Typography } from "@mui/material";
+import { Box, Button, Card, CardContent, Chip, Grid, Typography } from "@mui/material";
 import {
   Bar,
   BarChart,
@@ -13,6 +13,41 @@ import {
 } from "recharts";
 import { get } from "../api";
 import { ErrorBanner, Loading, useFetch } from "../components";
+
+function MetricCard({
+  title,
+  value,
+  unit,
+  available,
+}: {
+  title: string;
+  value: unknown;
+  unit?: string;
+  available?: boolean;
+}) {
+  const isUnavailable = available === false || value === null || value === undefined;
+  const displayValue = isUnavailable ? "N/A" : String(value ?? 0);
+  return (
+    <Card>
+      <CardContent>
+        <Typography color="text.secondary" gutterBottom>
+          {title}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+          <Typography variant="h5">{displayValue}</Typography>
+          {unit && !isUnavailable && (
+            <Typography variant="body2" color="text.secondary">
+              {unit}
+            </Typography>
+          )}
+        </Box>
+        {isUnavailable && (
+          <Chip label="Not configured" size="small" sx={{ mt: 0.5 }} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function Metrics() {
   const [tick, setTick] = useState(0);
@@ -29,17 +64,48 @@ export function Metrics() {
   if (loading && !data) return <Loading />;
   if (error || !data) return <ErrorBanner error={error ?? "No data"} />;
 
-  const cards: Array<[string, unknown]> = [
-    ["Throughput (req/min)", data.api_throughput_rpm],
-    ["Avg response (ms)", data.avg_response_time_ms],
-    ["P95 latency (ms)", data.api_latency_p95_ms],
-    ["Total requests", data.api_requests_total],
-    ["Errors", data.api_errors_total],
-    ["Cache hit rate", data.cache_hit_rate],
-    ["Cache hits / misses", `${data.cache_hits ?? 0} / ${data.cache_misses ?? 0}`],
-    ["DB connections", data.db_connections],
-    ["Queue length", data.job_queue_length],
-    ["Uptime (s)", data.uptime_seconds],
+  const queueAvailable =
+    data.job_queue_length !== "Not Configured" && data.job_queue_length !== null;
+  const dbAvailable = data.db_connections !== null && data.db_connections !== undefined;
+  const cacheAvailable =
+    data.cache_hit_rate !== null && data.cache_hit_rate !== undefined;
+
+  const cards: Array<{
+    title: string;
+    value: unknown;
+    unit?: string;
+    available?: boolean;
+  }> = [
+    { title: "Throughput", value: data.api_throughput_rpm, unit: "req/min" },
+    { title: "Avg response", value: data.avg_response_time_ms, unit: "ms" },
+    { title: "P95 latency", value: data.api_latency_p95_ms, unit: "ms" },
+    { title: "Total requests", value: data.api_requests_total },
+    { title: "Errors", value: data.api_errors_total },
+    {
+      title: "Cache hit rate",
+      value: data.cache_hit_rate != null ? `${(data.cache_hit_rate * 100).toFixed(1)}%` : null,
+      available: cacheAvailable,
+    },
+    {
+      title: "Cache hits / misses",
+      value:
+        data.cache_hits != null || data.cache_misses != null
+          ? `${data.cache_hits ?? 0} / ${data.cache_misses ?? 0}`
+          : null,
+      available: cacheAvailable,
+    },
+    {
+      title: "DB connections",
+      value: data.db_connections,
+      unit: "checked out",
+      available: dbAvailable,
+    },
+    {
+      title: "Job queue",
+      value: data.job_queue_length,
+      available: queueAvailable,
+    },
+    { title: "Uptime", value: data.uptime_seconds, unit: "s" },
   ];
   const latencyData = [
     { name: "avg", ms: data.avg_response_time_ms ?? 0 },
@@ -70,16 +136,9 @@ export function Metrics() {
         </Box>
       </Box>
       <Grid container spacing={2}>
-        {cards.map(([title, value]) => (
+        {cards.map(({ title, value, unit, available }) => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={title}>
-            <Card>
-              <CardContent>
-                <Typography color="text.secondary" gutterBottom>
-                  {title}
-                </Typography>
-                <Typography variant="h5">{String(value)}</Typography>
-              </CardContent>
-            </Card>
+            <MetricCard title={title} value={value} unit={unit} available={available} />
           </Grid>
         ))}
         <Grid size={{ xs: 12, md: 6 }}>

@@ -73,19 +73,18 @@ class HealthService:
             from app.db.session import get_engine
 
             engine = get_engine()
+            # Lightweight connectivity check — avoid expensive version() query
+            # on every health poll. Use pool status for diagnostics.
             with engine.connect() as conn:
-                version = conn.execute(text("SELECT version()")).scalar() or ""
-                connected_db = conn.execute(text("SELECT current_database()")).scalar()
+                conn.execute(text("SELECT 1"))
             pool = engine.pool
             checked_out = pool.checkedout() if hasattr(pool, "checkedout") else "n/a"
+            pool_size = pool.size() if hasattr(pool, "size") else "n/a"
             return {
                 "status": "ok",
-                "detail": f"{connected_db} @ {engine.url.host}",
-                "database": connected_db,
-                "server_version": str(version).split(" ")[1]
-                if " " in str(version)
-                else str(version)[:60],
+                "detail": f"{engine.url.host}",
                 "pool_checked_out": checked_out,
+                "pool_size": pool_size,
                 "pool_status": str(pool.status()),
             }
         except Exception as exc:
@@ -99,7 +98,7 @@ class HealthService:
             from app.core.config import get_settings
 
             client = redis.Redis.from_url(
-                get_settings().redis_url, socket_connect_timeout=2, decode_responses=True
+                get_settings().redis_url, socket_connect_timeout=2, socket_timeout=2, decode_responses=True
             )
             client.ping()
             info = client.info("server")

@@ -16,6 +16,7 @@ Data sources (all live, no placeholders):
 from __future__ import annotations
 
 import contextlib
+import threading
 import time
 from collections import defaultdict, deque
 from datetime import datetime
@@ -30,11 +31,13 @@ class MetricsCollector:
             lambda: deque(maxlen=retention)
         )
         self._max_series = max_series
-        self._started_at = time.time()
-        # Raw epoch timestamps of completed requests (throughput window).
+        self._started_at = time.monotonic()
+        self._wall_started_at = time.time()
+        # Raw monotonic timestamps of completed requests (throughput window).
         self._request_times: deque[float] = deque(maxlen=20000)
         self._error_count = 0
         self._request_count = 0
+        self._lock = threading.Lock()
 
     # -- recording --
     def record(
@@ -44,27 +47,30 @@ class MetricsCollector:
         labels: dict[str, str] | None = None,
         timestamp: datetime | None = None,
     ) -> None:
-        if len(self._series) >= self._max_series and name not in self._series:
-            oldest = next(iter(self._series))
-            del self._series[oldest]
-        self._series[name].append(
-            {
-                "value": value,
-                "labels": labels or {},
-                "timestamp": (timestamp or datetime.utcnow()).isoformat(),
-            }
-        )
+        with self._lock:
+            if len(self._series) >= self._max_series and name not in self._series:
+                oldest = next(iter(self._series))
+                del self._series[oldest]
+            self._series[name].append(
+                {
+                    "value": value,
+                    "labels": labels or {},
+                    "timestamp": (timestamp or datetime.utcnow()).isoformat(),
+                }
+            )
 
     def record_request(self, latency_ms: float, status_code: int, route: str = "") -> None:
         """Called once per HTTP request by the middleware."""
-        now = time.time()
-        self._request_times.append(now)
-        self._request_count += 1
-        labels = {"route": route or "unknown", "status": str(status_code)}
+        now = time.monotonic()
+        with self._lock:
+            self._request_times.append(now)
+            self._request_count += 1
+            labels = {"route": route or "unknown", "status": str(status_code)}
         self.record("api_latency_ms", latency_ms, labels=labels)
         self.record("api_requests_total", 1, labels={"route": labels["route"]})
         if status_code >= 500:
-            self._error_count += 1
+            with self._lock:
+                self._error_count += 1
             self.record("api_errors_total", 1, labels={"route": labels["route"]})
 
     def latest(self, name: str) -> dict[str, Any] | None:
@@ -94,8 +100,9 @@ class MetricsCollector:
 
     def rate_per_minute(self) -> float:
         """Rolling requests/minute over the last 60 seconds."""
-        cutoff = time.time() - 60
-        return float(sum(1 for t in self._request_times if t >= cutoff))
+        cutoff = time.monotonic() - 60
+        with self._lock:
+            return float(sum(1 for t in self._request_times if t >= cutoff))
 
     def histogram(self, name: str, buckets: list[float] | None = None) -> dict[str, Any]:
         buckets = buckets or LATENCY_BUCKETS_MS
@@ -158,7 +165,7 @@ class MetricsCollector:
 
     # -- snapshots --
     def system_snapshot(self) -> dict[str, Any]:
-        snapshot: dict[str, Any] = {"uptime_seconds": round(time.time() - self._started_at, 1)}
+        snapshot: dict[str, Any] = {"uptime_seconds": round(time.time() - self._wall_started_at, 1)}
         try:
             import psutil  # type: ignore
 
