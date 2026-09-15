@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -17,6 +16,7 @@ from app.reports.schemas.report import (
     TemplateCreate,
 )
 from app.reports.services.report_service import ReportService
+from app.storage.validate import PathTraversalError, validate_storage_path
 
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -128,10 +128,16 @@ def download_report(
     if target is None:
         raise HTTPException(404, "Version not found")
     path = target.get("storage_paths", {}).get(format.lower())
-    if not path or not Path(path).exists():
+    if not path:
         raise HTTPException(404, f"Format '{format}' not generated for this version")
+    try:
+        validated = validate_storage_path(path, allowed_root=service.storage_root)
+    except PathTraversalError as exc:
+        raise HTTPException(403, "Access denied") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(404, f"Format '{format}' file not found on disk") from exc
     service._log("report_downloaded", report_id, "", "", {"format": format})
-    return FileResponse(path)
+    return FileResponse(validated)
 
 
 @reports_router.get("/{report_id}/versions", summary="List versions")

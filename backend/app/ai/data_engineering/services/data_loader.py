@@ -3,7 +3,8 @@ with a local storage layer for uploaded files."""
 
 from __future__ import annotations
 
-import os
+import re
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -12,10 +13,27 @@ import pandas as pd
 
 from app.core.config import get_settings
 
+# Characters that are unsafe in filenames across platforms.
+_UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _sanitize_filename(name: str) -> str:
+    """Remove path separators and unsafe characters from uploaded filenames."""
+    # Strip directory components (attackers may send "../../etc/passwd")
+    name = Path(name).name
+    # Remove unsafe characters
+    name = _UNSAFE_CHARS.sub("_", name)
+    # Collapse multiple underscores
+    name = re.sub(r"_+", "_", name).strip("_")
+    # Enforce a reasonable length
+    if len(name) > 200:
+        name = name[:200]
+    return name or "upload"
+
 
 def _storage_root() -> Path:
     settings = get_settings()
-    base = Path(getattr(settings, "storage_path", "/tmp/bi_storage"))
+    base = Path(getattr(settings, "storage_path", str(Path.cwd() / "storage")))
     root = base / "de_datasets"
     root.mkdir(parents=True, exist_ok=True)
     return root
@@ -23,10 +41,15 @@ def _storage_root() -> Path:
 
 def _versions_root() -> Path:
     settings = get_settings()
-    base = Path(getattr(settings, "storage_path", "/tmp/bi_storage"))
+    base = Path(getattr(settings, "storage_path", str(Path.cwd() / "storage")))
     root = base / "de_versions"
     root.mkdir(parents=True, exist_ok=True)
     return root
+
+
+def _temp_dir() -> Path:
+    """Cross-platform temporary directory for exports."""
+    return Path(tempfile.mkdtemp(prefix="bi_export_"))
 
 
 def generate_dataset_id() -> str:
@@ -69,8 +92,9 @@ def load_from_upload(
 ) -> tuple[pd.DataFrame, str, int]:
     """Persist uploaded file to storage and return (df, dataset_id, file_size)."""
     dataset_id = generate_dataset_id()
+    safe_name = _sanitize_filename(filename)
     root = _storage_root()
-    dest = root / f"{dataset_id}_{filename}"
+    dest = root / f"{dataset_id}_{safe_name}"
     dest.write_bytes(file_content)
     file_size = len(file_content)
 
@@ -111,28 +135,29 @@ def export_dataframe(
 ) -> tuple[bytes, str, str]:
     """Export DataFrame as bytes. Returns (content, filename, mime_type)."""
     dataset_id = str(uuid.uuid4())[:8]
+    tmp = _temp_dir()
 
     if format == "csv":
         content = df.to_csv(index=False).encode("utf-8")
         return content, f"export_{dataset_id}.csv", "text/csv"
     elif format == "excel":
-        buf = pd.ExcelWriter("/tmp/_export.xlsx", engine="openpyxl")
-        df.to_excel(buf, index=False)
-        buf.close()
-        with open("/tmp/_export.xlsx", "rb") as f:
-            content = f.read()
-        os.remove("/tmp/_export.xlsx")
+        xlsx_path = tmp / "export.xlsx"
+        with pd.ExcelWriter(str(xlsx_path), engine="openpyxl") as buf:
+            df.to_excel(buf, index=False)
+        content = xlsx_path.read_bytes()
+        xlsx_path.unlink(missing_ok=True)
+        tmp.rmdir()
         return (
             content,
             f"export_{dataset_id}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     elif format == "parquet":
-        buf = "/tmp/_export.parquet"
-        df.to_parquet(buf, index=False)
-        with open(buf, "rb") as f:
-            content = f.read()
-        os.remove(buf)
+        pq_path = tmp / "export.parquet"
+        df.to_parquet(str(pq_path), index=False)
+        content = pq_path.read_bytes()
+        pq_path.unlink(missing_ok=True)
+        tmp.rmdir()
         return content, f"export_{dataset_id}.parquet", "application/octet-stream"
     elif format == "json":
         content = df.to_json(orient="records", indent=2).encode("utf-8")

@@ -39,11 +39,11 @@ class ReportGeneratorService:
             return AIService(provider=None)
 
     def _get_storage_dir(self) -> str:
-        import os
         from pathlib import Path
 
-        base = os.getenv("REPORTS_PATH", str(Path(__file__).resolve().parents[4] / "reports"))
-        path = Path(base)
+        from app.core.config import get_settings
+
+        path = Path(get_settings().reports_path)
         path.mkdir(parents=True, exist_ok=True)
         return str(path)
 
