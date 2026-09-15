@@ -45,8 +45,10 @@ services:
   worker:
     build: .
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://bi:bi@db:5432/bi_platform
       REDIS_URL: redis://redis:6379/0

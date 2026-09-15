@@ -8,16 +8,20 @@ without Redis.
 
 from __future__ import annotations
 
-import contextlib
 import json
+import time
 import weakref
-from datetime import datetime
 from typing import Any, ClassVar
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+
+# Circuit-breaker: after this many consecutive Redis failures, stop trying
+# for a short cooldown period.
+_FAIL_THRESHOLD = 5
+_COOLDOWN_SECS = 30.0
 
 
 class CacheService:
@@ -32,6 +36,8 @@ class CacheService:
         self._memory: dict = {}
         self.hits = 0
         self.misses = 0
+        self._consecutive_failures = 0
+        self._circuit_open_at: float = 0.0
         self._init_redis()
         CacheService._registry.add(self)
 
@@ -64,21 +70,48 @@ class CacheService:
     def _namespaced(self, key: str) -> str:
         return f"{self.namespace}:{key}"
 
+    def _redis_available(self) -> bool:
+        """Check if Redis is usable (circuit breaker pattern)."""
+        if self._redis is None:
+            return False
+        if self._consecutive_failures >= _FAIL_THRESHOLD:
+            if time.monotonic() - self._circuit_open_at < _COOLDOWN_SECS:
+                return False
+            # Cooldown expired — try once.
+            self._consecutive_failures = 0
+        return True
+
+    def _record_redis_success(self) -> None:
+        self._consecutive_failures = 0
+
+    def _record_redis_failure(self) -> None:
+        self._consecutive_failures += 1
+        if self._consecutive_failures >= _FAIL_THRESHOLD:
+            self._circuit_open_at = time.monotonic()
+            log.warning(
+                "redis_circuit_open",
+                namespace=self.namespace,
+                failures=self._consecutive_failures,
+            )
+
     def get(self, key: str) -> Any | None:
         ns = self._namespaced(key)
-        if self._redis is not None:
-            with contextlib.suppress(Exception):
+        if self._redis_available():
+            try:
                 raw = self._redis.get(ns)
+                self._record_redis_success()
                 if raw is not None:
                     self.hits += 1
                     return json.loads(raw)
                 self.misses += 1
                 return None
+            except Exception:
+                self._record_redis_failure()
         entry = self._memory.get(ns)
         if entry is None:
             self.misses += 1
             return None
-        if (datetime.utcnow() - entry["at"]).total_seconds() > entry["ttl"]:
+        if (time.monotonic() - entry["at"]) > entry["ttl"]:
             del self._memory[ns]
             self.misses += 1
             return None
@@ -87,18 +120,24 @@ class CacheService:
 
     def set(self, key: str, value: Any, ttl: float | None = None) -> None:
         ns, ttl = self._namespaced(key), ttl or self.default_ttl
-        if self._redis is not None:
-            with contextlib.suppress(Exception):
+        if self._redis_available():
+            try:
                 self._redis.setex(ns, int(ttl), json.dumps(value, default=str))
+                self._record_redis_success()
                 return
+            except Exception:
+                self._record_redis_failure()
         if len(self._memory) > 5000:
             oldest = min(self._memory, key=lambda k: self._memory[k]["at"])
             del self._memory[oldest]
-        self._memory[ns] = {"value": value, "at": datetime.utcnow(), "ttl": ttl}
+        self._memory[ns] = {"value": value, "at": time.monotonic(), "ttl": ttl}
 
     def delete(self, key: str) -> None:
         ns = self._namespaced(key)
-        if self._redis is not None:
-            with contextlib.suppress(Exception):
+        if self._redis_available():
+            try:
                 self._redis.delete(ns)
+                self._record_redis_success()
+            except Exception:
+                self._record_redis_failure()
         self._memory.pop(ns, None)
