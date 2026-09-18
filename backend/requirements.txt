@@ -1,7 +1,7 @@
 # Pinned production dependencies (source of truth for Docker builds).
 # Generated from installed versions — keep in sync with pyproject.toml.
 fastapi==0.141.1
-uvicorn[standard]==0.50.2
+uvicorn[standard]==0.53.0
 gunicorn==26.2.0
 pydantic==2.13.4
 pydantic-settings==2.15.0
