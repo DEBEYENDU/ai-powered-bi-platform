@@ -15,6 +15,10 @@ class Organization(Base):
     suspended: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active, trial, suspended, deleting, deleted
+    plan: Mapped[str] = mapped_column(String(50), default="free")  # free, starter, pro, enterprise
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     users: Mapped[list["User"]] = relationship(
         back_populates="organization", foreign_keys="User.organization_id"
     )

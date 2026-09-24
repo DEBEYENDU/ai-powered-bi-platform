@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.admin.routers.admin import admin_router
+from app.admin.routers.admin import admin_public_router, admin_router
 from app.ai.agents.routers.agents_router import agents_router
 from app.ai.analytics.routers.analytics import business_analyst_router
 from app.ai.data_engineering.routers.de_router import de_router
@@ -24,6 +24,8 @@ from app.governance.routers.policies import governance_policies_router
 from app.governance.routers.retention import governance_retention_router
 from app.governance.routers.security import governance_security_router
 from app.iam.routers.auth import router as auth_router
+from app.iam.routers.tenant_admin import tenant_router
+from app.iam.routers.platform_admin import platform_admin_router
 from app.knowledge.routers.collections import collections_router
 from app.knowledge.routers.documents import documents_router
 from app.knowledge.routers.rag import rag_router
@@ -74,6 +76,9 @@ for _router in (
     governance_security_router,
     governance_classifications_router,
     governance_retention_router,
+    tenant_router,
+    platform_admin_router,
+    admin_public_router,
 ):
     api_router.include_router(_router)
 
@@ -109,5 +114,8 @@ for _router in (
     governance_security_router,
     governance_classifications_router,
     governance_retention_router,
+    tenant_router,
+    platform_admin_router,
+    admin_public_router,
 ):
     legacy_router.include_router(_router)

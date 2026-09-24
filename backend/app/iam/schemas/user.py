@@ -5,7 +5,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: constr(min_length=12)
     full_name: str | None = None
-    organization_id: str
+    organization_id: str | None = None
 
 
 class UserLogin(BaseModel):
