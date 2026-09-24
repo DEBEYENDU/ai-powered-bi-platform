@@ -141,3 +141,12 @@ class CacheService:
             except Exception:
                 self._record_redis_failure()
         self._memory.pop(ns, None)
+
+    def tenant_key(self, tenant_id: str, key: str) -> str:
+        return f"t:{tenant_id}:{key}"
+
+    def tenant_get(self, tenant_id: str, key: str) -> Any | None:
+        return self.get(self.tenant_key(tenant_id, key))
+
+    def tenant_set(self, tenant_id: str, key: str, value: Any, ttl: float | None = None) -> None:
+        self.set(self.tenant_key(tenant_id, key), value, ttl)
