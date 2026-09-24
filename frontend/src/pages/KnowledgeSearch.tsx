@@ -80,7 +80,7 @@ export function KnowledgeSearch() {
 
     try {
       const res = await rpost<SearchResponse>("/knowledge/search", {
-        query: query.trim(),
+        text: query.trim(),
         collection_ids: collectionFilter !== "all" ? [collectionFilter] : undefined,
         top_k: topK,
         search_type: searchType,

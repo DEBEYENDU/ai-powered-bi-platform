@@ -59,6 +59,9 @@ import { GovernanceSecurity } from "./pages/GovernanceSecurity";
 import { GovernanceClassifications } from "./pages/GovernanceClassifications";
 import { Settings } from "./pages/Settings";
 import { TaskHistory } from "./pages/TaskHistory";
+import { TenantApiKeys } from "./pages/TenantApiKeys";
+import { TenantOrganization } from "./pages/TenantOrganization";
+import { TenantUsage } from "./pages/TenantUsage";
 import { Users } from "./pages/Users";
 
 export default function App() {
@@ -126,6 +129,9 @@ export default function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/flags" element={<Flags />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/organization" element={<TenantOrganization />} />
+          <Route path="/organization/usage" element={<TenantUsage />} />
+          <Route path="/organization/api-keys" element={<TenantApiKeys />} />
         </Routes>
       </Layout>
     </BrowserRouter>

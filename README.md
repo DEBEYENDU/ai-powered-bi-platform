@@ -1,164 +1,221 @@
-# AI-Powered Business Intelligence and Analytics Platform
+# AI-Powered Business Intelligence Platform
 
-A complete enterprise-grade AI-Powered Business Intelligence and Analytics Platform built as a Final Year Bachelor of Engineering Project.
+**Version 1.0.0** — Final Product Release
 
-## 📋 Project Status
+A complete enterprise-grade, multi-tenant AI-powered Business Intelligence and Analytics Platform with Natural Language querying, autonomous AI agents, RAG, MLOps, workflow automation, and governance.
 
-All phases are complete:
+## Core Capabilities
 
-- ✅ **Phase 1** – Software Requirements Specification (SRS)
-- ✅ **Phase 2** – Software Architecture & System Design
-- ✅ **Phase 3** – Product Design, UX/UI, User Journey & Design System
-- ✅ **Phase 4** – PostgreSQL Database Design & Data Modeling
-- ✅ **Phase 5** – API Contract Design & Backend Foundation
-- ✅ **Phase 6** – Backend Foundation & Core Infrastructure
-- ✅ **Phase 7** – Authentication, Authorization, User & Organization Management (IAM)
-- ✅ **Phase 8** – Dataset Management & File Storage
-- ✅ **Phase 9** – ETL Pipeline, Data Processing & Data Quality Engine
-- ✅ **Phase 10** – Business Analytics & KPI Engine
-- ✅ **Phase 11** – Dashboard, Visualization & Executive Dashboard Engine
-- ✅ **Phase 12** – Machine Learning Platform
-- ✅ **Phase 13** – AI Business Assistant, LLM Orchestration, RAG & Natural Language Analytics Engine
-- ✅ **Phase 14** – Reporting, Document Generation & Report Automation Engine
-- ✅ **Phase 15** – Enterprise Administration, Monitoring & Platform Management
-- ✅ **Phase 16** – DevOps, Cloud Deployment, Security Hardening & Production Readiness
+| Category | Features |
+|----------|----------|
+| **Data** | Dataset upload (CSV/Excel/JSON/Parquet), profiling, quality scoring, ETL pipelines, data cleaning, transforms |
+| **Analytics** | SQL queries, Natural Language to SQL (NLQ), KPI engine, business analyst AI, forecasting, scenario analysis |
+| **Visualization** | Interactive dashboards, chart generation, AI-powered dashboard creation |
+| **AI** | AI Chat, business analyst, report generation, copilot, multi-agent orchestration, autonomous task execution |
+| **Knowledge** | Document upload, RAG (Retrieval-Augmented Generation), semantic search, collections, citation tracking |
+| **Reporting** | Template-based reports, scheduled generation, PDF/DOCX/XLSX/PPTX export, version history, approval workflows |
+| **Workflows** | Visual workflow builder, approval chains, trigger system, execution history, templates |
+| **MLOps** | Model registry, experiments, training runs, deployments, drift detection, monitoring |
+| **Governance** | Security classifications, retention policies, access reviews, compliance policies |
+| **Multi-Tenant** | Organization isolation, plans (Free/Starter/Pro/Enterprise), quotas, usage metering, API keys |
+| **Security** | JWT auth, RBAC, tenant isolation, rate limiting, path traversal protection, SQL injection protection |
+| **Operations** | Audit logging, metrics, alerts, health checks, Docker, CI/CD |
 
-## 📚 Documentation
+## Architecture
 
-All design artifacts are in the `docs/` folder:
+```text
+                    ┌─────────────────┐
+                    │   React + Vite   │  Frontend (65 pages)
+                    │   TypeScript     │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │     FastAPI      │  Backend (Python 3.14)
+                    │   SQLAlchemy     │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+┌───────▼──────┐    ┌───────▼──────┐    ┌───────▼──────┐
+│  PostgreSQL   │    │    Redis     │    │    Storage    │
+│  (database)   │    │  (cache)     │    │  (files)     │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
 
-| Phase | Document |
-|------|----------|
-| 1 | [Software Requirements Specification](docs/phase1-srs.md) |
-| 2 | [Software Architecture](docs/phase2-architecture.md) |
-| 3 | [Product Design & UX](docs/phase3-ux-ui.md) |
-| 4 | [Database Design](docs/phase4-database.md) |
-| 5 | [API Design Specification](docs/phase5-api.md) |
-| 6 | [Backend Foundation](docs/phase6-backend-foundation.md) |
-| 7 | [IAM Module](docs/phase7-iam.md) (auto‑generated) |
-| 8 | [Dataset Management](docs/phase8-dataset.md) (auto‑generated) |
-| 9 | [ETL Pipeline](docs/phase9-etl.md) (auto‑generated) |
-|10 | [Analytics & KPI Engine](docs/phase10-analytics.md) (auto‑generated) |
-|11 | [Dashboard & Visualization](docs/phase11-dashboard.md) (auto‑generated) |
-|13 | [AI Business Assistant](docs/phase13-ai-assistant.md) |
-|14 | [Reporting & Automation](docs/phase14-reporting.md) |
-|15 | [Admin & Observability](docs/phase15-admin.md) |
-|16 | [DevOps & Production](docs/phase16-devops.md) |
-|17 | [Production Completion Pass](docs/completion-pass.md) |
+### Backend Modules
 
-## 🛠 Tech Stack
+| Module | Location | Purpose |
+|--------|----------|---------|
+| IAM | `app/iam/` | Authentication, users, organizations, plans, quotas, API keys |
+| Dataset | `app/dataset/` | Upload, profile, store datasets |
+| ETL | `app/etl/` | Data processing pipelines |
+| Analytics | `app/analytics/` | KPI engine, formulas |
+| AI | `app/ai/` | Chat, NLQ, business analyst, dashboard gen, reports, copilot |
+| Knowledge | `app/knowledge/` | Documents, collections, RAG, search |
+| Reports | `app/reports/` | Template reports, scheduling, export |
+| Workflows | `app/workflows/` | Workflow builder, executions, approvals |
+| MLOps | `app/mlops/` | Models, experiments, training, deployments, monitoring |
+| Governance | `app/governance/` | Policies, classifications, retention, security |
+| Admin | `app/admin/` | Platform administration, RBAC, feature flags, metrics |
+| Storage | `app/storage/` | Tenant-isolated file storage, object storage abstraction |
+
+## Local Development Setup
+
+### Prerequisites
+
+- Python 3.12+
+- Node.js 20+
+- PostgreSQL 15+
+- Redis 7+
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate    # Linux/Mac
+
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your database URL, Redis URL, and JWT secret
+
+# Generate a secure JWT secret:
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# Run migrations
+python -m alembic upgrade head
+
+# Start server
+uvicorn app.main:app --reload
+# API at http://localhost:8000
+# Docs at http://localhost:8000/docs
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Frontend at http://localhost:5173
+```
+
+### Docker
+
+```bash
+docker compose up --build
+# Starts API, PostgreSQL, Redis, Celery worker
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `APP_ENV` | Environment (development/production) | `development` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+psycopg://bi:bi@localhost:5432/bi_platform` |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
+| `JWT_SECRET_KEY` | JWT signing secret (MUST change in production) | `change-me-in-production` |
+| `STORAGE_PATH` | File storage directory | `./storage` |
+| `REPORTS_PATH` | Report storage directory | `./reports` |
+| `AI_PROVIDER` | AI provider (openai/ollama/azure) | `openai` |
+| `AI_MODEL` | AI model name | `gpt-4o-mini` |
+| `OPENAI_API_KEY` | OpenAI API key | (empty) |
+| `RATE_LIMIT_PER Minute` | API rate limit per minute | `120` |
+
+## Multi-Tenancy
+
+The platform is fully multi-tenant with Organization as the canonical tenant boundary.
+
+### Plans
+
+| Plan | Users | Datasets | Storage | AI Requests | Price |
+|------|-------|----------|---------|-------------|-------|
+| Free | 3 | 5 | 100 MB | 50/month | $0 |
+| Starter | 10 | 25 | 1 GB | 200/month | $29/mo |
+| Professional | 50 | 100 | 10 GB | 1000/month | $99/mo |
+| Enterprise | Unlimited | Unlimited | Unlimited | Unlimited | $499/mo |
+
+### Tenant Isolation
+
+- **Database**: All queries scoped by `organization_id`
+- **Storage**: Files under `storage/tenants/{tenant_id}/`
+- **Cache**: Redis keys prefixed with `t:{tenant_id}:`
+- **Rate Limiting**: Per-tenant rate limits with suspended tenant blocking
+- **RAG**: Documents and embeddings scoped per tenant
+- **AI**: Context restricted to tenant's own data
+- **Workflows**: Executions bound to tenant
+- **MLOps**: Models and experiments scoped per tenant
+
+## Testing
+
+```bash
+# Backend tests
+cd backend
+python -m pytest app/ -v
+
+# Frontend type check
+cd frontend
+npx tsc --noEmit
+```
+
+## Security
+
+- JWT authentication with configurable expiry
+- RBAC with 4 roles: superadmin, org_admin, analyst, viewer
+- Tenant isolation enforced at database, storage, cache, and API layers
+- SQL injection protection via SQLValidator
+- Path traversal protection via validate_storage_path
+- Rate limiting per tenant with Redis-backed sliding window
+- API key authentication for service-to-service calls
+- Startup validation rejects insecure JWT secrets in production
+- pip-audit enforced in CI (blocking, not advisory)
+- Non-root Docker execution
+- No hardcoded secrets in codebase
+
+## Database Migrations
+
+```bash
+cd backend
+python -m alembic upgrade head     # Apply all migrations
+python -m alembic current          # Check current version
+python -m alembic history          # View migration history
+```
+
+17 migrations from initial schema through multi-tenant infrastructure.
+
+## CI/CD
+
+GitHub Actions workflows:
+- `ci.yml` — Backend tests, lint, TypeScript check, frontend build
+- `security.yml` — Secret scanning (gitleaks), dependency audit (pip-audit), container scanning (Trivy)
+- `cd-staging.yml` — Staging deployment
+- `cd-prod.yml` — Production deployment
+
+## API Documentation
+
+Interactive API docs available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | React 19, TypeScript, TailwindCSS, React Query, React Router, Zustand, Framer Motion, React Hook Form |
-| **Backend** | Python 3.12+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2, PostgreSQL, Redis, Celery |
-| **ML / AI** | scikit‑learn, statsmodels, TensorFlow / OpenAI LLM placeholder |
-| **Charts** | Apache ECharts (primary), Recharts, Chart.js (fallback) |
-| **Infra** | Docker, Docker Compose, GitHub Actions, Nginx, SSL (Let's Encrypt) |
-| **Storage** | Local (dev), AWS S3 / Azure Blob / GCS (future), MinIO (optional) |
-| **Auth** | JWT Access + Refresh Tokens, RBAC, Password bcrypt, Session management |
+| Frontend | React 19, TypeScript, MUI v9, Vite, React Router |
+| Backend | Python 3.14, FastAPI, SQLAlchemy 2.x, Pydantic v2 |
+| Database | PostgreSQL 15+ with Alembic migrations |
+| Cache | Redis 7+ with in-memory fallback |
+| AI | OpenAI / Ollama / Azure OpenAI / Gemini / Anthropic |
+| ML | scikit-learn, statsmodels |
+| Charts | Apache ECharts, Recharts |
+| Auth | JWT, bcrypt, RBAC |
+| Storage | Local filesystem (cloud-ready abstraction) |
+| Infra | Docker, GitHub Actions |
+| Testing | pytest, TypeScript |
 
-## 📁 Repository Structure
+## License
 
-```
-ai-powered-bi-platform/
-├─ backend/
-│   ├─ app/
-│   │   ├─ api/                # FastAPI routers (v1)
-│   │   ├─ core/               # Config, security, logger
-│   │   ├─ db/                 # SQLAlchemy engine & session
-│   │   ├─ iam/                # Authentication & Authorization
-│   │   ├─ dataset/            # Upload, metadata, storage abstraction
-│   │   ├─ etl/                # Pipeline stages, quality engine, jobs
-│   │   ├─ analytics/          # KPI engine, formulas, dashboards
-│   │   ├─ dashboard/          # React frontend code (see frontend/)
-│   │   ├─ models/             # SQLAlchemy models
-│   │   ├─ repositories/       # Repository pattern
-│   │   ├─ services/           # Service layer
-│   │   ├─ middleware/         # CORS, rate‑limit, security headers
-│   │   ├─ dependencies/       # DI (current user, org, db session)
-│   │   ├─ cache/              # Redis wrappers
-│   │   ├─ storage/            # Storage provider interface
-│   │   └─ main.py             # App entry point
-│   ├─ migrations/             # Alembic versioned migrations
-│   ├─ tests/                  # Pytest suite
-│   ├─ docs/                   # Design documents (see root docs/)
-│   ├─ pyproject.toml          # Poetry dependency management
-│   ├─ Dockerfile
-│   └─ docker-compose.yml
-├─ frontend/
-│   ├─ src/
-│   │   ├─ components/         # KPI cards, charts, builder, filters
-│   │   ├─ hooks/              # Custom React hooks
-│   │   ├─ contexts/           # React contexts (auth, theme, dashboard)
-│   │   ├─ pages/              # Dashboard pages, login, etc.
-│   │   ├─ router/             # React Router config
-│   │   ├─ store/              # Zustand state slices
-│   │   ├─ styles/             # Tailwind config, globals
-│   │   └─ utils/              # Helpers, constants
-│   ├─ public/                 # index.html, favicon
-│   ├─ package.json
-│   ├─ tailwind.config.js
-│   └─ tsconfig.json
-├─ docs/
-│   ├─ phase1-srs.md
-│   ├─ phase2-architecture.md
-│   ├─ phase3-ux-ui.md
-│   ├─ phase4-database.md
-│   ├─ phase5-api.md
-│   ├─ phase6-backend-foundation.md
-│   ├─ phase7-iam.md
-│   ├─ phase8-dataset.md
-│   ├─ phase9-etl.md
-│   ├─ phase10-analytics.md
-│   └─ phase11-dashboard.md
-├─ .github/
-│   └─ workflows/              # CI/CD (lint, test, docker build, security scan)
-├─ .env.example
-├─ .gitignore
-└─ README.md
-```
-
-## 🚀 Getting Started
-
-```bash
-# Clone the repo
-git clone https://github.com/DEBEYENDU/ai-powered-bi-platform.git
-cd ai-powered-bi-platform
-
-# Backend
-cd backend
-poetry install          # installs Python deps
-cp .env.example .env    # edit with your DB/Redis/JWT secrets
-poetry run alembic upgrade head   # run migrations
-uvicorn app.main:app --reload     # start API (http://127.0.0.1:8000)
-
-# Frontend
-cd ../frontend
-npm install
-npm run dev               # Vite dev server (http://localhost:5173)
-
-# Docker (all services)
-docker compose up --build   # starts API, DB, Redis, Celery worker
-```
-
-## 👥 Team
-
-- **Girme Prachi Mahadu** – Project Lead / Requirements
-- **Nalawade Tanuja Chandrakant** – Architecture & Backend
-- **Pande Sanjana Santosh** – Database & ETL
-- **Patil Sanjivani Lahuraj** – Frontend & UI/UX
-
-**Guide:** Prof. K. N. Agalave, SPVP’s S.B. Patil College of Engineering, Indapur
-
-## 📄 License
-
-Academic project – SPVP’s SBCPOE, Indapur. No commercial use without permission.
-
-## 📫 Contact
-
-For questions or contribution, please open an issue on the GitHub repository or contact the project maintainers.
-
----
-
-*Generated on 2026‑08‑31. This README reflects the completion of all 11 project phases.*
+Academic project — SPVP's SBCPOE, Indapur. No commercial use without permission.

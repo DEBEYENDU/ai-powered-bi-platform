@@ -135,7 +135,7 @@ export function KnowledgeDocumentDetail() {
         `/knowledge/documents/${id}/status`
       );
       if (res.status) {
-        setStatusHistory([{ status: res.status, changed_at: new Date().toISOString() }]);
+        setStatusHistory([{ status: res.status, changed_at: new Date().toISOString(), message: "" }]);
       }
     } catch {
       /* ignore */
