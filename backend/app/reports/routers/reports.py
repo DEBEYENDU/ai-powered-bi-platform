@@ -17,6 +17,7 @@ from app.reports.schemas.report import (
 )
 from app.reports.services.report_service import ReportService
 from app.storage.validate import PathTraversalError, validate_storage_path
+from app.dependencies.deps import get_current_user, require_organization
 
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -39,7 +40,12 @@ def _record_to_out(record: dict[str, Any]) -> dict[str, Any]:
 
 
 @reports_router.post("", summary="Create report")
-def create_report(payload: ReportCreate = Body(...), service: ReportService = Depends(get_service)):
+def create_report(
+    payload: ReportCreate = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     record = service.create_report(payload.dict())
     return _record_to_out(record)
 
@@ -52,6 +58,8 @@ def list_reports(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     records = service.repo.list(
         report_type=report_type, status=status, search=search, limit=limit, offset=offset
@@ -68,13 +76,20 @@ def search_reports(
     report_type: str | None = Query(None),
     status: str | None = Query(None),
     service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     records = service.repo.list(report_type=report_type, status=status, search=query)
     return {"data": [_record_to_out(r) for r in records]}
 
 
 @reports_router.get("/{report_id}", summary="Get report")
-def get_report(report_id: str, service: ReportService = Depends(get_service)):
+def get_report(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     record = service.repo.get(report_id)
     if record is None:
         raise HTTPException(404, "Report not found")
@@ -83,7 +98,10 @@ def get_report(report_id: str, service: ReportService = Depends(get_service)):
 
 @reports_router.post("/generate", summary="Generate report")
 async def generate_report(
-    payload: ReportGenerateRequest = Body(...), service: ReportService = Depends(get_service)
+    payload: ReportGenerateRequest = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     try:
         return await service.generate(
@@ -100,7 +118,10 @@ async def generate_report(
 
 @reports_router.post("/preview", summary="Preview report HTML")
 def preview_report(
-    definition: dict[str, Any] = Body(...), service: ReportService = Depends(get_service)
+    definition: dict[str, Any] = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     from fastapi.responses import HTMLResponse
 
@@ -113,6 +134,8 @@ def download_report(
     format: str = Query("pdf"),
     version: int = Query(0),
     service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     record = service.repo.get(report_id)
     if record is None:
@@ -140,8 +163,26 @@ def download_report(
     return FileResponse(validated)
 
 
+@reports_router.delete("/{report_id}", summary="Delete report")
+def delete_report(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
+    if not service.repo.delete(report_id):
+        raise HTTPException(404, "Report not found")
+    service.events.publish("report_deleted", report_id, details={})
+    return {"deleted": True}
+
+
 @reports_router.get("/{report_id}/versions", summary="List versions")
-def list_versions(report_id: str, service: ReportService = Depends(get_service)):
+def list_versions(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     return {"data": service.repo.versions(report_id)}
 
 
@@ -151,12 +192,20 @@ def compare_versions(
     from_version: int = Query(...),
     to_version: int = Query(...),
     service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     return service.repo.compare(report_id, from_version, to_version)
 
 
 @reports_router.post("/{report_id}/restore/{version}", summary="Restore version")
-def restore_version(report_id: str, version: int, service: ReportService = Depends(get_service)):
+def restore_version(
+    report_id: str,
+    version: int,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     record = service.repo.get(report_id)
     if record is None:
         raise HTTPException(404, "Report not found")
@@ -170,7 +219,11 @@ def restore_version(report_id: str, version: int, service: ReportService = Depen
 
 @reports_router.post("/{report_id}/approve", summary="Approve report")
 def approve_report(
-    report_id: str, approved_by: str = Body(""), service: ReportService = Depends(get_service)
+    report_id: str,
+    approved_by: str = Body(""),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     record = service.repo.update(report_id, {"status": "published"})
     if record is None:
@@ -180,7 +233,12 @@ def approve_report(
 
 
 @reports_router.post("/{report_id}/archive", summary="Archive report")
-def archive_report(report_id: str, service: ReportService = Depends(get_service)):
+def archive_report(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     if not service.repo.delete(report_id):
         raise HTTPException(404, "Report not found")
     service.events.publish("report_archived", report_id, details={})
@@ -189,7 +247,11 @@ def archive_report(report_id: str, service: ReportService = Depends(get_service)
 
 @reports_router.post("/{report_id}/share", summary="Share report")
 def share_report(
-    report_id: str, payload: ShareCreate = Body(...), service: ReportService = Depends(get_service)
+    report_id: str,
+    payload: ShareCreate = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     return service.permissions.grant(
         report_id, payload.granted_to, payload.role, payload.can_export, payload.can_distribute
@@ -198,7 +260,10 @@ def share_report(
 
 @reports_router.post("/schedules", summary="Schedule report")
 def create_schedule(
-    payload: ScheduleCreate = Body(...), service: ReportService = Depends(get_service)
+    payload: ScheduleCreate = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     sched = service.scheduler.create(
         report_id=str(payload.report_id),
@@ -215,21 +280,36 @@ def create_schedule(
 
 
 @reports_router.delete("/schedules/{schedule_id}", summary="Cancel schedule")
-def cancel_schedule(schedule_id: str, service: ReportService = Depends(get_service)):
+def cancel_schedule(
+    schedule_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     if not service.scheduler.cancel(schedule_id):
         raise HTTPException(404, "Schedule not found")
     return {"cancelled": True}
 
 
 @reports_router.post("/schedules/{schedule_id}/pause", summary="Pause schedule")
-def pause_schedule(schedule_id: str, service: ReportService = Depends(get_service)):
+def pause_schedule(
+    schedule_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     if not service.scheduler.pause(schedule_id):
         raise HTTPException(404, "Schedule not found")
     return {"paused": True}
 
 
 @reports_router.post("/schedules/{schedule_id}/resume", summary="Resume schedule")
-def resume_schedule(schedule_id: str, service: ReportService = Depends(get_service)):
+def resume_schedule(
+    schedule_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     if not service.scheduler.resume(schedule_id):
         raise HTTPException(404, "Schedule not found")
     return {"resumed": True}
@@ -237,7 +317,10 @@ def resume_schedule(schedule_id: str, service: ReportService = Depends(get_servi
 
 @reports_router.post("/templates", summary="Create template")
 def create_template(
-    payload: TemplateCreate = Body(...), service: ReportService = Depends(get_service)
+    payload: TemplateCreate = Body(...),
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     tpl = service.templates.create(
         payload.name,
@@ -256,7 +339,11 @@ def create_template(
 
 
 @reports_router.get("/templates/list", summary="List templates")
-def list_templates(service: ReportService = Depends(get_service)):
+def list_templates(
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     return {
         "data": [
             {
@@ -275,6 +362,8 @@ def approve_template(
     template_id: str,
     payload: TemplateApprove = Body(...),
     service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     tpl = service.templates.get(template_id)
     if tpl is None:
@@ -287,7 +376,12 @@ def approve_template(
 
 
 @reports_router.get("/{report_id}/history", summary="Report history")
-def report_history(report_id: str, service: ReportService = Depends(get_service)):
+def report_history(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     return {
         "data": [e.dict() for e in service.events.history(report_id)]
         + service.audit_trail(report_id)
@@ -295,5 +389,10 @@ def report_history(report_id: str, service: ReportService = Depends(get_service)
 
 
 @reports_router.get("/{report_id}/deliveries", summary="Delivery status")
-def delivery_status(report_id: str, service: ReportService = Depends(get_service)):
+def delivery_status(
+    report_id: str,
+    service: ReportService = Depends(get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     return {"data": [a.dict() for a in service.distribution.attempts(report_id)]}

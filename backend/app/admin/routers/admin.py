@@ -24,8 +24,15 @@ from app.admin.schemas.admin import (
     SettingUpdate,
 )
 from app.admin.services.platform import PlatformAdmin, get_platform
+from app.dependencies.deps import get_current_user
 
-admin_router = APIRouter(prefix="/admin", tags=["Admin"])
+admin_router = APIRouter(
+    prefix="/admin", tags=["Admin"], dependencies=[Depends(get_current_user)]
+)
+
+# Read-only maintenance status stays public: it is the only way the frontend
+# banner can explain a maintenance window (login itself is blocked in full mode).
+admin_public_router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 def _not_found(value: Any, name: str) -> Any:
@@ -411,7 +418,7 @@ def update_setting(
     return {"key": key, "value": value}
 
 
-@admin_router.get("/maintenance", summary="Maintenance status")
+@admin_public_router.get("/maintenance", summary="Maintenance status")
 def maintenance_status(platform: PlatformAdmin = Depends(get_platform)):
     return platform.settings.maintenance_status()
 

@@ -34,7 +34,7 @@ def _estimate_confidence(results: list[dict]) -> dict:
     evidence_count = len([s for s in scores if s > 0.3])
 
     # Confidence is a weighted combination of average score, max score, and evidence count
-    confidence = min(1.0, (avg_score * 0.4 + max_score * 0.3 + min(evidence_count / 5, 1.0) * 0.3))
+    confidence = max(0.0, min(1.0, (avg_score * 0.4 + max_score * 0.3 + min(evidence_count / 5, 1.0) * 0.3)))
 
     # Determine evidence status
     if evidence_count >= 2 and avg_score > 0.4:
@@ -249,6 +249,7 @@ async def rag_query(
                 "document_title": doc.title if doc else None,
                 "document_filename": doc.original_filename if doc else "unknown",
                 "chunk_id": chunk.id,
+                "collection_id": chunk.collection_id,
                 "page_number": chunk.page_number,
                 "section": chunk.section,
                 "text_excerpt": chunk.text[:500] if len(chunk.text) > 500 else chunk.text,

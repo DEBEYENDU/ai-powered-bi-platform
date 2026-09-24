@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from app.ai.data_engineering.schemas import (
@@ -18,6 +18,7 @@ from app.ai.data_engineering.schemas import (
 )
 from app.ai.data_engineering.services import data_loader, orchestrator
 from app.ai.data_engineering.transformations.engine import get_available_transforms
+from app.dependencies.deps import get_current_user, require_organization
 
 de_router = APIRouter(prefix="/ai/de", tags=["AI Data Engineering"])
 
@@ -33,6 +34,8 @@ async def upload_dataset(
     name: str = Form(""),
     description: str = Form(""),
     source_type: str = Form("csv"),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Upload a dataset (CSV, Excel, JSON, Parquet)."""
     content = await file.read()
@@ -52,7 +55,11 @@ async def upload_dataset(
 
 
 @de_router.post("/profile")
-async def profile_dataset(request: ProfileDatasetRequest) -> dict[str, Any]:
+async def profile_dataset(
+    request: ProfileDatasetRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Profile a dataset — compute statistics, types, quality score."""
     result = await orchestrator.profile_single_dataset(request)
     return result.model_dump()
@@ -64,7 +71,11 @@ async def profile_dataset(request: ProfileDatasetRequest) -> dict[str, Any]:
 
 
 @de_router.post("/validate")
-async def validate_dataset(request: ValidateDatasetRequest) -> dict[str, Any]:
+async def validate_dataset(
+    request: ValidateDatasetRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Validate dataset quality — detect issues and compute scores."""
     result = await orchestrator.validate_single_dataset(request)
     return result.model_dump()
@@ -76,7 +87,11 @@ async def validate_dataset(request: ValidateDatasetRequest) -> dict[str, Any]:
 
 
 @de_router.post("/clean")
-async def clean_dataset(request: CleanDatasetRequest) -> dict[str, Any]:
+async def clean_dataset(
+    request: CleanDatasetRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Get cleaning suggestions and optionally auto-apply them."""
     result = await orchestrator.clean_single_dataset(request)
     return result.model_dump()
@@ -88,14 +103,21 @@ async def clean_dataset(request: CleanDatasetRequest) -> dict[str, Any]:
 
 
 @de_router.post("/transform")
-async def transform_dataset(request: TransformRequest) -> dict[str, Any]:
+async def transform_dataset(
+    request: TransformRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Apply transformations to a dataset."""
     result = await orchestrator.apply_dataset_transforms(request)
     return result.model_dump()
 
 
 @de_router.get("/transforms")
-async def list_transforms() -> list[dict[str, Any]]:
+async def list_transforms(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> list[dict[str, Any]]:
     """List all available transform types."""
     return get_available_transforms()
 
@@ -106,7 +128,11 @@ async def list_transforms() -> list[dict[str, Any]]:
 
 
 @de_router.post("/chat")
-async def dataset_chat(request: DatasetChatRequest) -> dict[str, Any]:
+async def dataset_chat(
+    request: DatasetChatRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Ask AI a question about a specific dataset."""
     result = await orchestrator.dataset_chat(request)
     return result
@@ -118,7 +144,11 @@ async def dataset_chat(request: DatasetChatRequest) -> dict[str, Any]:
 
 
 @de_router.post("/export")
-async def export_dataset(request: ExportDatasetRequest) -> dict[str, Any]:
+async def export_dataset(
+    request: ExportDatasetRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Export a dataset in CSV, Excel, Parquet, JSON, or SQL format."""
     result = await orchestrator.export_dataset(request)
     if not result.get("success"):
@@ -132,7 +162,11 @@ async def export_dataset(request: ExportDatasetRequest) -> dict[str, Any]:
 
 
 @de_router.post("/export/download")
-async def export_dataset_download(request: ExportDatasetRequest) -> Response:
+async def export_dataset_download(
+    request: ExportDatasetRequest,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> Response:
     """Export and return the file directly."""
     result = await orchestrator.export_dataset(request)
     if not result.get("success"):
@@ -150,7 +184,10 @@ async def export_dataset_download(request: ExportDatasetRequest) -> Response:
 
 
 @de_router.get("/datasets")
-async def list_datasets() -> dict[str, Any]:
+async def list_datasets(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """List all stored datasets."""
     root = data_loader._storage_root()
     datasets: list[dict[str, Any]] = []
@@ -180,9 +217,59 @@ async def list_datasets() -> dict[str, Any]:
 
 
 @de_router.get("/pipelines")
-async def list_pipelines() -> dict[str, Any]:
+async def list_pipelines(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """List saved pipelines (placeholder — wired to DB in production)."""
     return {"pipelines": [], "count": 0}
+
+
+@de_router.post("/pipelines")
+async def create_pipeline(
+    body: dict[str, Any] | None = None,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    """Create a pipeline definition (placeholder — wired to DB in production)."""
+    import uuid
+
+    pipeline_id = str(uuid.uuid4())[:8]
+    return {
+        "pipeline": {
+            "id": pipeline_id,
+            "name": (body or {}).get("name", "Untitled"),
+            "dataset_id": (body or {}).get("dataset_id", ""),
+            "steps": (body or {}).get("steps", []),
+            "status": "draft",
+            "run_count": 0,
+            "created_at": __import__("datetime").datetime.utcnow().isoformat(),
+        }
+    }
+
+
+@de_router.post("/pipelines/run")
+async def run_pipeline(
+    body: dict[str, Any] | None = None,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    """Run a pipeline (placeholder — wired to DB + Celery in production)."""
+    return {
+        "status": "started",
+        "pipeline_id": (body or {}).get("pipeline_id", ""),
+        "run_id": __import__("uuid").uuid4().hex[:8],
+    }
+
+
+@de_router.delete("/pipelines/{pipeline_id}")
+async def delete_pipeline(
+    pipeline_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    """Delete a pipeline (placeholder — wired to DB in production)."""
+    return {"deleted": True, "pipeline_id": pipeline_id}
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +278,11 @@ async def list_pipelines() -> dict[str, Any]:
 
 
 @de_router.get("/schema/{dataset_id}")
-async def get_schema(dataset_id: str) -> dict[str, Any]:
+async def get_schema(
+    dataset_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Get inferred schema for a dataset."""
     try:
         df = data_loader.load_stored_dataset(dataset_id, "v1")
@@ -209,7 +300,11 @@ async def get_schema(dataset_id: str) -> dict[str, Any]:
 
 
 @de_router.post("/relationships")
-async def discover_relationships(body: dict[str, Any] | None = None) -> dict[str, Any]:
+async def discover_relationships(
+    body: dict[str, Any] | None = None,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     """Discover relationships across multiple datasets."""
     # For now, return single-table relationships
     return {

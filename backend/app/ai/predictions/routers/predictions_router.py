@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.ai.predictions.schemas import (
     ModelComparisonRequest,
@@ -15,6 +15,7 @@ from app.ai.predictions.schemas import (
     WhatIfRequest,
 )
 from app.ai.predictions.services import ai_service, orchestrator
+from app.dependencies.deps import get_current_user, require_organization
 
 predictions_router = APIRouter(prefix="/ai/predictions", tags=["AI Predictions"])
 
@@ -25,7 +26,7 @@ predictions_router = APIRouter(prefix="/ai/predictions", tags=["AI Predictions"]
 
 
 @predictions_router.post("/predict")
-async def predict(request: PredictRequest) -> dict[str, Any]:
+async def predict(request: PredictRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Generate predictions — auto-selects best model based on data."""
     result = await orchestrator.predict(request)
     return result.model_dump()
@@ -37,7 +38,7 @@ async def predict(request: PredictRequest) -> dict[str, Any]:
 
 
 @predictions_router.post("/train")
-async def train_model(request: TrainModelRequest) -> dict[str, Any]:
+async def train_model(request: TrainModelRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Train and evaluate a specific model."""
     result = await orchestrator.train_model(request)
     return result.model_dump()
@@ -49,7 +50,7 @@ async def train_model(request: TrainModelRequest) -> dict[str, Any]:
 
 
 @predictions_router.post("/compare")
-async def compare_models(request: ModelComparisonRequest) -> dict[str, Any]:
+async def compare_models(request: ModelComparisonRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Compare multiple models on the same dataset."""
     try:
         from app.ai.predictions.classification.engine import train_classifier
@@ -95,8 +96,8 @@ async def compare_models(request: ModelComparisonRequest) -> dict[str, Any]:
         }
     except FileNotFoundError:
         return {"success": False, "error": "Dataset not found"}
-    except Exception as exc:
-        return {"success": False, "error": str(exc)}
+    except Exception:
+        return {"success": False, "error": "Model training failed"}
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +106,7 @@ async def compare_models(request: ModelComparisonRequest) -> dict[str, Any]:
 
 
 @predictions_router.post("/whatif")
-async def whatif_analysis(request: WhatIfRequest) -> dict[str, Any]:
+async def whatif_analysis(request: WhatIfRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Perform what-if analysis by simulating variable changes."""
     try:
         from app.ai.predictions.services.data_service import load_dataset
@@ -122,8 +123,8 @@ async def whatif_analysis(request: WhatIfRequest) -> dict[str, Any]:
             horizon=request.horizon,
         )
         return {"success": True, **result}
-    except Exception as exc:
-        return {"success": False, "error": str(exc)}
+    except Exception:
+        return {"success": False, "error": "What-if analysis failed"}
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ async def whatif_analysis(request: WhatIfRequest) -> dict[str, Any]:
 
 
 @predictions_router.post("/root-cause")
-async def root_cause(body: dict[str, Any]) -> dict[str, Any]:
+async def root_cause(body: dict[str, Any], user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Explain why predictions changed."""
     try:
         result = await ai_service.root_cause_analysis(
@@ -141,8 +142,8 @@ async def root_cause(body: dict[str, Any]) -> dict[str, Any]:
             data_changes=body.get("data_changes", "No changes detected"),
         )
         return {"success": True, **result}
-    except Exception as exc:
-        return {"success": False, "error": str(exc)}
+    except Exception:
+        return {"success": False, "error": "Root cause analysis failed"}
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +152,7 @@ async def root_cause(body: dict[str, Any]) -> dict[str, Any]:
 
 
 @predictions_router.post("/monitor")
-async def monitor_model(request: MonitorRequest) -> dict[str, Any]:
+async def monitor_model(request: MonitorRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Monitor a model for data/prediction drift."""
     result = await orchestrator.monitor_model(request)
     return result.model_dump()
@@ -163,7 +164,7 @@ async def monitor_model(request: MonitorRequest) -> dict[str, Any]:
 
 
 @predictions_router.post("/chat")
-async def prediction_chat(request: PredictionChatRequest) -> dict[str, Any]:
+async def prediction_chat(request: PredictionChatRequest, user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """Ask AI a question about a prediction."""
     result = await orchestrator.chat_about_prediction(request)
     return result
@@ -175,7 +176,7 @@ async def prediction_chat(request: PredictionChatRequest) -> dict[str, Any]:
 
 
 @predictions_router.get("/alerts")
-async def list_alert_rules() -> dict[str, Any]:
+async def list_alert_rules(user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
     """List active prediction alert rules."""
     return {
         "alerts": [

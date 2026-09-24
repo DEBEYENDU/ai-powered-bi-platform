@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
+from app.dependencies.deps import get_current_user, require_organization
 from app.workflows.ai.builder import generate_workflow
 from app.workflows.monitoring.tracker import get_monitor
 from app.workflows.schemas import (
@@ -21,33 +22,39 @@ from app.workflows.validators.validator import validate_workflow
 workflow_router = APIRouter(prefix="/workflows", tags=["Workflow Automation"])
 
 
-def _get_user_org() -> tuple[str, str]:
-    """Placeholder for auth extraction. In production, use Depends(get_current_user)."""
-    return "default_user", "default_org"
-
-
 # --- CRUD ---
 
 
 @workflow_router.post("", response_model=dict[str, Any])
-async def create_workflow(request: WorkflowCreateRequest = Body(...)) -> dict[str, Any]:
-    user_id, org_id = _get_user_org()
-    result = get_orchestrator().create_workflow(request, user_id, org_id)
+async def create_workflow(
+    request: WorkflowCreateRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    user_id = user.get("sub", "")
+    result = get_orchestrator().create_workflow(request, user_id, organization_id)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Creation failed"))
     return result
 
 
 @workflow_router.get("", response_model=dict[str, Any])
-async def list_workflows(limit: int = 50, offset: int = 0) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    return get_orchestrator().list_workflows(org_id, limit=limit, offset=offset)
+async def list_workflows(
+    limit: int = 50,
+    offset: int = 0,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    return get_orchestrator().list_workflows(organization_id, limit=limit, offset=offset)
 
 
 @workflow_router.get("/{workflow_id}", response_model=dict[str, Any])
-async def get_workflow(workflow_id: str) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    result = get_orchestrator().get_workflow(workflow_id, org_id)
+async def get_workflow(
+    workflow_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    result = get_orchestrator().get_workflow(workflow_id, organization_id)
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result
@@ -55,19 +62,24 @@ async def get_workflow(workflow_id: str) -> dict[str, Any]:
 
 @workflow_router.put("/{workflow_id}", response_model=dict[str, Any])
 async def update_workflow(
-    workflow_id: str, request: WorkflowUpdateRequest = Body(...)
+    workflow_id: str,
+    request: WorkflowUpdateRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    result = get_orchestrator().update_workflow(workflow_id, request, org_id)
+    result = get_orchestrator().update_workflow(workflow_id, request, organization_id)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Update failed"))
     return result
 
 
 @workflow_router.delete("/{workflow_id}", response_model=dict[str, Any])
-async def delete_workflow(workflow_id: str) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    result = get_orchestrator().delete_workflow(workflow_id, org_id)
+async def delete_workflow(
+    workflow_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    result = get_orchestrator().delete_workflow(workflow_id, organization_id)
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result
@@ -77,18 +89,24 @@ async def delete_workflow(workflow_id: str) -> dict[str, Any]:
 
 
 @workflow_router.post("/{workflow_id}/activate", response_model=dict[str, Any])
-async def activate_workflow(workflow_id: str) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    result = get_orchestrator().update_status(workflow_id, "active", org_id)
+async def activate_workflow(
+    workflow_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    result = get_orchestrator().update_status(workflow_id, "active", organization_id)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Activation failed"))
     return result
 
 
 @workflow_router.post("/{workflow_id}/pause", response_model=dict[str, Any])
-async def pause_workflow(workflow_id: str) -> dict[str, Any]:
-    _, org_id = _get_user_org()
-    result = get_orchestrator().update_status(workflow_id, "paused", org_id)
+async def pause_workflow(
+    workflow_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    result = get_orchestrator().update_status(workflow_id, "paused", organization_id)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Pause failed"))
     return result
@@ -98,15 +116,20 @@ async def pause_workflow(workflow_id: str) -> dict[str, Any]:
 
 
 @workflow_router.post("/{workflow_id}/run", response_model=dict[str, Any])
-async def run_workflow(workflow_id: str, request: WorkflowRunRequest = Body(...)) -> dict[str, Any]:
-    user_id, org_id = _get_user_org()
+async def run_workflow(
+    workflow_id: str,
+    request: WorkflowRunRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
+    user_id = user.get("sub", "")
     result = await get_orchestrator().run_workflow(
         workflow_id=workflow_id,
         trigger_type="manual",
         input_data=request.input_data,
         is_test=request.is_test,
         user_id=user_id,
-        organization_id=org_id,
+        organization_id=organization_id,
     )
     if not result["success"]:
         raise HTTPException(status_code=500, detail=result.get("error", "Execution failed"))
@@ -115,27 +138,39 @@ async def run_workflow(workflow_id: str, request: WorkflowRunRequest = Body(...)
 
 @workflow_router.post("/{workflow_id}/test", response_model=dict[str, Any])
 async def test_workflow(
-    workflow_id: str, request: WorkflowRunRequest = Body(...)
+    workflow_id: str,
+    request: WorkflowRunRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
-    user_id, org_id = _get_user_org()
+    user_id = user.get("sub", "")
     result = await get_orchestrator().run_workflow(
         workflow_id=workflow_id,
         trigger_type="test",
         input_data=request.input_data,
         is_test=True,
         user_id=user_id,
-        organization_id=org_id,
+        organization_id=organization_id,
     )
     return result
 
 
 @workflow_router.get("/{workflow_id}/executions", response_model=dict[str, Any])
-async def get_executions(workflow_id: str, limit: int = 50) -> dict[str, Any]:
+async def get_executions(
+    workflow_id: str,
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     return get_orchestrator().get_executions(workflow_id, limit=limit)
 
 
 @workflow_router.get("/executions/{execution_id}", response_model=dict[str, Any])
-async def get_execution_detail(execution_id: str) -> dict[str, Any]:
+async def get_execution_detail(
+    execution_id: str,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     result = get_orchestrator().get_execution_detail(execution_id)
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
@@ -151,8 +186,10 @@ async def approve_workflow(
     execution_id: str = Body(..., embed=True),
     step_id: str = Body(..., embed=True),
     approval: ApprovalRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
-    user_id, _ = _get_user_org()
+    user_id = user.get("sub", "")
     result = get_orchestrator().approve_step(
         execution_id=execution_id,
         step_id=step_id,
@@ -171,8 +208,10 @@ async def reject_workflow(
     execution_id: str = Body(..., embed=True),
     step_id: str = Body(..., embed=True),
     approval: ApprovalRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
-    user_id, _ = _get_user_org()
+    user_id = user.get("sub", "")
     result = get_orchestrator().approve_step(
         execution_id=execution_id,
         step_id=step_id,
@@ -189,7 +228,10 @@ async def reject_workflow(
 
 
 @workflow_router.get("/templates/list", response_model=dict[str, Any])
-async def list_templates() -> dict[str, Any]:
+async def list_templates(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     templates = get_templates()
     return {"success": True, "templates": templates, "count": len(templates)}
 
@@ -198,7 +240,11 @@ async def list_templates() -> dict[str, Any]:
 
 
 @workflow_router.post("/ai/generate", response_model=dict[str, Any])
-async def ai_generate_workflow(request: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def ai_generate_workflow(
+    request: dict[str, Any] = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     prompt = request.get("prompt", "")
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required")
@@ -230,14 +276,21 @@ async def ai_generate_workflow(request: dict[str, Any] = Body(...)) -> dict[str,
 
 
 @workflow_router.get("/monitoring/stats", response_model=dict[str, Any])
-async def monitoring_stats() -> dict[str, Any]:
+async def monitoring_stats(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     monitor = get_monitor()
     stats = monitor.get_global_stats()
     return {"success": True, **stats}
 
 
 @workflow_router.get("/monitoring/recent", response_model=dict[str, Any])
-async def monitoring_recent(limit: int = 50) -> dict[str, Any]:
+async def monitoring_recent(
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+) -> dict[str, Any]:
     monitor = get_monitor()
     executions = monitor.get_recent_executions(limit=limit)
     return {"success": True, "executions": executions, "count": len(executions)}

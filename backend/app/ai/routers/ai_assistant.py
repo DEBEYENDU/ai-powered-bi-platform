@@ -19,6 +19,7 @@ from app.ai.schemas.chat import (
 )
 from app.ai.services.chat_service import ChatService
 from app.db.session import get_db
+from app.dependencies.deps import get_current_user, require_organization
 
 ai_router = APIRouter(prefix="/ai", tags=["AI Assistant"])
 
@@ -36,15 +37,23 @@ def _get_chat_service(db: Session = Depends(get_db)) -> ChatService:
 async def chat(
     request: ChatRequest = Body(...),
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Send a message and get a response (non-streaming or streaming via SSE)."""
     # Resolve or create conversation
     conv_id = request.conversation_id
-    if not conv_id:
+    if conv_id:
+        conv = service.get_conversation(conv_id, organization_id)
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    else:
         conv = service.create_conversation(
             model=request.model,
             provider=request.provider,
             system_prompt=request.system_prompt,
+            user_id=user.get("sub"),
+            organization_id=organization_id,
         )
         conv_id = conv.id
 
@@ -90,10 +99,10 @@ async def _stream_response(service: ChatService, conv_id: str, request: ChatRequ
             if chunk.usage:
                 event_data["usage"] = chunk.usage
             yield f"data: {json.dumps(event_data)}\n\n"
-    except ValueError as e:
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    except Exception as e:  # noqa: BLE001
-        yield f"data: {json.dumps({'error': f'Internal error: {e}'})}\n\n"
+    except ValueError:
+        yield f"data: {json.dumps({'error': 'Invalid request parameters'})}\n\n"
+    except Exception:  # noqa: BLE001
+        yield f"data: {json.dumps({'error': 'An unexpected error occurred'})}\n\n"
     yield "data: [DONE]\n\n"
 
 
@@ -108,9 +117,13 @@ async def list_conversations(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
-    conversations = service.list_conversations(user_id=user_id, limit=limit, offset=offset)
-    total = service.count_conversations(user_id=user_id)
+    conversations = service.list_conversations(
+        user_id=user_id, limit=limit, offset=offset, organization_id=organization_id
+    )
+    total = service.count_conversations(user_id=user_id, organization_id=organization_id)
     return {
         "data": [ConversationOut.model_validate(c).model_dump() for c in conversations],
         "total": total,
@@ -124,9 +137,16 @@ async def create_conversation(
     provider: str | None = Body(None),
     system_prompt: str | None = Body(None),
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     conv = service.create_conversation(
-        title=title, model=model, provider=provider, system_prompt=system_prompt
+        title=title,
+        model=model,
+        provider=provider,
+        system_prompt=system_prompt,
+        user_id=user.get("sub"),
+        organization_id=organization_id,
     )
     return ConversationOut.model_validate(conv).model_dump()
 
@@ -135,8 +155,10 @@ async def create_conversation(
 async def get_conversation(
     conversation_id: str,
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
-    conv = service.get_conversation(conversation_id)
+    conv = service.get_conversation(conversation_id, organization_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     messages = service.get_messages(conversation_id)
@@ -150,6 +172,8 @@ async def update_conversation(
     conversation_id: str,
     update: ConversationUpdate = Body(...),
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     conv = service.update_conversation(
         conversation_id,
@@ -157,6 +181,7 @@ async def update_conversation(
         model=update.model,
         provider=update.provider,
         system_prompt=update.system_prompt,
+        organization_id=organization_id,
     )
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -167,8 +192,10 @@ async def update_conversation(
 async def delete_conversation(
     conversation_id: str,
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
-    if not service.delete_conversation(conversation_id):
+    if not service.delete_conversation(conversation_id, organization_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {"deleted": True}
 
@@ -183,8 +210,10 @@ async def get_messages(
     conversation_id: str,
     limit: int = Query(100, ge=1, le=500),
     service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
-    conv = service.get_conversation(conversation_id)
+    conv = service.get_conversation(conversation_id, organization_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     messages = service.get_messages(conversation_id, limit=limit)
@@ -197,12 +226,19 @@ async def get_messages(
 
 
 @ai_router.get("/providers", response_model=list[dict[str, Any]])
-async def get_providers():
+async def get_providers(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     return list_providers()
 
 
 @ai_router.get("/health", response_model=dict[str, Any])
-async def get_ai_health(service: ChatService = Depends(_get_chat_service)):
+async def get_ai_health(
+    service: ChatService = Depends(_get_chat_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     providers = list_providers()
     return {
         "status": "healthy",
@@ -220,6 +256,8 @@ async def get_ai_health(service: ChatService = Depends(_get_chat_service)):
 @ai_router.get("/suggested-questions")
 async def get_suggested_questions(
     topic: str | None = Query(None),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     return {
         "questions": [

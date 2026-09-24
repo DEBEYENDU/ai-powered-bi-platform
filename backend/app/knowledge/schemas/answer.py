@@ -8,6 +8,7 @@ class CitationSource(BaseModel):
     document_title: str | None
     document_filename: str
     chunk_id: str
+    collection_id: str | None = None
     page_number: int | None
     section: str | None
     text_excerpt: str

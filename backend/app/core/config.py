@@ -124,6 +124,31 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    _INSECURE_JWT_SECRETS: set[str] = {
+        "change-me-in-production",
+        "change-me",
+        "secret",
+        "changeme",
+        "your-secret-key",
+        "super-secret",
+    }
+
+    def validate_security(self) -> list[str]:
+        """Return list of security warnings. Call at startup."""
+        warnings: list[str] = []
+        if self.jwt_secret_key in self._INSECURE_JWT_SECRETS:
+            warnings.append(
+                f"CRITICAL: JWT_SECRET_KEY is insecure ('{self.jwt_secret_key}'). "
+                "Set a strong random secret in production."
+            )
+        if self.environment == "production":
+            if self.jwt_secret_key in self._INSECURE_JWT_SECRETS:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set to a secure value in production. "
+                    "The default value is not allowed."
+                )
+        return warnings
+
     @property
     def storage_dir(self) -> Path:
         """Storage directory, created on demand."""

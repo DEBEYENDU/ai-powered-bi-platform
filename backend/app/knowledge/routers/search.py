@@ -20,7 +20,7 @@ search_router = APIRouter(prefix="/search", tags=["Knowledge Search"])
 
 @search_router.post("")
 async def search_knowledge(
-    query: str = Body(...),
+    text: str = Body(...),
     collection_ids: list[str] | None = Body(None),
     top_k: int = Body(10),
     search_type: str = Body("hybrid"),
@@ -60,7 +60,7 @@ async def search_knowledge(
                 resolved_collection_ids.append(cid)
         if not resolved_collection_ids:
             return {
-                "query": query,
+                "query": text,
                 "results": [],
                 "total_results": 0,
                 "search_type": search_type,
@@ -76,7 +76,7 @@ async def search_knowledge(
 
             embedder = EmbeddingManager()
             embedder.initialize()
-            query_embedding = embedder.get_embedding(query)
+            query_embedding = embedder.get_embedding(text)
         except ImportError:
             query_embedding = None
 
@@ -101,7 +101,7 @@ async def search_knowledge(
     if search_type in ("keyword", "hybrid"):
         keyword_results = chunk_repo.search_keyword(
             org_id=organization_id,
-            query=query,
+            query=text,
             collection_ids=resolved_collection_ids,
             top_k=top_k * 2 if search_type == "hybrid" else top_k,
         )
@@ -195,7 +195,7 @@ async def search_knowledge(
         pass
 
     return {
-        "query": query,
+        "query": text,
         "results": search_results,
         "total_results": len(search_results),
         "search_type": search_type,

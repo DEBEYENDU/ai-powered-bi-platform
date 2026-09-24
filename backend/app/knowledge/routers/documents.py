@@ -275,9 +275,14 @@ async def delete_document(
         except Exception:
             pass
 
-    # Remove file from storage (best-effort)
+    # Remove file from storage (best-effort, with path traversal protection)
     try:
-        file_path = Path(doc.storage_path)
+        from app.core.config import get_settings
+        from app.storage.validate import validate_storage_path
+
+        settings = get_settings()
+        validated_path = validate_storage_path(doc.storage_path, allowed_root=settings.storage_path)
+        file_path = Path(validated_path)
         if file_path.exists():
             file_path.unlink()
         parent_dir = file_path.parent

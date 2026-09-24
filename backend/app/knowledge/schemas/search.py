@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=2000)
+    text: str = Field(..., min_length=1, max_length=2000)
     collection_ids: list[str] | None = None
     top_k: int = Field(default=10, ge=1, le=100)
     search_type: str = "hybrid"

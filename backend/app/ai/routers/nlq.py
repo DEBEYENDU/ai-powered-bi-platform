@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.ai.nlq.nl2sql_service import NL2SQLService
 from app.ai.schemas.nlq import NLQExplainRequest, NLQQueryRequest
 from app.db.session import get_db, get_engine
+from app.dependencies.deps import get_current_user, require_organization
 
 nlq_router = APIRouter(prefix="/ai", tags=["Natural Language SQL"])
 
@@ -20,6 +21,8 @@ def _get_service(db: Session = Depends(get_db)) -> NL2SQLService:
 async def nlq_query(
     request: NLQQueryRequest = Body(...),
     service: NL2SQLService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Convert a natural language question to SQL, execute it, and return results."""
     try:
@@ -30,13 +33,15 @@ async def nlq_query(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Query failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to process the NLQ request.") from exc
 
 
 @nlq_router.post("/explain", response_model=dict)
 async def nlq_explain(
     request: NLQExplainRequest = Body(...),
     service: NL2SQLService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Explain what a SQL query does in plain language."""
     try:
@@ -46,17 +51,19 @@ async def nlq_explain(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Explain failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to process the explain request.") from exc
 
 
 @nlq_router.get("/schema", response_model=dict)
 async def nlq_schema(
     force_refresh: bool = False,
     service: NL2SQLService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Return the full database schema as structured JSON."""
     try:
         schema = service.get_schema(force_refresh=force_refresh)
         return schema
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Schema introspection failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to retrieve schema.") from exc

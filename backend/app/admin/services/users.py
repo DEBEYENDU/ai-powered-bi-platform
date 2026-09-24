@@ -21,6 +21,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.admin.repositories import db_store
+from app.core.logging import get_logger
 
 
 class UserAdminService:
@@ -90,8 +91,13 @@ class UserAdminService:
             "created_at": datetime.utcnow().isoformat(),
         }
         self._users[uid] = user
+        persisted = False
         with contextlib.suppress(Exception):
-            db_store.user_upsert(user)
+            persisted = db_store.user_upsert(user)
+        if not persisted:
+            get_logger(__name__).warning(
+                "user_persistence_failed", user_id=uid, email=email
+            )
         return self._public(user)
 
     def get(self, user_id: str) -> dict[str, Any] | None:

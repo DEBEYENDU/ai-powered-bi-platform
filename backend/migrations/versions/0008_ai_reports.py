@@ -1,7 +1,7 @@
 """0008 AI reports — ai_reports, ai_report_versions, ai_report_schedules
 
 Revision ID: 0008
-Revises: 0007
+Revises: 0007_ai_dashboard
 Create Date: 2026-09-09
 """
 
@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 revision = "0008"
-down_revision = "0007"
+down_revision = "0007_ai_dashboard"
 branch_labels = None
 depends_on = None
 

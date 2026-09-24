@@ -15,6 +15,7 @@ from app.ai.dashboard.schemas import (
 )
 from app.ai.dashboard.service import AIDashboardService
 from app.db.session import get_db, get_engine
+from app.dependencies.deps import get_current_user, require_organization
 
 dashboard_gen_router = APIRouter(prefix="/ai/dashboard", tags=["AI Dashboard Generator"])
 
@@ -27,6 +28,8 @@ def _get_service(db: Session = Depends(get_db)) -> AIDashboardService:
 async def generate_dashboard(
     request: DashboardGenerateRequest = Body(...),
     service: AIDashboardService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Generate a complete dashboard from a natural language prompt."""
     try:
@@ -37,13 +40,15 @@ async def generate_dashboard(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to generate dashboard.") from exc
 
 
 @dashboard_gen_router.post("/improve", response_model=dict[str, Any])
 async def improve_dashboard(
     request: DashboardImproveRequest = Body(...),
     service: AIDashboardService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Improve an existing dashboard with natural language instruction."""
     try:
@@ -53,13 +58,15 @@ async def improve_dashboard(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Improve failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to improve dashboard.") from exc
 
 
 @dashboard_gen_router.post("/explain", response_model=dict[str, Any])
 async def explain_dashboard(
     request: DashboardExplainRequest = Body(...),
     service: AIDashboardService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Generate explanations for dashboard widgets."""
     try:
@@ -69,11 +76,14 @@ async def explain_dashboard(
         )
         return {"explanations": explanations}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Explain failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to explain dashboard.") from exc
 
 
 @dashboard_gen_router.get("/templates", response_model=list[dict[str, Any]])
-async def list_templates():
+async def list_templates(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     """List available dashboard templates."""
     return [{"id": k, **v} for k, v in TEMPLATES.items()]
 
@@ -82,6 +92,8 @@ async def list_templates():
 async def list_versions(
     dashboard_id: str,
     service: AIDashboardService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Get version history for a dashboard."""
     return service.get_versions(dashboard_id)
@@ -92,6 +104,8 @@ async def rollback_version(
     dashboard_id: str,
     version_id: str,
     service: AIDashboardService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Rollback a dashboard to a previous version."""
     result = service.rollback_version(dashboard_id, version_id)

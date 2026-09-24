@@ -114,6 +114,71 @@ class MonitoringService:
 
         return alerts
 
+    def get_global_summary(self, organization_id: str, hours: int = 24) -> dict[str, Any]:
+        since = datetime.utcnow() - timedelta(hours=hours)
+        stmt = select(MLOpsMonitoringRecord).where(
+            MLOpsMonitoringRecord.organization_id == organization_id,
+            MLOpsMonitoringRecord.recorded_at >= since,
+        )
+        records = list(self.db.scalars(stmt).all())
+
+        total_predictions = sum(1 for r in records if r.metric_name == "prediction_count")
+        latencies = [r.metric_value for r in records if r.metric_name == "latency"]
+        errors = sum(1 for r in records if r.metric_name == "error_rate")
+        drift_scores = [
+            r.metric_value for r in records if r.metric_name in ("data_drift", "prediction_drift")
+        ]
+
+        return {
+            "total_predictions": total_predictions,
+            "avg_latency_ms": round(sum(latencies) / max(len(latencies), 1), 2),
+            "error_rate": round(errors / max(total_predictions, 1), 4),
+            "drift_score": round(sum(drift_scores) / max(len(drift_scores), 1), 4),
+        }
+
+    def get_global_metrics(
+        self, organization_id: str, metric_type: str | None = None, limit: int = 100
+    ) -> list[MLOpsMonitoringRecord]:
+        stmt = select(MLOpsMonitoringRecord).where(
+            MLOpsMonitoringRecord.organization_id == organization_id,
+        )
+        if metric_type:
+            stmt = stmt.where(MLOpsMonitoringRecord.metric_type == metric_type)
+        return list(
+            self.db.scalars(
+                stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).limit(limit).all()
+            )
+        )
+
+    def check_global_alerts(self, organization_id: str) -> list[dict[str, Any]]:
+        summary = self.get_global_summary(organization_id, hours=1)
+        alerts = []
+        if summary["error_rate"] > 0.05:
+            alerts.append({
+                "id": "global_error_rate",
+                "model_id": "all",
+                "severity": "critical",
+                "message": f"Error rate {summary['error_rate']:.1%} exceeds 5% threshold",
+                "metric_name": "error_rate",
+                "observed_value": summary["error_rate"],
+                "threshold": 0.05,
+                "status": "firing",
+                "created_at": datetime.utcnow().isoformat(),
+            })
+        if summary["avg_latency_ms"] > 1000:
+            alerts.append({
+                "id": "global_latency",
+                "model_id": "all",
+                "severity": "warning",
+                "message": f"Average latency {summary['avg_latency_ms']:.0f}ms exceeds 1000ms threshold",
+                "metric_name": "avg_latency_ms",
+                "observed_value": summary["avg_latency_ms"],
+                "threshold": 1000,
+                "status": "firing",
+                "created_at": datetime.utcnow().isoformat(),
+            })
+        return alerts
+
     def _audit(self, action: str, resource_id: str, org_id: str, details: dict) -> None:
         with contextlib.suppress(Exception):
             from app.admin.services.platform import PlatformAdmin

@@ -34,14 +34,14 @@ from app.ai.predictions.schemas import (
     MonitorResponse,
     PredictionResult,
     PredictRequest,
-    PredictResponse,
+    PredictionResponse,
     TrainModelRequest,
     TrainResponse,
 )
 from app.ai.predictions.services import ai_service, data_service
 
 
-async def predict(request: PredictRequest) -> PredictResponse:
+async def predict(request: PredictRequest) -> PredictionResponse:
     """Main prediction endpoint — auto-select model, train, forecast, explain."""
     time.perf_counter()
     try:
@@ -59,11 +59,11 @@ async def predict(request: PredictRequest) -> PredictResponse:
         result.target = request.target
         result.horizon = request.horizon
 
-        return PredictResponse(success=True, result=result)
+        return PredictionResponse(success=True, result=result)
     except FileNotFoundError:
-        return PredictResponse(success=False, error="Dataset not found")
+        return PredictionResponse(success=False, error="Dataset not found")
     except Exception as exc:
-        return PredictResponse(success=False, error=str(exc))
+        return PredictionResponse(success=False, error=str(exc))
 
 
 async def _forecast_time_series(df: pd.DataFrame, request: PredictRequest) -> PredictionResult:

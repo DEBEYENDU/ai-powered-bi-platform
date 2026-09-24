@@ -7,12 +7,15 @@ from typing import Any
 
 from sqlalchemy import Engine, text
 
+from app.ai.nlq.sql_validator import SQLValidationError, SQLValidator
+
 
 class DataService:
     """Loads and prepares data from dashboards for report generation."""
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
+        self._validator = SQLValidator(allow_writes=False)
 
     def load_dashboard_data(self, dashboard_id: str) -> dict[str, Any]:
         """Load dashboard and execute all widget queries."""
@@ -39,7 +42,8 @@ class DataService:
                 if not sql_query:
                     continue
                 try:
-                    data_result = conn.execute(text(sql_query))
+                    validated_sql = self._validator.validate(sql_query)
+                    data_result = conn.execute(text(validated_sql))
                     columns = list(data_result.keys())
                     rows = [dict(zip(columns, r, strict=False)) for r in data_result.fetchall()]
                     datasets[wid] = {
@@ -48,13 +52,13 @@ class DataService:
                         "columns": columns,
                         "rows": rows,
                     }
-                except Exception:  # noqa: BLE001
+                except (SQLValidationError, Exception):  # noqa: BLE001
                     datasets[wid] = {
                         "title": widget.get("title", wid),
                         "chart_type": widget.get("chart", widget.get("type", "table")),
                         "columns": [],
                         "rows": [],
-                        "error": "Query failed",
+                        "error": "Query failed or failed safety validation",
                     }
 
             dashboard["datasets"] = datasets

@@ -72,29 +72,45 @@ class ChatService:
         self.db.refresh(conv)
         return conv
 
-    def get_conversation(self, conversation_id: str) -> Conversation | None:
-        return self.db.get(Conversation, conversation_id)
+    def get_conversation(
+        self, conversation_id: str, organization_id: str | None = None
+    ) -> Conversation | None:
+        conv = self.db.get(Conversation, conversation_id)
+        if conv is None:
+            return None
+        if organization_id and conv.organization_id and conv.organization_id != organization_id:
+            return None
+        return conv
 
     def list_conversations(
         self,
         user_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        organization_id: str | None = None,
     ) -> list[Conversation]:
         stmt = select(Conversation).order_by(Conversation.updated_at.desc())
         if user_id:
             stmt = stmt.where(Conversation.user_id == user_id)
+        if organization_id:
+            stmt = stmt.where(Conversation.organization_id == organization_id)
         stmt = stmt.offset(offset).limit(limit)
         return list(self.db.scalars(stmt).all())
 
-    def count_conversations(self, user_id: str | None = None) -> int:
+    def count_conversations(
+        self, user_id: str | None = None, organization_id: str | None = None
+    ) -> int:
         stmt = select(func.count()).select_from(Conversation)
         if user_id:
             stmt = stmt.where(Conversation.user_id == user_id)
+        if organization_id:
+            stmt = stmt.where(Conversation.organization_id == organization_id)
         return self.db.scalar(stmt) or 0
 
-    def delete_conversation(self, conversation_id: str) -> bool:
-        conv = self.get_conversation(conversation_id)
+    def delete_conversation(
+        self, conversation_id: str, organization_id: str | None = None
+    ) -> bool:
+        conv = self.get_conversation(conversation_id, organization_id)
         if not conv:
             return False
         self.db.delete(conv)
@@ -108,8 +124,9 @@ class ChatService:
         model: str | None = None,
         provider: str | None = None,
         system_prompt: str | None = None,
+        organization_id: str | None = None,
     ) -> Conversation | None:
-        conv = self.get_conversation(conversation_id)
+        conv = self.get_conversation(conversation_id, organization_id)
         if not conv:
             return None
         if title is not None:

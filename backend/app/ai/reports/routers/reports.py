@@ -13,6 +13,7 @@ from app.ai.reports.schemas import (
 )
 from app.ai.reports.services.report_service import ReportGeneratorService
 from app.db.session import get_db, get_engine
+from app.dependencies.deps import get_current_user, require_organization
 
 ai_reports_router = APIRouter(prefix="/ai/reports", tags=["AI Report Generator"])
 
@@ -25,6 +26,8 @@ def _get_service(db: Session = Depends(get_db)) -> ReportGeneratorService:
 async def generate_report(
     request: GenerateReportRequest = Body(...),
     service: ReportGeneratorService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Generate a professional business report from a natural language prompt."""
     try:
@@ -50,6 +53,8 @@ async def list_reports(
     search: str = Query(""),
     report_type: str | None = Query(None),
     service: ReportGeneratorService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """List AI-generated reports with search, filter, and pagination."""
     return service.list_reports(
@@ -61,6 +66,8 @@ async def list_reports(
 async def get_report(
     report_id: str,
     service: ReportGeneratorService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Get a single AI report by ID."""
     result = service.get_report(report_id)
@@ -73,6 +80,8 @@ async def get_report(
 async def delete_report(
     report_id: str,
     service: ReportGeneratorService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Soft-delete an AI report."""
     success = service.delete_report(report_id)
@@ -85,6 +94,8 @@ async def delete_report(
 async def followup_question(
     request: ReportFollowUpRequest = Body(...),
     service: ReportGeneratorService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Ask a follow-up question about a generated report."""
     try:
@@ -94,7 +105,10 @@ async def followup_question(
 
 
 @ai_reports_router.get("/templates/list", response_model=list[dict[str, Any]])
-async def list_templates():
+async def list_templates(
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+):
     """List available report type templates."""
     from app.ai.reports.templates.registry import list_templates
 

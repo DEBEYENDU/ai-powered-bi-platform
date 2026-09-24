@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.ai.analytics.schemas import AnalyzeRequest, FollowUpRequest
 from app.ai.analytics.service import BusinessAnalystService
 from app.db.session import get_db, get_engine
+from app.dependencies.deps import get_current_user, require_organization
 
 business_analyst_router = APIRouter(prefix="/ai/analyze", tags=["AI Business Analyst"])
 
@@ -24,6 +25,8 @@ def _get_service(
 async def analyze_dashboard(
     request: AnalyzeRequest = Body(...),
     service: BusinessAnalystService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Analyse a dashboard and generate comprehensive business insights.
 
@@ -42,17 +45,19 @@ async def analyze_dashboard(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to complete analysis.") from exc
 
 
 @business_analyst_router.post("/followup", response_model=dict[str, Any])
 async def followup_question(
     request: FollowUpRequest = Body(...),
     service: BusinessAnalystService = Depends(_get_service),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
 ):
     """Ask a follow-up question about a dashboard analysis."""
     try:
         result = await service.followup(request)
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Follow-up failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to process follow-up.") from exc

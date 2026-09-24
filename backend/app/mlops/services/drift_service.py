@@ -147,6 +147,34 @@ class DriftService:
         )
         return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).all()))
 
+    def get_global_summary(self, organization_id: str) -> dict[str, Any]:
+        stmt = select(MLOpsMonitoringRecord).where(
+            MLOpsMonitoringRecord.organization_id == organization_id,
+            MLOpsMonitoringRecord.metric_type.in_(["data_drift", "prediction_drift"]),
+        )
+        records = list(self.db.scalars(stmt).all())
+        total = len(records)
+        normal = sum(1 for r in records if r.status in ("normal", "low"))
+        warning = sum(1 for r in records if r.status == "medium")
+        critical = sum(1 for r in records if r.status == "high")
+        return {
+            "total_checks": total,
+            "normal": normal,
+            "warning": warning,
+            "critical": critical,
+        }
+
+    def get_global_drift_history(
+        self, organization_id: str, days: int = 30
+    ) -> list[MLOpsMonitoringRecord]:
+        since = datetime.utcnow() - timedelta(days=days)
+        stmt = select(MLOpsMonitoringRecord).where(
+            MLOpsMonitoringRecord.organization_id == organization_id,
+            MLOpsMonitoringRecord.metric_type.in_(["data_drift", "prediction_drift"]),
+            MLOpsMonitoringRecord.recorded_at >= since,
+        )
+        return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).all()))
+
     def _record_drift_events(self, model_id: str, organization_id: str, drifts: list[dict]) -> None:
         for drift in drifts:
             with contextlib.suppress(Exception):

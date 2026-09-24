@@ -77,11 +77,17 @@ def create_dashboard(data: dict[str, Any], owner_id: str = "") -> dict[str, Any]
         return _to_detail(row)
 
 
-def get_dashboard(dashboard_id: str) -> dict[str, Any] | None:
+def get_dashboard(
+    dashboard_id: str, organization_id: str | None = None
+) -> dict[str, Any] | None:
     _require_db()
     with get_db_session() as session:
         row = session.get(Dashboard, dashboard_id)
-        return _to_detail(row) if row and not row.archived else None
+        if row is None:
+            return None
+        if organization_id and row.organization_id and row.organization_id != organization_id:
+            return None
+        return _to_detail(row) if not row.archived else None
 
 
 def list_dashboards(
@@ -97,11 +103,15 @@ def list_dashboards(
         return [_to_out(r) for r in session.scalars(stmt).all()]
 
 
-def update_dashboard(dashboard_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
+def update_dashboard(
+    dashboard_id: str, patch: dict[str, Any], organization_id: str | None = None
+) -> dict[str, Any] | None:
     _require_db()
     with get_db_session() as session:
         row = session.get(Dashboard, dashboard_id)
         if row is None:
+            return None
+        if organization_id and row.organization_id and row.organization_id != organization_id:
             return None
         if "widgets" in patch and patch["widgets"] is not None:
             _validate_widgets(patch["widgets"])
@@ -113,22 +123,28 @@ def update_dashboard(dashboard_id: str, patch: dict[str, Any]) -> dict[str, Any]
         return _to_detail(row)
 
 
-def archive_dashboard(dashboard_id: str, archived: bool = True) -> dict[str, Any] | None:
+def archive_dashboard(
+    dashboard_id: str, archived: bool = True, organization_id: str | None = None
+) -> dict[str, Any] | None:
     _require_db()
     with get_db_session() as session:
         row = session.get(Dashboard, dashboard_id)
         if row is None:
+            return None
+        if organization_id and row.organization_id and row.organization_id != organization_id:
             return None
         row.archived = archived
         session.flush()
         return _to_detail(row)
 
 
-def delete_dashboard(dashboard_id: str) -> bool:
+def delete_dashboard(dashboard_id: str, organization_id: str | None = None) -> bool:
     _require_db()
     with get_db_session() as session:
         row = session.get(Dashboard, dashboard_id)
         if row is None:
+            return False
+        if organization_id and row.organization_id and row.organization_id != organization_id:
             return False
         session.delete(row)
         return True
