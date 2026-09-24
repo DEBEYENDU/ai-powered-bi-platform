@@ -58,7 +58,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not tenant_id:
             return False
         try:
-            from app.core.config import get_settings
             from sqlalchemy import text
             from app.db.session import get_engine
             with get_engine().connect() as conn:
@@ -79,7 +78,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         tenant_id = self._extract_tenant_id(request)
         client_ip = request.client.host if request.client else "unknown"
 
-        if tenant_id and self._is_suspended(tenant_id):
+        # Platform-admin tenant lifecycle endpoints must stay reachable so a
+        # suspended tenant can be reactivated (suspension must not deadlock).
+        is_tenant_admin_path = "/admin/tenants" in path
+        if tenant_id and not is_tenant_admin_path and self._is_suspended(tenant_id):
             return JSONResponse(
                 status_code=403,
                 content={"error": "tenant_suspended", "detail": "Your organization has been suspended."},
