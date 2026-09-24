@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Any
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
