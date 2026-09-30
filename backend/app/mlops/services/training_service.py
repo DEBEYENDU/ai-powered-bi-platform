@@ -95,7 +95,7 @@ class TrainingService:
         stmt = select(MLOpsTrainingRun).where(MLOpsTrainingRun.organization_id == organization_id)
         if model_id:
             stmt = stmt.where(MLOpsTrainingRun.model_id == model_id)
-        return list(self.db.scalars(stmt.order_by(MLOpsTrainingRun.created_at.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(MLOpsTrainingRun.created_at.desc())).all())
 
     def _get_run(self, run_id: str, organization_id: str) -> MLOpsTrainingRun | None:
         stmt = select(MLOpsTrainingRun).where(

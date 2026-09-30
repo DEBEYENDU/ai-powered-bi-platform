@@ -76,7 +76,7 @@ class DeploymentService:
         stmt = select(MLOpsDeployment).where(MLOpsDeployment.organization_id == organization_id)
         if model_id:
             stmt = stmt.where(MLOpsDeployment.model_id == model_id)
-        return list(self.db.scalars(stmt.order_by(MLOpsDeployment.deployed_at.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(MLOpsDeployment.deployed_at.desc())).all())
 
     def activate_deployment(
         self, deployment_id: str, organization_id: str

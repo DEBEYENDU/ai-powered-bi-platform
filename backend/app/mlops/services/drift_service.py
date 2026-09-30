@@ -145,7 +145,7 @@ class DriftService:
             MLOpsMonitoringRecord.metric_type.in_(["data_drift", "prediction_drift"]),
             MLOpsMonitoringRecord.recorded_at >= since,
         )
-        return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc())).all())
 
     def get_global_summary(self, organization_id: str) -> dict[str, Any]:
         stmt = select(MLOpsMonitoringRecord).where(
@@ -173,7 +173,7 @@ class DriftService:
             MLOpsMonitoringRecord.metric_type.in_(["data_drift", "prediction_drift"]),
             MLOpsMonitoringRecord.recorded_at >= since,
         )
-        return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc())).all())
 
     def _record_drift_events(self, model_id: str, organization_id: str, drifts: list[dict]) -> None:
         for drift in drifts:

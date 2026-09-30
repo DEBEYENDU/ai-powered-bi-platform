@@ -73,7 +73,7 @@ class EvaluationService:
         stmt = select(MLOpsEvaluation).where(MLOpsEvaluation.organization_id == organization_id)
         if model_version_id:
             stmt = stmt.where(MLOpsEvaluation.model_version_id == model_version_id)
-        return list(self.db.scalars(stmt.order_by(MLOpsEvaluation.created_at.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(MLOpsEvaluation.created_at.desc())).all())
 
     def compare_versions(self, version_ids: list[str], organization_id: str) -> dict[str, Any]:
         versions_data = []

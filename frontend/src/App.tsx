@@ -35,6 +35,7 @@ import { KnowledgeDocuments } from "./pages/KnowledgeDocuments";
 import { KnowledgeRAGChat } from "./pages/KnowledgeRAGChat";
 import { KnowledgeSearch } from "./pages/KnowledgeSearch";
 import { KnowledgeUpload } from "./pages/KnowledgeUpload";
+import { Login } from "./pages/Login";
 import { MemoryViewer } from "./pages/MemoryViewer";
 import { Metrics } from "./pages/Metrics";
 import { ModelManagement } from "./pages/ModelManagement";
@@ -67,6 +68,9 @@ import { Users } from "./pages/Users";
 export default function App() {
   return (
     <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+      </Routes>
       <Layout>
         <Routes>
           <Route path="/" element={<Overview />} />

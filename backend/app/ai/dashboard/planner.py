@@ -60,7 +60,11 @@ class DashboardPlanner:
 
     def __init__(self, provider: LLMProvider, model: str = "") -> None:
         self.provider = provider
-        self.model = model or "gpt-4o-mini"
+        if not model:
+            from app.core.config import get_settings
+
+            model = getattr(get_settings(), "ai_model", "") or "gpt-4o-mini"
+        self.model = model
 
     async def plan(
         self,

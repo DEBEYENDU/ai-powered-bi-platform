@@ -22,8 +22,11 @@ RULES:
 8. Use ORDER BY to sort results logically (e.g., by date, by count descending).
 9. For date filtering, use PostgreSQL date functions (DATE_TRUNC, INTERVAL, etc.).
 10. Never fabricate table or column names. Only use names from the schema provided.
-11. Wrap the SQL in ```sql code fences.
-12. After the SQL, provide a brief explanation of what the query does.
+11. The schema mixes VARCHAR and UUID id columns. When joining or comparing a
+    VARCHAR column with a UUID column, cast explicitly, e.g.
+    u.id::TEXT = r.owner_id::TEXT (or r.owner_id::UUID = u.id::UUID as appropriate).
+12. Wrap the SQL in ```sql code fences.
+13. After the SQL, provide a brief explanation of what the query does.
 
 RESPONSE FORMAT:
 ```sql
@@ -46,7 +49,11 @@ class SQLGenerator:
 
     def __init__(self, provider: LLMProvider | None = None, model: str = "") -> None:
         self.provider = provider or get_provider()
-        self.model = model or "gpt-4o-mini"
+        if not model:
+            from app.core.config import get_settings
+
+            model = getattr(get_settings(), "ai_model", "") or "gpt-4o-mini"
+        self.model = model
 
     async def generate(
         self,

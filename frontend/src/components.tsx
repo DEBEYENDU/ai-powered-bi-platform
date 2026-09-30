@@ -24,6 +24,8 @@ import {
 } from "@mui/material";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { TOKEN_KEY, REFRESH_KEY } from "./api";
 import { useColorMode } from "./theme";
 
 const NAV: Array<[string, string]> = [
@@ -129,6 +131,17 @@ export function Layout({ children }: { children: ReactNode }) {
           >
             BI Platform Admin
           </Typography>
+          <IconButton
+            color="inherit"
+            aria-label="logout"
+            onClick={() => {
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(REFRESH_KEY);
+              window.location.href = "/login";
+            }}
+          >
+            <LogoutIcon />
+          </IconButton>
           <IconButton color="inherit" onClick={toggle} aria-label="toggle theme">
             {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
