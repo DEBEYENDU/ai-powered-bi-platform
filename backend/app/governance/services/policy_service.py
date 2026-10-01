@@ -52,7 +52,7 @@ class PolicyService:
         stmt = select(GovernancePolicy).where(GovernancePolicy.organization_id == organization_id)
         if resource:
             stmt = stmt.where(GovernancePolicy.resource == resource)
-        return list(self.db.scalars(stmt.order_by(GovernancePolicy.priority.desc()).all()))
+        return list(self.db.scalars(stmt.order_by(GovernancePolicy.priority.desc())).all())
 
     def update_policy(
         self, policy_id: str, organization_id: str, data: dict[str, Any]

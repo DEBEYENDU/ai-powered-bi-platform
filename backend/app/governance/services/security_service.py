@@ -66,7 +66,7 @@ class SecurityService:
         if severity:
             stmt = stmt.where(SecurityEvent.severity == severity)
         return list(
-            self.db.scalars(stmt.order_by(SecurityEvent.created_at.desc()).limit(limit).all())
+            self.db.scalars(stmt.order_by(SecurityEvent.created_at.desc()).limit(limit)).all()
         )
 
     def get_summary(self, organization_id: str, hours: int = 24) -> dict[str, Any]:

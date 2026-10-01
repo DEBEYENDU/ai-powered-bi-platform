@@ -14,7 +14,10 @@ class EmbeddingService:
 
     async def embed_text(self, text: str) -> list[float]:
         if self.settings.openai_api_key:
-            return await self._openai_embed(text)
+            try:
+                return await self._openai_embed(text)
+            except Exception:  # noqa: BLE001 -- degrade to local embedding
+                return self._deterministic_embedding(text)
         return self._deterministic_embedding(text)
 
     async def embed_batch(self, texts: list[str], batch_size: int = 100) -> list[list[float]]:
@@ -25,7 +28,10 @@ class EmbeddingService:
             all_embeddings: list[list[float]] = []
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
-                batch_embeddings = await self._openai_embed_batch(batch)
+                try:
+                    batch_embeddings = await self._openai_embed_batch(batch)
+                except Exception:  # noqa: BLE001 -- degrade to local embedding
+                    batch_embeddings = [self._deterministic_embedding(t) for t in batch]
                 all_embeddings.extend(batch_embeddings)
             return all_embeddings
 

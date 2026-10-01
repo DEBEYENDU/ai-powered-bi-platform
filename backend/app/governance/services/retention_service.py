@@ -39,7 +39,7 @@ class RetentionService:
 
     def list_policies(self, organization_id: str) -> list[RetentionPolicy]:
         stmt = select(RetentionPolicy).where(RetentionPolicy.organization_id == organization_id)
-        return list(self.db.scalars(stmt.all()))
+        return list(self.db.scalars(stmt).all())
 
     def get_expired_date(self, retention_days: int) -> datetime:
         return datetime.utcnow() - timedelta(days=retention_days)

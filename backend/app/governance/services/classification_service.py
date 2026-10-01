@@ -58,7 +58,7 @@ class ClassificationService:
         )
         if resource_type:
             stmt = stmt.where(DataClassification.resource_type == resource_type)
-        return list(self.db.scalars(stmt.all()))
+        return list(self.db.scalars(stmt).all())
 
     def can_export(
         self, resource_type: str, resource_id: str, organization_id: str

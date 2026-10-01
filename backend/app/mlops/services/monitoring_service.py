@@ -84,8 +84,8 @@ class MonitoringService:
             stmt = stmt.where(MLOpsMonitoringRecord.metric_type == metric_type)
         return list(
             self.db.scalars(
-                stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).limit(limit).all()
-            )
+                stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).limit(limit)
+            ).all()
         )
 
     def check_alerts(self, model_id: str, organization_id: str) -> list[dict[str, Any]]:
@@ -146,8 +146,8 @@ class MonitoringService:
             stmt = stmt.where(MLOpsMonitoringRecord.metric_type == metric_type)
         return list(
             self.db.scalars(
-                stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).limit(limit).all()
-            )
+                stmt.order_by(MLOpsMonitoringRecord.recorded_at.desc()).limit(limit)
+            ).all()
         )
 
     def check_global_alerts(self, organization_id: str) -> list[dict[str, Any]]:
