@@ -103,6 +103,12 @@ class RBACService:
         self._user_roles: dict[str, set[str]] = {}
         self._seed()
         self._persist_catalog()
+        # Seed roles must exist in the DB or user_role grants violate the FK.
+        self._persist_all_roles()
+
+    def _persist_all_roles(self) -> None:
+        for role_id in list(self._roles):
+            self._persist_role(role_id)
 
     def _persist_catalog(self) -> None:
         with contextlib.suppress(Exception):

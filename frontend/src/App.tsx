@@ -1,4 +1,6 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import type { ReactNode } from "react";
+import { TOKEN_KEY } from "./api";
 import { Layout } from "./components";
 import { AgentDashboard } from "./pages/AgentDashboard";
 import { AgentLogs } from "./pages/AgentLogs";
@@ -65,14 +67,24 @@ import { TenantOrganization } from "./pages/TenantOrganization";
 import { TenantUsage } from "./pages/TenantUsage";
 import { Users } from "./pages/Users";
 
+function RequireAuth({ children }: { children: ReactNode }) {
+  // Restore the session on refresh; unauthenticated visitors go straight to
+  // Login instead of firing unauthenticated API requests.
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
       </Routes>
-      <Layout>
-        <Routes>
+      <RequireAuth>
+        <Layout>
+          <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/users" element={<Users />} />
           <Route path="/orgs" element={<Organizations />} />
@@ -137,7 +149,8 @@ export default function App() {
           <Route path="/organization/usage" element={<TenantUsage />} />
           <Route path="/organization/api-keys" element={<TenantApiKeys />} />
         </Routes>
-      </Layout>
+        </Layout>
+      </RequireAuth>
     </BrowserRouter>
   );
 }

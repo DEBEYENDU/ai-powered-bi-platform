@@ -26,7 +26,11 @@ _AVAILABILITY_TTL = 30.0
 
 
 def db_available() -> bool:
-    """Cached reachability probe (fast-fail; never raises)."""
+    """Cached reachability probe (fast-fail; never raises).
+
+    A transient failure is retried once before caching, so a single blip
+    does not serve 503s for the whole TTL window.
+    """
     global _db_available, _db_checked_at
     now = time.time()
     if _db_available is not None and now - _db_checked_at < _AVAILABILITY_TTL:
@@ -39,8 +43,22 @@ def db_available() -> bool:
         with get_engine().connect() as conn:
             conn.execute(text("SELECT 1"))
         _db_available = True
-    except Exception:
-        _db_available = False
+    except Exception as exc:
+        from app.core.logging import get_logger
+
+        get_logger(__name__).warning("db_probe_failed", error=str(exc))
+        time.sleep(0.2)
+        try:
+            from sqlalchemy import text
+
+            from app.db.session import get_engine
+
+            with get_engine().connect() as conn:
+                conn.execute(text("SELECT 1"))
+            _db_available = True
+        except Exception as exc2:
+            get_logger(__name__).warning("db_probe_retry_failed", error=str(exc2))
+            _db_available = False
     _db_checked_at = now
     return _db_available
 
@@ -63,9 +81,12 @@ def session_scope() -> Iterator[Any | None]:
 
         with get_db_session() as session:
             yield session
-    except Exception:
+    except Exception as exc:
         _db_available = False
         _db_checked_at = time.time()
+        from app.core.logging import get_logger
+
+        get_logger(__name__).warning("db_session_failed_marking_unavailable", error=str(exc))
         raise
 
 
