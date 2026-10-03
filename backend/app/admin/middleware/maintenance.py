@@ -55,11 +55,22 @@ MAINTENANCE_ENDPOINT_PREFIXES = (
     "/api/v1/admin/maintenance",
 )
 
+# Authentication handling: login/register/refresh must stay available in every
+# mode (observed bug: readonly mode blocked POST /auth/login, leaving users
+# stuck on the Sign In page with no way to authenticate).
+AUTH_ENDPOINT_PREFIXES = (
+    "/auth",
+    "/api/v1/auth",
+)
+
 
 def _is_exempt(path: str) -> tuple[bool, str]:
     for prefix in MAINTENANCE_ENDPOINT_PREFIXES:
         if path == prefix or path.startswith(prefix + "/"):
             return True, "maintenance-endpoint"
+    for prefix in AUTH_ENDPOINT_PREFIXES:
+        if path == prefix or path.startswith(prefix + "/"):
+            return True, "auth-endpoint"
     for prefix in ALWAYS_ALLOWED_PREFIXES:
         if path == prefix or path.startswith(prefix + "/"):
             return True, "health-or-docs"
