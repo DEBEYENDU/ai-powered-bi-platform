@@ -13,8 +13,11 @@ from app.dependencies.deps import get_current_user, require_organization
 nlq_router = APIRouter(prefix="/ai", tags=["Natural Language SQL"])
 
 
-def _get_service(db: Session = Depends(get_db)) -> NL2SQLService:
-    return NL2SQLService(engine=get_engine())
+def _get_service(
+    db: Session = Depends(get_db),
+    organization_id: str = Depends(require_organization),
+) -> NL2SQLService:
+    return NL2SQLService(engine=get_engine(), organization_id=organization_id)
 
 
 @nlq_router.post("/query", response_model=dict)

@@ -39,7 +39,8 @@ async def generate_report(
             else request.report_type,
             formats=[f.value if hasattr(f, "value") else f for f in request.formats],
             branding=request.branding,
-            organization_id=request.organization_id,
+            organization_id=organization_id,
+            owner_id=str(user.get("sub", "") or ""),
         )
         return result
     except Exception as exc:
@@ -58,7 +59,8 @@ async def list_reports(
 ):
     """List AI-generated reports with search, filter, and pagination."""
     return service.list_reports(
-        page=page, page_size=page_size, search=search, report_type=report_type
+        page=page, page_size=page_size, search=search, report_type=report_type,
+        organization_id=organization_id,
     )
 
 
@@ -70,7 +72,7 @@ async def get_report(
     organization_id: str = Depends(require_organization),
 ):
     """Get a single AI report by ID."""
-    result = service.get_report(report_id)
+    result = service.get_report(report_id, organization_id=organization_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Report not found")
     return result
@@ -84,7 +86,7 @@ async def delete_report(
     organization_id: str = Depends(require_organization),
 ):
     """Soft-delete an AI report."""
-    success = service.delete_report(report_id)
+    success = service.delete_report(report_id, organization_id=organization_id)
     if not success:
         raise HTTPException(status_code=404, detail="Report not found or delete failed")
     return {"success": True, "report_id": report_id}
@@ -99,7 +101,7 @@ async def followup_question(
 ):
     """Ask a follow-up question about a generated report."""
     try:
-        return await service.followup(request.report_id, request.question)
+        return await service.followup(request.report_id, request.question, organization_id=organization_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Follow-up failed: {exc}") from exc
 

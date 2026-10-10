@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json as _json
 import time
 import uuid
 from datetime import UTC, datetime
@@ -19,7 +20,10 @@ from app.ai.reports.validators.validator import validate_all
 
 
 def _uid() -> str:
-    return uuid.uuid4().hex[:12]
+    # ai_reports / ai_report_versions primary keys are PostgreSQL UUIDs —
+    # truncated ids ("612683da867c") silently failed the INSERT and the
+    # rollback swallowed it, so no report was ever persisted.
+    return str(uuid.uuid4())
 
 
 class ReportGeneratorService:
@@ -48,7 +52,8 @@ class ReportGeneratorService:
         return str(path)
 
     def _save_report(self, report_id: str, data: dict[str, Any]) -> None:
-        """Persist report to database."""
+        """Persist report to database. Raises on failure — a report that was
+        generated but not saved must never be claimed as fully created."""
         try:
             self._db.execute(
                 text("""
@@ -63,8 +68,8 @@ class ReportGeneratorService:
                 """),
                 {
                     "id": report_id,
-                    "org_id": data.get("organization_id", "00000000-0000-0000-0000-000000000000"),
-                    "owner_id": data.get("owner_id", "00000000-0000-0000-0000-000000000000"),
+                    "org_id": data.get("organization_id") or "00000000-0000-0000-0000-000000000000",
+                    "owner_id": data.get("owner_id") or "00000000-0000-0000-0000-000000000000",
                     "title": data.get("title", ""),
                     "desc": data.get("description", ""),
                     "prompt": data.get("prompt", ""),
@@ -72,22 +77,23 @@ class ReportGeneratorService:
                     "status": data.get("status", "completed"),
                     "dash_id": data.get("dashboard_id"),
                     "summary": data.get("executive_summary", ""),
-                    "sections": data.get("sections", []),
-                    "kpis": data.get("kpis", []),
-                    "charts": data.get("charts", []),
-                    "insights": data.get("insights", []),
-                    "risks": data.get("risks", []),
-                    "recs": data.get("recommendations", []),
-                    "branding": data.get("branding", {}),
-                    "tags": data.get("tags", []),
+                    "sections": _json.dumps(data.get("sections") or []),
+                    "kpis": _json.dumps(data.get("kpis") or []),
+                    "charts": _json.dumps(data.get("charts") or []),
+                    "insights": _json.dumps(data.get("insights") or []),
+                    "risks": _json.dumps(data.get("risks") or []),
+                    "recs": _json.dumps(data.get("recommendations") or []),
+                    "branding": _json.dumps(data.get("branding") or {}),
+                    "tags": _json.dumps(data.get("tags") or []),
                     "version": 1,
                     "time_ms": data.get("generation_time_ms", 0),
                     "now": datetime.now(UTC),
                 },
             )
             self._db.commit()
-        except Exception:  # noqa: BLE001
+        except Exception:
             self._db.rollback()
+            raise
 
     def _save_version(
         self, report_id: str, version: int, data: dict[str, Any], formats: list[str]
@@ -104,13 +110,15 @@ class ReportGeneratorService:
                     "id": _uid(),
                     "report_id": report_id,
                     "version": version,
-                    "snapshot": {
-                        "title": data.get("title", ""),
-                        "sections": data.get("sections", []),
-                        "executive_summary": data.get("executive_summary", ""),
-                    },
-                    "formats": formats,
-                    "paths": {},
+                    "snapshot": _json.dumps(
+                        {
+                            "title": data.get("title", ""),
+                            "sections": data.get("sections", []),
+                            "executive_summary": data.get("executive_summary", ""),
+                        }
+                    ),
+                    "formats": _json.dumps(formats or []),
+                    "paths": _json.dumps({}),
                     "now": datetime.now(UTC),
                 },
             )
@@ -126,6 +134,7 @@ class ReportGeneratorService:
         formats: list[str] | None = None,
         branding: dict[str, Any] | None = None,
         organization_id: str | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
         """Full report generation pipeline."""
         start = time.monotonic()
@@ -222,11 +231,23 @@ class ReportGeneratorService:
         report_data["generation_time_ms"] = round(elapsed, 2)
         report_data["status"] = "completed"
 
-        # Persist
-        self._save_report(
-            report_id, {**report_data, "owner_id": "00000000-0000-0000-0000-000000000000"}
-        )
-        self._save_version(report_id, 1, report_data, formats)
+        # Persist — a report that cannot be saved must not be claimed as
+        # created; the response says exactly that instead of a fake success.
+        try:
+            self._save_report(
+                report_id,
+                {
+                    **report_data,
+                    "owner_id": owner_id or "00000000-0000-0000-0000-000000000000",
+                },
+            )
+            self._save_version(report_id, 1, report_data, formats)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "success": False,
+                "error": f"Report was generated but could not be saved: "
+                f"{type(exc).__name__}: {str(exc)[:200]}",
+            }
 
         get_template(report_type)
         return {
@@ -247,14 +268,21 @@ class ReportGeneratorService:
             "generation_time_ms": round(elapsed, 2),
         }
 
-    async def followup(self, report_id: str, question: str) -> dict[str, Any]:
-        """Answer a follow-up question about a report."""
+    async def followup(
+        self, report_id: str, question: str, organization_id: str | None = None
+    ) -> dict[str, Any]:
+        """Answer a follow-up question about a report (org-scoped when org given)."""
         try:
             result = self._db.execute(
                 text(
-                    "SELECT title, executive_summary, sections, insights, recommendations FROM ai_reports WHERE id = :id"
+                    "SELECT title, executive_summary, sections, insights, recommendations "
+                    "FROM ai_reports WHERE id = :id AND deleted_at IS NULL"
+                    + (" AND organization_id = :org" if organization_id else "")
                 ),
-                {"id": report_id},
+                {
+                    "id": report_id,
+                    **({"org": organization_id} if organization_id else {}),
+                },
             )
             row = result.fetchone()
             if row is None:
@@ -268,13 +296,21 @@ class ReportGeneratorService:
             return {"answer": f"Error: {e}", "confidence": "low", "evidence": []}
 
     def list_reports(
-        self, page: int = 1, page_size: int = 20, search: str = "", report_type: str | None = None
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        search: str = "",
+        report_type: str | None = None,
+        organization_id: str | None = None,
     ) -> dict[str, Any]:
-        """List AI reports with pagination and filters."""
+        """List AI reports with pagination and filters (org-scoped when org is given)."""
         try:
             where_parts: list[str] = ["deleted_at IS NULL"]
             params: dict[str, Any] = {}
 
+            if organization_id:
+                where_parts.append("organization_id = :org")
+                params["org"] = organization_id
             if search:
                 where_parts.append("(title ILIKE :search OR prompt ILIKE :search)")
                 params["search"] = f"%{search}%"
@@ -321,8 +357,8 @@ class ReportGeneratorService:
         except Exception:  # noqa: BLE001
             return {"reports": [], "total": 0, "page": page, "page_size": page_size}
 
-    def get_report(self, report_id: str) -> dict[str, Any] | None:
-        """Get a single AI report by ID."""
+    def get_report(self, report_id: str, organization_id: str | None = None) -> dict[str, Any] | None:
+        """Get a single AI report by ID (org-scoped when org is given)."""
         try:
             result = self._db.execute(
                 text("""
@@ -331,8 +367,8 @@ class ReportGeneratorService:
                         insights, risks, recommendations, tags,
                         generation_time_ms, created_at
                     FROM ai_reports WHERE id = :id AND deleted_at IS NULL
-                """),
-                {"id": report_id},
+                """ + (" AND organization_id = :org" if organization_id else "")),
+                {"id": report_id, **({"org": organization_id} if organization_id else {})},
             )
             row = result.fetchone()
             if row is None:
@@ -362,12 +398,19 @@ class ReportGeneratorService:
         except Exception:  # noqa: BLE001
             return None
 
-    def delete_report(self, report_id: str) -> bool:
-        """Soft-delete an AI report."""
+    def delete_report(self, report_id: str, organization_id: str | None = None) -> bool:
+        """Soft-delete an AI report (org-scoped when org is given)."""
         try:
             self._db.execute(
-                text("UPDATE ai_reports SET deleted_at = :now WHERE id = :id"),
-                {"id": report_id, "now": datetime.now(UTC)},
+                text(
+                    "UPDATE ai_reports SET deleted_at = :now WHERE id = :id"
+                    + (" AND organization_id = :org" if organization_id else "")
+                ),
+                {
+                    "id": report_id,
+                    "now": datetime.now(UTC),
+                    **({"org": organization_id} if organization_id else {}),
+                },
             )
             self._db.commit()
             return True

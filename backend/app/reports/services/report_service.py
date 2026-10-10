@@ -85,7 +85,7 @@ class ReportService:
                 raise ValueError(f"Unsupported format '{fmt}'")
 
         if report_id:
-            record = self.repo.get(report_id)
+            record = self.repo.get(report_id, organization_id=organization_id or None)
             if record is None:
                 raise ValueError(f"Report '{report_id}' not found")
             self.permissions.require(

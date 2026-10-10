@@ -104,8 +104,8 @@ class TestCopilotTools:
         captured: dict = {}
 
         class FakeNL2SQL:
-            def __init__(self, engine=None):
-                pass
+            def __init__(self, engine=None, organization_id=None):
+                self.organization_id = organization_id
 
             async def query(self, question: str, include_chart: bool = True):
                 captured["question"] = question

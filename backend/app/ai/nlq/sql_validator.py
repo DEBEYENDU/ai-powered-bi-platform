@@ -38,10 +38,21 @@ _MULTI_STATEMENT_PATTERNS = [
 
 
 class SQLValidator:
-    """Validates SQL queries for safety."""
+    """Validates SQL queries for safety, schema existence, and tenant scope."""
 
-    def __init__(self, allow_writes: bool = False) -> None:
+    def __init__(
+        self,
+        allow_writes: bool = False,
+        schema: dict[str, set[str]] | None = None,
+        organization_id: str | None = None,
+    ) -> None:
+        """``schema`` maps real table names to their column names; when given,
+        generated SQL is rejected before execution if it references tables or
+        columns that do not exist (LLM hallucinations used to surface as raw
+        psycopg errors). ``organization_id`` enables the tenant-scope check."""
         self.allow_writes = allow_writes
+        self.schema = schema or {}
+        self.organization_id = organization_id
 
     def validate(self, sql: str) -> str:
         """Validate SQL and return cleaned version. Raises SQLValidationError on failure."""
@@ -55,6 +66,7 @@ class SQLValidator:
 
         self._check_injection(cleaned)
         self._check_length(cleaned)
+        self._check_schema(cleaned)
 
         return cleaned
 
@@ -94,3 +106,79 @@ class SQLValidator:
             raise SQLValidationError(
                 "SQL query exceeds maximum length (10000 chars)", "QUERY_TOO_LONG"
             )
+
+    # Tables whose rows belong to a single organization. AI-generated SQL
+    # touching them must filter by organization_id — enforced here, not left
+    # to the LLM.
+    TENANT_SCOPED_TABLES = frozenset(
+        {
+            "datasets",
+            "de_datasets",
+            "de_dataset_versions",
+            "de_pipelines",
+            "conversations",
+            "ai_messages",
+            "reports",
+            "dashboards",
+            "knowledge_documents",
+            "knowledge_collections",
+            "usage_records",
+            "tenant_api_keys",
+            "users",
+        }
+    )
+
+    _TABLE_REF = re.compile(r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\s+AS\s+)?(\s*[a-zA-Z_][a-zA-Z0-9_]*)?", re.IGNORECASE)
+    _QUALIFIED_COL = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b")
+    _SQL_KEYWORDS = frozenset(
+        {
+            "where", "order", "group", "limit", "on", "inner", "left", "right",
+            "full", "cross", "join", "union", "select", "set", "having",
+            "offset", "as", "natural", "using", "values", "asc", "desc",
+        }
+    )
+
+    def _check_schema(self, sql: str) -> None:
+        if not self.schema:
+            return
+
+        aliases: dict[str, str] = {}
+        for match in self._TABLE_REF.finditer(sql):
+            table = match.group(1).lower()
+            alias = (match.group(2) or "").strip().lower()
+            if table not in self.schema:
+                raise SQLValidationError(
+                    f"Table '{table}' does not exist in the database", "UNKNOWN_TABLE"
+                )
+            if alias and alias not in self._SQL_KEYWORDS:
+                aliases[alias] = table
+            aliases.setdefault(table, table)
+
+        for alias, column in self._QUALIFIED_COL.findall(sql):
+            table = aliases.get(alias.lower())
+            if table is None:
+                # Subquery/CTE alias — cannot be verified statically.
+                continue
+            if column.lower() not in self.schema[table]:
+                raise SQLValidationError(
+                    f"Column '{alias}.{column}' does not exist on table '{table}'",
+                    "UNKNOWN_COLUMN",
+                )
+
+        # Tenant scope: tenant-scoped tables require the CALLER's organization
+        # filter. String literals are stripped first so mentions inside '%…%'
+        # do not count as table references; the caller's org id must appear in
+        # the SQL itself (the generator is given it in the prompt), so a query
+        # scoped to another tenant is rejected here — not just filtered later.
+        if self.organization_id:
+            sql_lower = re.sub(r"'[^']*'", "", sql.lower())
+            touches_tenant_data = any(
+                re.search(rf"\b{re.escape(t)}\b", sql_lower)
+                for t in self.TENANT_SCOPED_TABLES
+            )
+            org_in_sql = self.organization_id.lower() in sql.lower()
+            if touches_tenant_data and not org_in_sql:
+                raise SQLValidationError(
+                    "Queries on tenant data must filter by your organization_id",
+                    "TENANT_SCOPE_REQUIRED",
+                )

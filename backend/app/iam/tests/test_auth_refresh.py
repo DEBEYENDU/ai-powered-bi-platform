@@ -7,6 +7,8 @@ has to be rejected, not merely unused.
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -21,12 +23,16 @@ def client() -> TestClient:
 
 @pytest.fixture(scope="module")
 def refresh_token() -> str:
-    from app.admin.services.platform import get_platform
-
-    users = get_platform().users._merged()
-    assert users, "no users available to build a refresh token for"
-    user_id = next(iter(users))
-    return create_refresh_token({"sub": user_id})
+    """Create a fresh active user — picking an arbitrary platform user made
+    this test fail whenever that account was deactivated."""
+    c = TestClient(app)
+    email = f"refresh-{uuid.uuid4().hex[:8]}@example.com"
+    r = c.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": "RefreshTokenPass1!", "full_name": "Refresh Test"},
+    )
+    assert r.status_code == 200, r.text
+    return create_refresh_token({"sub": r.json()["user_id"]})
 
 
 class TestRefreshTransport:

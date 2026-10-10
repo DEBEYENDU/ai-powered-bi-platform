@@ -45,7 +45,10 @@ class SQLQueryTool(BaseTool):
         if not str(question).strip():
             raise ValueError("sql_query tool requires a 'question' parameter")
         engine = get_engine()
-        service = NL2SQLService(engine=engine)
+        service = NL2SQLService(
+            engine=engine,
+            organization_id=context.get("organization_id") or None,
+        )
         result = await service.query(
             question=str(question),
             include_chart=params.get("include_chart", True),

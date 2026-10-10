@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from app.dependencies.deps import get_current_user, require_organization
 from app.reports.schemas.report import (
     ReportCreate,
     ReportGenerateRequest,
@@ -17,7 +18,6 @@ from app.reports.schemas.report import (
 )
 from app.reports.services.report_service import ReportService
 from app.storage.validate import PathTraversalError, validate_storage_path
-from app.dependencies.deps import get_current_user, require_organization
 
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -46,7 +46,11 @@ def create_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    record = service.create_report(payload.dict())
+    # org + owner are required: the reports table is NOT NULL UUID and every
+    # read is org-scoped, so reports can never be orphaned or leak tenants.
+    record = service.create_report(
+        payload.model_dump(), owner_id=str(user.get("sub", "")), organization_id=organization_id
+    )
     return _record_to_out(record)
 
 
@@ -62,7 +66,12 @@ def list_reports(
     organization_id: str = Depends(require_organization),
 ):
     records = service.repo.list(
-        report_type=report_type, status=status, search=search, limit=limit, offset=offset
+        organization_id=organization_id,
+        report_type=report_type,
+        status=status,
+        search=search,
+        limit=limit,
+        offset=offset,
     )
     return {
         "data": [_record_to_out(r) for r in records],
@@ -90,7 +99,7 @@ def get_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    record = service.repo.get(report_id)
+    record = service.repo.get(report_id, organization_id=organization_id)
     if record is None:
         raise HTTPException(404, "Report not found")
     return _record_to_out(record)
@@ -106,11 +115,13 @@ async def generate_report(
     try:
         return await service.generate(
             report_id=str(payload.report_id) if payload.report_id else None,
-            definition=payload.definition.dict() if payload.definition else None,
+            definition=payload.definition.model_dump() if payload.definition else None,
             formats=payload.formats,
             include_ai=payload.include_ai,
             ai_sections=payload.ai_sections,
             variables=payload.variables,
+            organization_id=organization_id,
+            user_id=str(user.get("sub", "")),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -137,7 +148,7 @@ def download_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    record = service.repo.get(report_id)
+    record = service.repo.get(report_id, organization_id=organization_id)
     if record is None:
         raise HTTPException(404, "Report not found")
     versions = service.repo.versions(report_id)
@@ -170,7 +181,7 @@ def delete_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    if not service.repo.delete(report_id):
+    if not service.repo.delete(report_id, organization_id=organization_id):
         raise HTTPException(404, "Report not found")
     service.events.publish("report_deleted", report_id, details={})
     return {"deleted": True}
@@ -206,14 +217,14 @@ def restore_version(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    record = service.repo.get(report_id)
+    record = service.repo.get(report_id, organization_id=organization_id)
     if record is None:
         raise HTTPException(404, "Report not found")
     versions = {v["version_number"]: v for v in service.repo.versions(report_id)}
     snapshot = versions.get(version)
     if snapshot is None:
         raise HTTPException(404, "Version not found")
-    service.repo.update(report_id, {"definition": snapshot.get("definition_snapshot", {})})
+    service.repo.update(report_id, {"definition": snapshot.get("definition_snapshot", {})}, organization_id=organization_id)
     return {"restored": version}
 
 
@@ -225,7 +236,7 @@ def approve_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    record = service.repo.update(report_id, {"status": "published"})
+    record = service.repo.update(report_id, {"status": "published"}, organization_id=organization_id)
     if record is None:
         raise HTTPException(404, "Report not found")
     service.events.publish("approval_granted", report_id, approved_by, details={})
@@ -239,7 +250,7 @@ def archive_report(
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ):
-    if not service.repo.delete(report_id):
+    if not service.repo.delete(report_id, organization_id=organization_id):
         raise HTTPException(404, "Report not found")
     service.events.publish("report_archived", report_id, details={})
     return {"archived": True}

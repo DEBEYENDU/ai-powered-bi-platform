@@ -27,6 +27,12 @@ RULES:
     u.id::TEXT = r.owner_id::TEXT (or r.owner_id::UUID = u.id::UUID as appropriate).
 12. Wrap the SQL in ```sql code fences.
 13. After the SQL, provide a brief explanation of what the query does.
+14. Tenant isolation: tables such as datasets, de_datasets, users, reports,
+    dashboards, conversations, and usage_records belong to one organization.
+    Whenever your query touches any of them you MUST include a WHERE clause
+    filtering organization_id to the exact organization id given in the prompt.
+15. Questions about the user's uploaded datasets are answered from the
+    de_datasets table (name, description, row_count, column_count, status).
 
 RESPONSE FORMAT:
 ```sql
@@ -42,6 +48,20 @@ Break down what each part of the query does.
 Describe what the results would look like.
 Suggest improvements if any.
 """
+
+# Small models invent intent and reach for wrong tables on dataset questions;
+# a concrete few-shot mapping keeps them on the real table.
+_DATASET_QUESTION_HINT = (
+    "IMPORTANT: the user's uploaded datasets are tracked ONLY in the "
+    "`de_datasets` table (NOT `datasets`, `users`, or `reports`). "
+    "Answer dataset questions from `de_datasets`, for example:\n"
+    "- 'what is this dataset about' -> SELECT name, description, row_count, "
+    "column_count, status FROM de_datasets WHERE organization_id = '<org id>'\n"
+    "- 'how many datasets have I uploaded' -> SELECT COUNT(*) AS dataset_count "
+    "FROM de_datasets WHERE organization_id = '<org id>'\n"
+    "- 'list my datasets' -> SELECT name, row_count, column_count, status FROM "
+    "de_datasets WHERE organization_id = '<org id>'"
+)
 
 
 class SQLGenerator:
@@ -61,8 +81,26 @@ class SQLGenerator:
         schema_text: str,
         temperature: float = 0.1,
         max_tokens: int = 2048,
+        repair_error: str = "",
+        organization_id: str | None = None,
     ) -> dict[str, Any]:
-        """Generate SQL from a natural language question."""
+        """Generate SQL from a natural language question.
+
+        ``repair_error`` carries the rejection reason from a previous attempt
+        (one bounded repair round is driven by NL2SQLService).
+        """
+        hint = ""
+        if repair_error:
+            hint = f"\n\nPREVIOUS ATTEMPT REJECTED:\n{repair_error}\nFix the problem and regenerate."
+        if organization_id:
+            hint += (
+                f"\n\nORGANIZATION ID (filter tenant tables by this exact value): "
+                f"'{organization_id}'"
+            )
+        q_lower = question.lower()
+        if "dataset" in q_lower or "upload" in q_lower or "my data" in q_lower:
+            hint += f"\n\n{_DATASET_QUESTION_HINT}"
+
         messages = [
             ChatMessage(role="system", content=NL2SQL_SYSTEM_PROMPT),
             ChatMessage(
@@ -71,6 +109,7 @@ class SQLGenerator:
                     f"DATABASE SCHEMA:\n{schema_text}\n\n"
                     f"QUESTION: {question}\n\n"
                     "Generate the SQL query and explanation."
+                    f"{hint}"
                 ),
             ),
         ]

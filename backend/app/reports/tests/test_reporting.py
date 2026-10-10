@@ -1,4 +1,6 @@
-"""Tests for the Reporting Engine (stdlib-only paths)."""
+"""Tests for the Reporting Engine."""
+
+import pytest
 
 from app.reports.distributions.distribution import DistributionEngine
 from app.reports.events.events import EventBus
@@ -185,33 +187,74 @@ class TestDistributionEvents:
 class TestService:
     def test_generate_html_json(self, tmp_path):
         import asyncio
+        import uuid as uuid_mod
 
         service = ReportService(storage_root=tmp_path)
+        org = str(uuid_mod.uuid4())
+        owner = str(uuid_mod.uuid4())
         record = service.create_report(
             {"title": "Q1", "report_type": "sales", "definition": _definition(), "tags": []},
-            owner_id="u1",
-            organization_id="o1",
+            owner_id=owner,
+            organization_id=org,
         )
-        result = asyncio.run(
-            service.generate(
-                report_id=record["id"],
-                formats=["html", "json", "csv"],
-                include_ai=False,
-                user_id="u1",
-                organization_id="o1",
+        try:
+            result = asyncio.run(
+                service.generate(
+                    report_id=record["id"],
+                    formats=["html", "json", "csv"],
+                    include_ai=False,
+                    user_id=owner,
+                    organization_id=org,
+                )
             )
-        )
-        assert result["version_number"] == 1
-        assert len(result["artifacts"]) == 3
-        assert len(service.repo.versions(record["id"])) == 1
+            assert result["version_number"] == 1
+            assert len(result["artifacts"]) == 3
+            assert len(service.repo.versions(record["id"])) == 1
+            # DB-backed: the record is retrievable and org-scoped
+            assert service.repo.get(record["id"], organization_id=org) is not None
+            assert service.repo.get(record["id"], organization_id=str(uuid_mod.uuid4())) is None
+        finally:
+            service.repo.delete(record["id"], organization_id=org)
+
+    def test_create_requires_valid_org_and_owner(self):
+        import uuid as uuid_mod
+
+        service = ReportService()
+        with pytest.raises(ValueError, match="organization_id"):
+            service.create_report(
+                {"title": "x", "report_type": "sales", "definition": _definition()},
+                owner_id=str(uuid_mod.uuid4()),
+                organization_id="not-a-uuid",
+            )
+        with pytest.raises(ValueError, match="owner_id"):
+            service.create_report(
+                {"title": "x", "report_type": "sales", "definition": _definition()},
+                owner_id="u1",
+                organization_id=str(uuid_mod.uuid4()),
+            )
 
     def test_repo_search_compare(self):
+        import uuid as uuid_mod
+
         repo = ReportRepository()
+        org = str(uuid_mod.uuid4())
+        owner = str(uuid_mod.uuid4())
         r = repo.create(
-            {"title": "Sales Q1", "report_type": "sales", "definition": {"sections": []}}
+            {
+                "title": "Sales Q1",
+                "report_type": "sales",
+                "definition": {"sections": []},
+                "organization_id": org,
+                "owner_id": owner,
+            }
         )
-        assert repo.list(search="sales")
-        repo.add_version(r["id"], {"definition_snapshot": {"sections": []}})
-        repo.add_version(r["id"], {"definition_snapshot": {"sections": [{"section_id": "a"}]}})
-        cmp = repo.compare(r["id"], 1, 2)
-        assert cmp["added_sections"] == ["a"]
+        try:
+            assert repo.list(search="sales", organization_id=org)
+            # tenant isolation: a different org does not see it
+            assert not repo.list(search="sales", organization_id=str(uuid_mod.uuid4()))
+            repo.add_version(r["id"], {"definition_snapshot": {"sections": []}})
+            repo.add_version(r["id"], {"definition_snapshot": {"sections": [{"section_id": "a"}]}})
+            cmp = repo.compare(r["id"], 1, 2)
+            assert cmp["added_sections"] == ["a"]
+        finally:
+            repo.delete(r["id"], organization_id=org)

@@ -27,6 +27,17 @@
 
 Fixes from the previous round (still in place, re-verified): DB-backed dataset registry with org scoping, `chat_completion` provider adapter (16 call sites), profile `success` flag, refresh-token-in-body (query → 422), AIChat double-send guard, dataset selector, legacy `/api/v1/datasets` rewrite, JSON-leak-free insights.
 
+### Round 3 — Ask Your Data schema error and reports pipeline (this round)
+
+| # | Reported symptom | Root cause | Fix |
+| --- | --- | --- | --- |
+| 11 | **Ask Your Data**: `what is this dataset about` → `psycopg.errors.UndefinedColumn: column ur.resource_id does not exist` (SQL joined `usage_records ur.resource_id = datasets.id`) | The SQL generator's output was never checked against the real schema. The live `usage_records` table has **no `resource_id` column** (`id, organization_id, resource_type, quantity, user_id, request_id, source, recorded_at`) — the model hallucinated it, the safety-only validator passed the SQL through, and the raw psycopg error surfaced. The model also hallucinated *intent* (queries about users/reports for dataset questions) because a ~90-table schema with no dataset examples confuses a small model | (a) `SQLValidator` is now **schema-aware**: tables after `FROM`/`JOIN` and every qualified `alias.column` reference are checked against the live schema; unknown table/column → clean rejection **before execution**. (b) **Bounded repair**: one retry that feeds the rejection reason back to the generator (no infinite loops). (c) **Safe errors**: raw psycopg text is mapped to human-readable messages; no stack traces or internals. (d) **Dataset few-shot hints**: dataset questions are pinned to the real `de_datasets` table. (e) Verified with the real LLM: the exact question now returns `SELECT name, description, row_count, column_count, status FROM de_datasets WHERE organization_id = '<org>'` → `sales.csv, 4 rows, ready` |
+| 12 | NLQ tenant isolation | Generated SQL was not scoped to the caller's organization; any org's data was reachable | Prompt instructs the generator to filter tenant-scoped tables by the caller's org id (injected into the prompt), and the validator **independently enforces** it: SQL touching tenant tables without the caller's `organization_id` is rejected (also rejects queries scoped to *another* org's id). `organizations` stays readable as the tenant directory |
+| 13 | **Report creation → 422 / report generation → 400** | Two independent bugs: (a) the `/reports` payload contract expects `definition` (frontend sends it — ad-hoc callers may not); (b) `ReportRepository` was an **in-memory dict** ("swap with SQLAlchemy impl when db lands" — never done), so created reports vanished between requests → generate-after-create looked up a nonexistent report → `ValueError` → 400 | Repository swapped to the existing DB models (`reports`, `report_versions` — same interface). Create passes real `organization_id`/`owner_id`; every get/list/update/delete is **org-scoped**; create without valid org/owner is rejected. Verified live: create → get → generate-from-saved → delete → all 200, cross-org 404 |
+| 14 | **AI reports never persisted** (get/list/delete → 404/empty) | `report_id = uuid4().hex[:12]` into a PostgreSQL UUID PK → INSERT failed → **exception silently swallowed** (`except: rollback`); JSON dict/list params also cannot adapt in raw SQL | Full UUID ids; JSON params serialized with `json.dumps` for raw SQL; persistence failures now surface honestly ("Report was generated but could not be saved: …"); get/list/followup/delete are org-scoped. Verified live end-to-end |
+
+Also re-verified in this round: refresh-token transport (body 200 / query 422 — test made self-contained after it picked an arbitrary, later-deactivated platform user), maintenance hydration from DB on restart, vectorstore truthful memory status, admin overview 132 ms, Vite proxy after dev-server restart, light-mode chat contrast (7 frontend tests).
+
 ### Remaining blockers (all disclosed, none silent)
 
 1. **Redis, Celery workers, pgvector: NOT CONFIGURED.** Rate-limit cache falls back to process-local; knowledge indexing is queued but never executes (RAG truthfully reports `insufficient_evidence`); vectorstore reports `backend: memory`.
@@ -115,27 +126,28 @@ Script: `e2e_ai_features.py` — **14 PASS / 0 FAIL / 0 BLOCKED**
 
 ## E. Quality and security audit
 
-**Tests executed this round**
+**Tests executed**
 
 | Suite | Command | Result |
 | --- | --- | --- |
-| Backend full | `cd backend && python -m pytest -q` | **264 passed, 1 skipped** (symlink skip), ~21 s |
+| Backend full | `cd backend && python -m pytest -q` | **278 passed, 1 skipped** |
 | Frontend unit | `npx vitest run` | **7 passed** (incl. 3 theme + 1 StrictMode-streaming test) |
 | TypeScript | `npx tsc --noEmit` | clean |
 | Production build | `npm run build` | clean (pre-existing chunk-size warning) |
-| Ruff (all changed files) | `python -m ruff check …` | clean (1 pre-existing SIM102 in untouched `config.py:146`) |
+| Ruff (all changed files) | `python -m ruff check …` | clean |
 | Workflow E2E | scripted, 31 checks | **31/31** |
 | AI features E2E | scripted, 15 checks | **14 PASS / 0 FAIL / 0 BLOCKED** |
+| Ask Your Data E2E | real LLM, exact reported question | PASS (see §A.11) |
 
-**New regression tests added this round (19):** StrictMode exactly-once streaming (`AIChat.test.tsx`), grounded general chat × 5 (`test_chat_grounded.py`), upload type/size limits × 2 (`test_dataset_pipeline.py`), AI feature fixes × 11 (`test_ai_feature_fixes.py`: widget normalization ×4, prediction schemas ×2, lazy-engine inspection ×2, copilot tool tolerance ×2, workflow UUID PK ×1).
+**New regression tests added (34 total, by round):** Round 1: dataset pipeline (18), auth refresh (4), provider base (4), model output (9). Round 2: StrictMode streaming (1), grounded chat (5), upload limits (2), AI feature fixes (11). Round 3: NLQ schema guard (9 — hallucinated column/table, tenant scope, write rejection, live exact-question, broken-generator safety), reports persistence (7 — business create/get/generate/delete + org scoping + validation, AI generate/get/list/delete org-scoped), auth-refresh made self-contained.
 
 **Security findings**
 
 - No security control was disabled to make a test pass.
-- Tenant isolation re-verified across datasets, conversations, agents and the copilot (org filter on every query).
+- Tenant isolation re-verified across datasets, conversations, agents, copilot **and now reports + NLQ SQL** (org-scoped; the SQL validator enforces the caller's org id independently of the LLM).
 - Upload path traversal still blocked (`_sanitize_filename`), binary sniffing, size limit, type allow-list.
 - **Diagnostic output:** an earlier E2E run echoed a refresh-response body (test-account JWT) into the console. The script was fixed to never print token values; the exposed token belonged to a disposable test account and expired within 15 minutes — no revocation needed, but the rule "never log tokens" is now enforced in the script.
-- Secrets: no API keys in responses or logs; provider keys read from env only.
+- Secrets: no API keys in responses or logs; provider keys read from env only. User-facing errors are mapped to safe messages (no psycopg internals, no stack traces).
 
 **Browser console / backend logs:** console inspection requires browser automation (unavailable). Backend logs were reviewed for every failing feature during the investigation; the only unhandled exceptions remaining in logs are the ones intentionally surfaced to clients with clear messages.
 
@@ -184,7 +196,11 @@ Selected observed results (sanitized):
 | AI chat — streaming/non-streaming | E2E both paths | PASS | one assistant message persisted; 0 duplicate/error events | none |
 | Ollama | live chat via `provider: ollama` | PASS | real `smollm2:135m` answer | Ollama optional provider, not default |
 | Provider errors | unavailable/timeout/model-missing | PASS | actionable messages; no canned fallback | — |
-| NLQ / Ask Your Data | natural language → SQL → rows | PASS | real SQL + row count | — |
+| NLQ / Ask Your Data | natural language → SQL → rows | PASS | exact reported question grounded to `de_datasets`, org-scoped; hallucinated columns rejected + bounded repair | — |
+| NLQ tenant isolation | validator enforcement | PASS | SQL on tenant tables requires the caller's org id; cross-org ids rejected | — |
+| Reports (business) | create → get → generate → delete | PASS | DB-backed persistence; generate-from-saved 200 (was 400) | — |
+| Reports tenant isolation | cross-org probes | PASS | other org: get/delete 404, list empty | — |
+| AI reports | generate → get → list → followup → delete | PASS | persisted with full UUID; org-scoped; honest save-failure messages | — |
 | Dashboard generation | generate + save | PASS | 4 valid widgets saved | LLM latency up to ~2.5 min on slow provider days |
 | Business analyst | analyze dashboard | PASS | executive summary | — |
 | Report generation | generate | PASS | 2 sections with content | — |
@@ -208,6 +224,6 @@ Selected observed results (sanitized):
 
 # FINAL PRODUCT — READY
 
-Real AI chat (streaming + non-streaming, corruption-free) and the real CSV-to-analysis workflow both pass end-to-end with the actual configured model; every existing AI capability (chat, NLQ, dashboards, analyst, reports, predictions, agents, workflows, RAG, copilot) completes against the live provider; the reported duplication, 401, 503, maintenance and light-mode issues are root-caused and fixed with regression tests.
+Real AI chat (streaming + non-streaming, corruption-free), the exact reported Ask Your Data question (grounded, schema-validated, org-scoped SQL with a real LLM), and the real CSV-to-analysis workflow all pass end-to-end with the actual configured model; every existing AI capability (chat, NLQ, dashboards, analyst, reports, predictions, agents, workflows, RAG, copilot) completes against the live provider; the reported duplication, 401, 503, maintenance, light-mode, schema-error and reports-pipeline issues are root-caused and fixed with regression tests.
 
 **Conditions:** Redis/Celery/pgvector are NOT CONFIGURED (honest degradation, must be enabled for production scale); maintenance-mode role gate should be closed after seeding a platform operator; browser-level visual verification was not possible in this environment; the copilot's NL2SQL reaches the SQL database only and now discloses that limitation instead of inventing numbers.
