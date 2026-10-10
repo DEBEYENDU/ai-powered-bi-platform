@@ -38,6 +38,7 @@ import { rget, rpost } from "../api";
 interface Dataset {
   dataset_id: string;
   name: string;
+  status: string;
   row_count: number;
   column_count: number;
   file_size: number;
@@ -133,6 +134,11 @@ export function DataSources() {
   }, [fetchDatasets]);
 
   const handleUpload = async (file: File) => {
+    const MAX_UPLOAD_MB = 50;
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setError(`"${file.name}" is larger than the ${MAX_UPLOAD_MB} MB dataset upload limit`);
+      return;
+    }
     setUploading(true);
     setError("");
     try {
@@ -283,6 +289,7 @@ export function DataSources() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell align="center">Status</TableCell>
                 <TableCell align="right">Rows</TableCell>
                 <TableCell align="right">Columns</TableCell>
                 <TableCell align="right">Size</TableCell>
@@ -299,6 +306,14 @@ export function DataSources() {
                     <Typography variant="caption" color="text.secondary">
                       {ds.dataset_id.slice(0, 8)}...
                     </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={ds.status || "ready"}
+                      color={ds.status === "ready" ? "success" : "default"}
+                      size="small"
+                      variant="outlined"
+                    />
                   </TableCell>
                   <TableCell align="right">{ds.row_count.toLocaleString()}</TableCell>
                   <TableCell align="right">{ds.column_count}</TableCell>

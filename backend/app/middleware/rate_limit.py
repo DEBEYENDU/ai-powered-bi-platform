@@ -29,15 +29,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._redis: Any = None
         self._memory: dict[str, list[float]] = defaultdict(list)
         if redis_url:
-            try:
-                import redis  # type: ignore
+            # Probe the socket first: redis-py retries a dead broker for ~4s,
+            # which used to stall application startup.
+            from app.core.net import tcp_reachable
 
-                self._redis = redis.Redis.from_url(
-                    redis_url, socket_connect_timeout=2, decode_responses=True
-                )
-                self._redis.ping()
-            except Exception:
-                self._redis = None  # fall back to memory
+            reachable, _where = tcp_reachable(redis_url, 0.3)
+            if reachable:
+                try:
+                    import redis  # type: ignore
+
+                    self._redis = redis.Redis.from_url(
+                        redis_url, socket_connect_timeout=2, decode_responses=True
+                    )
+                    self._redis.ping()
+                except Exception:
+                    self._redis = None  # fall back to memory
 
     def _extract_tenant_id(self, request: Request) -> str | None:
         """Try to extract tenant_id from JWT in Authorization header."""

@@ -116,13 +116,13 @@ class CopilotService:
                 self.db.commit()
 
             step_results, tools_used = await self.execution_engine.execute_plan(
-                plan, context, on_step_complete
+                plan, {**context, "query": query}, on_step_complete
             )
 
             task.status = "validating"
             self.db.commit()
 
-            reasoning = await self.reasoning_service.reason(query, plan, step_results)
+            reasoning = await self.reasoning_service.reason(query, plan, step_results, context)
 
             answer_parts = self._build_answer_parts(reasoning, step_results)
 

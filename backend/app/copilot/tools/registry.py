@@ -35,10 +35,19 @@ class SQLQueryTool(BaseTool):
         from app.ai.nlq.nl2sql_service import NL2SQLService
         from app.db.session import get_engine
 
+        question = (
+            params.get("question")
+            or params.get("query")
+            or params.get("sql")
+            or context.get("query")
+            or ""
+        )
+        if not str(question).strip():
+            raise ValueError("sql_query tool requires a 'question' parameter")
         engine = get_engine()
         service = NL2SQLService(engine=engine)
         result = await service.query(
-            question=params["question"],
+            question=str(question),
             include_chart=params.get("include_chart", True),
         )
         return {"type": "table", "data": result}
@@ -82,10 +91,13 @@ class DashboardGeneratorTool(BaseTool):
         from app.ai.dashboard.service import AIDashboardService
         from app.db.session import get_engine
 
+        prompt = params.get("prompt") or params.get("query") or ""
+        if not str(prompt).strip():
+            raise ValueError("dashboard_generator tool requires a 'prompt' parameter")
         engine = get_engine()
         service = AIDashboardService(engine=engine)
         result = await service.generate(
-            prompt=params["prompt"],
+            prompt=str(prompt),
             organization_id=context.get("organization_id", ""),
         )
         return {"type": "dashboard", "data": result}
@@ -102,11 +114,14 @@ class ReportGeneratorTool(BaseTool):
         from app.ai.reports.services.report_service import ReportGeneratorService
         from app.db.session import get_db_session, get_engine
 
+        prompt = params.get("prompt") or params.get("query") or ""
+        if not str(prompt).strip():
+            raise ValueError("report_generator tool requires a 'prompt' parameter")
         engine = get_engine()
         with get_db_session() as db:
             service = ReportGeneratorService(engine=engine, db=db)
             result = await service.generate(
-                prompt=params["prompt"],
+                prompt=str(prompt),
                 dashboard_id=params.get("dashboard_id"),
                 report_type=params.get("report_type", "custom"),
                 formats=params.get("formats", ["pdf"]),
@@ -163,12 +178,14 @@ class DataProfileTool(BaseTool):
     risk_level = "low"
 
     async def execute(self, params: dict, context: dict) -> dict:
-        from app.ai.data_engineering.services.data_loader import DataLoader
-        from app.db.session import get_engine
+        from app.ai.data_engineering.profiling.profiler import profile_dataset
+        from app.ai.data_engineering.services import data_loader as de_data_loader
 
-        engine = get_engine()
-        loader = DataLoader(engine)
-        result = await loader.profile_dataset(params.get("dataset_id", ""))
+        dataset_id = str(params.get("dataset_id") or context.get("dataset_id") or "")
+        if not dataset_id:
+            raise ValueError("data_profile tool requires a 'dataset_id' parameter")
+        df = de_data_loader.load_stored_dataset(dataset_id, "v1")
+        result = profile_dataset(df)
         return {"type": "profile", "data": result}
 
 
@@ -180,19 +197,32 @@ class WorkflowGeneratorTool(BaseTool):
     risk_level = "high"
 
     async def execute(self, params: dict, context: dict) -> dict:
-        from app.db.session import get_db_session
+        from app.workflows.schemas import StepDefinition, TriggerConfig, WorkflowCreateRequest
         from app.workflows.services.orchestrator import WorkflowOrchestrator
 
-        with get_db_session() as db:
-            orchestrator = WorkflowOrchestrator(db)
-            result = await orchestrator.create_workflow(
-                name=params.get("name", "Copilot Workflow"),
-                description=params.get("description", ""),
-                steps=params.get("steps", []),
-                trigger=params.get("trigger", {}),
-                organization_id=context.get("organization_id", ""),
+        raw_steps = params.get("steps") or []
+        steps = [
+            StepDefinition(
+                name=str(s.get("name", f"step_{i + 1}")),
+                action_type=s.get("action_type", "run_sql"),
+                config=s.get("config", {}) if isinstance(s.get("config"), dict) else {},
             )
-            return {"type": "workflow", "data": result}
+            for i, s in enumerate(raw_steps)
+            if isinstance(s, dict)
+        ]
+        request = WorkflowCreateRequest(
+            name=str(params.get("name") or "Copilot Workflow"),
+            description=str(params.get("description") or ""),
+            trigger=TriggerConfig(**(params.get("trigger") or {})),
+            steps=steps,
+        )
+        orchestrator = WorkflowOrchestrator()
+        result = orchestrator.create_workflow(
+            request,
+            user_id=str(context.get("user_id") or ""),
+            organization_id=str(context.get("organization_id") or ""),
+        )
+        return {"type": "workflow", "data": result}
 
 
 class NotificationTool(BaseTool):

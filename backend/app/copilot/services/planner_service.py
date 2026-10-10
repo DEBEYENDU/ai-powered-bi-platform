@@ -42,6 +42,7 @@ Respond with ONLY a JSON object:
 
 Rules:
 - Each step must use an available tool
+- Required params per tool: sql_query -> {"question": "<the user's data question>"}, rag_query -> {"query": "<search text>"}, dashboard_generator -> {"prompt": "<description>"}, report_generator -> {"prompt": "<description>"}, data_profile -> {"dataset_id": "<id>"}, forecast -> {"dataset_id": "<id>", "target": "<column>"}
 - Steps that depend on others must list their step IDs in depends_on
 - Never create circular dependencies
 - For knowledge questions, use rag_query

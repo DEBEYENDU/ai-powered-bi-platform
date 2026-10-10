@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
 from app.ai.data_engineering.schemas import (
     CleanDatasetRequest,
@@ -16,8 +16,9 @@ from app.ai.data_engineering.schemas import (
     TransformRequest,
     ValidateDatasetRequest,
 )
-from app.ai.data_engineering.services import data_loader, orchestrator
+from app.ai.data_engineering.services import data_loader, dataset_store, orchestrator
 from app.ai.data_engineering.transformations.engine import get_available_transforms
+from app.db.session import get_db
 from app.dependencies.deps import get_current_user, require_organization
 
 de_router = APIRouter(prefix="/ai/de", tags=["AI Data Engineering"])
@@ -34,6 +35,7 @@ async def upload_dataset(
     name: str = Form(""),
     description: str = Form(""),
     source_type: str = Form("csv"),
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
@@ -45,6 +47,9 @@ async def upload_dataset(
         name=name or file.filename or "Untitled",
         description=description,
         source_type=source_type,
+        db=db,
+        organization_id=organization_id,
+        owner_id=str(user.get("sub", "")),
     )
     return result.model_dump()
 
@@ -57,10 +62,17 @@ async def upload_dataset(
 @de_router.post("/profile")
 async def profile_dataset(
     request: ProfileDatasetRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Profile a dataset — compute statistics, types, quality score."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        return {
+            "success": False,
+            "dataset_id": request.dataset_id,
+            "error": "Dataset not found",
+        }
     result = await orchestrator.profile_single_dataset(request)
     return result.model_dump()
 
@@ -73,10 +85,17 @@ async def profile_dataset(
 @de_router.post("/validate")
 async def validate_dataset(
     request: ValidateDatasetRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Validate dataset quality — detect issues and compute scores."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        return {
+            "success": False,
+            "dataset_id": request.dataset_id,
+            "error": "Dataset not found",
+        }
     result = await orchestrator.validate_single_dataset(request)
     return result.model_dump()
 
@@ -89,10 +108,17 @@ async def validate_dataset(
 @de_router.post("/clean")
 async def clean_dataset(
     request: CleanDatasetRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Get cleaning suggestions and optionally auto-apply them."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        return {
+            "success": False,
+            "dataset_id": request.dataset_id,
+            "error": "Dataset not found",
+        }
     result = await orchestrator.clean_single_dataset(request)
     return result.model_dump()
 
@@ -105,10 +131,17 @@ async def clean_dataset(
 @de_router.post("/transform")
 async def transform_dataset(
     request: TransformRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Apply transformations to a dataset."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        return {
+            "success": False,
+            "dataset_id": request.dataset_id,
+            "error": "Dataset not found",
+        }
     result = await orchestrator.apply_dataset_transforms(request)
     return result.model_dump()
 
@@ -130,11 +163,20 @@ async def list_transforms(
 @de_router.post("/chat")
 async def dataset_chat(
     request: DatasetChatRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Ask AI a question about a specific dataset."""
-    result = await orchestrator.dataset_chat(request)
+    record = dataset_store.resolve_record(db, organization_id, request.dataset_id)
+    if record is None:
+        return {
+            "answer": "Dataset not found. Please upload it first.",
+            "confidence": "low",
+            "evidence": [],
+            "suggested_actions": [],
+        }
+    result = await orchestrator.dataset_chat(request, dataset_name=record.name)
     return result
 
 
@@ -146,10 +188,13 @@ async def dataset_chat(
 @de_router.post("/export")
 async def export_dataset(
     request: ExportDatasetRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Export a dataset in CSV, Excel, Parquet, JSON, or SQL format."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        raise HTTPException(status_code=404, detail="Dataset not found")
     result = await orchestrator.export_dataset(request)
     if not result.get("success"):
         raise HTTPException(status_code=404, detail=result.get("error", "Export failed"))
@@ -164,10 +209,13 @@ async def export_dataset(
 @de_router.post("/export/download")
 async def export_dataset_download(
     request: ExportDatasetRequest,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> Response:
     """Export and return the file directly."""
+    if not dataset_store.owns_dataset(db, organization_id, request.dataset_id):
+        raise HTTPException(status_code=404, detail="Dataset not found")
     result = await orchestrator.export_dataset(request)
     if not result.get("success"):
         raise HTTPException(status_code=404, detail=result.get("error", "Export failed"))
@@ -185,28 +233,26 @@ async def export_dataset_download(
 
 @de_router.get("/datasets")
 async def list_datasets(
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
-    """List all stored datasets."""
-    root = data_loader._storage_root()
+    """List the datasets uploaded by this organization."""
     datasets: list[dict[str, Any]] = []
-    for f in root.glob("*.parquet"):
-        parts = f.stem.rsplit("_", 1)
-        did = parts[0] if parts else f.stem
-        try:
-            df = pd.read_parquet(f)
-            datasets.append(
-                {
-                    "dataset_id": did,
-                    "name": f.name,
-                    "row_count": len(df),
-                    "column_count": len(df.columns),
-                    "file_size": f.stat().st_size,
-                }
-            )
-        except Exception:
-            pass
+    for rec in dataset_store.list_datasets(db, organization_id):
+        datasets.append(
+            {
+                "dataset_id": str(rec.id),
+                "name": rec.name,
+                "description": rec.description,
+                "source_type": rec.source_type,
+                "status": rec.status,
+                "row_count": rec.row_count,
+                "column_count": rec.column_count,
+                "file_size": rec.file_size,
+                "created_at": rec.created_at.isoformat() if rec.created_at else None,
+            }
+        )
 
     return {"datasets": datasets, "count": len(datasets)}
 
@@ -280,10 +326,13 @@ async def delete_pipeline(
 @de_router.get("/schema/{dataset_id}")
 async def get_schema(
     dataset_id: str,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Get inferred schema for a dataset."""
+    if not dataset_store.owns_dataset(db, organization_id, dataset_id):
+        raise HTTPException(status_code=404, detail="Dataset not found")
     try:
         df = data_loader.load_stored_dataset(dataset_id, "v1")
         from app.ai.data_engineering.schema.inferencer import infer_table_schema

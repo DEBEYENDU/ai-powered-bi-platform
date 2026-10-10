@@ -27,11 +27,24 @@ class VectorStore:
         self.organization_id = organization_id
         self._records: list[VectorRecord] = []
         self._initialized = False
-        self._backend = "pgvector"
+        # No pgvector connection is configured in this deployment: records are
+        # held in memory. Report the backend honestly instead of claiming
+        # pgvector availability we cannot provide.
+        self._backend = "memory"
 
     def initialize(self) -> None:
         if not self._initialized:
             self._initialized = True
+
+    def get_namespace_count(self, namespace: str | None = None) -> int:
+        """Number of records stored in a namespace (defaults to this one)."""
+        ns = namespace or self.namespace
+        return sum(
+            1
+            for r in self._records
+            if r.namespace == ns
+            and (not self.organization_id or r.organization_id == self.organization_id)
+        )
 
     def add_records(self, records: list[VectorRecord]) -> list[str]:
         ids = []

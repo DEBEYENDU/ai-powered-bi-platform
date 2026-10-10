@@ -239,6 +239,7 @@ class DatasetUploadResponse(BaseModel):
     row_count: int = 0
     column_count: int = 0
     file_size: int = 0
+    status: str = "ready"
     preview: list[dict[str, Any]] = Field(default_factory=list)
     error: str | None = None
 

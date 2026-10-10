@@ -54,6 +54,11 @@ class _LazyEngine:
     def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
         return getattr(get_engine(), name)
 
+    def unwrap(self) -> Engine:
+        """The proxy itself is not SQLAlchemy-inspectable; callers that need
+        ``sqlalchemy.inspect()`` must use the real engine."""
+        return get_engine()
+
 
 class _LazySession:
     def __call__(self, *args, **kwargs):  # type: ignore[no-untyped-def]

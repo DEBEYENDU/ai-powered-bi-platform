@@ -17,6 +17,71 @@ from app.ai.dashboard.widget_generator import WidgetGenerator
 from app.ai.nlq.schema_explorer import SchemaExplorer
 from app.ai.providers.registry import get_provider
 from app.dashboards import service as dashboard_service
+from app.dashboards.service import WIDGET_KINDS
+
+# LLM planners use a richer widget vocabulary (line/bar/pie/...) than the
+# platform's widget kinds; map each to a supported kind, keeping the original
+# type in ``chart_config`` so charts still render correctly.
+_WIDGET_KIND_MAP = {
+    "kpi": "kpi",
+    "number": "kpi",
+    "line": "chart",
+    "bar": "chart",
+    "area": "chart",
+    "pie": "chart",
+    "donut": "chart",
+    "scatter": "chart",
+    "heatmap": "chart",
+    "treemap": "chart",
+    "table": "table",
+    "pivot": "table",
+    "text": "text",
+    "map": "text",
+    "timeline": "text",
+    "forecast": "forecast",
+    "gauge": "gauge",
+    "ai_insights": "ai_insights",
+}
+
+
+def _normalize_widgets(widgets: list[Any]) -> list[dict[str, Any]]:
+    """Conform LLM-generated widgets to the platform widget contract.
+
+    ``dashboards.service`` requires every widget to carry a unique
+    ``widget_id`` and a supported ``kind`` — the planner emits ``id`` and
+    chart types like "line"/"pie" instead, which made every AI-generated
+    dashboard fail to save.
+    """
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for i, widget in enumerate(widgets):
+        if not isinstance(widget, dict):
+            continue
+        out = dict(widget)
+        wid = str(out.get("widget_id") or out.get("id") or f"widget_{i + 1}")
+        base, n = wid, 2
+        while wid in seen:
+            wid = f"{base}_{n}"
+            n += 1
+        seen.add(wid)
+        out["widget_id"] = wid
+
+        raw_kind = str(out.get("type") or out.get("kind") or "chart").lower()
+        kind = _WIDGET_KIND_MAP.get(raw_kind, "chart")
+        if kind not in WIDGET_KINDS:
+            kind = "chart"
+        out["kind"] = kind
+
+        raw_cfg = out.get("chart_config")
+        cfg: dict[Any, Any] = dict(raw_cfg) if isinstance(raw_cfg, dict) else {}
+        if kind == "chart":
+            cfg.setdefault("type", raw_kind or "bar")
+        out["chart_config"] = cfg
+
+        if not str(out.get("title") or "").strip():
+            out["title"] = f"Widget {i + 1}"
+        normalized.append(out)
+    return normalized
 
 
 class AIDashboardService:
@@ -51,6 +116,7 @@ class AIDashboardService:
         widgets = plan.get("widgets", [])
         if widgets:
             widgets = await self.widget_gen.generate_widgets_batch(widgets, schema_text)
+        widgets = _normalize_widgets(widgets)
 
         layout = self.layout_gen.generate_layout(widgets)
 
@@ -104,6 +170,7 @@ class AIDashboardService:
         widgets = improved.get("widgets", [])
         if widgets:
             widgets = await self.widget_gen.generate_widgets_batch(widgets, schema_text)
+        widgets = _normalize_widgets(widgets)
 
         layout = self.layout_gen.generate_layout(widgets)
 

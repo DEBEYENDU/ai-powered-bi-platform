@@ -86,7 +86,7 @@ class LayoutGenerator:
 
             positions.append(
                 {
-                    "widget_id": widget.get("id", ""),
+                    "widget_id": widget.get("widget_id") or widget.get("id", ""),
                     "x": x,
                     "y": y,
                     "w": w,

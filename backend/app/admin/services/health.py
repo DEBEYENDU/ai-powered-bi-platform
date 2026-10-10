@@ -96,9 +96,15 @@ class HealthService:
             import redis  # type: ignore
 
             from app.core.config import get_settings
+            from app.core.net import tcp_reachable
 
+            url = get_settings().redis_url
+            reachable, where = tcp_reachable(url, 0.5)
+            if not reachable:
+                # Fail fast instead of letting redis-py retry for ~4s.
+                return {"status": "down", "detail": f"redis {where}"}
             client = redis.Redis.from_url(
-                get_settings().redis_url, socket_connect_timeout=2, socket_timeout=2, decode_responses=True
+                url, socket_connect_timeout=2, socket_timeout=2, decode_responses=True
             )
             client.ping()
             info = client.info("server")
@@ -209,10 +215,17 @@ class HealthService:
     @staticmethod
     def _check_workers() -> dict[str, Any]:
         try:
+            from app.core.net import endpoint_of, tcp_reachable
             from app.workers.celery_app import celery_app  # type: ignore
 
             if celery_app is None:
                 return {"status": "degraded", "detail": "celery not installed"}
+            broker = str(getattr(celery_app.conf, "broker_url", "") or "")
+            # kombu burns ~4s retrying a dead broker; check the socket first.
+            if endpoint_of(broker) is not None:
+                reachable, where = tcp_reachable(broker, 0.5)
+                if not reachable:
+                    return {"status": "degraded", "detail": f"broker {where}"}
             inspect = celery_app.control.inspect(timeout=2.0)
             stats = inspect.stats() if inspect else None
             if not stats:

@@ -30,6 +30,14 @@ def _get_pool() -> Any:
     try:
         import redis as _redis_mod
 
+        from app.core.net import tcp_reachable
+
+        # Fast-fail when nothing is listening instead of waiting out retries.
+        reachable, where = tcp_reachable(get_settings().redis_url, 0.3)
+        if not reachable:
+            _pool_healthy = False
+            log.warning("analytics_redis_unavailable", error=where)
+            return None
         pool = _redis_mod.ConnectionPool.from_url(
             get_settings().redis_url,
             max_connections=10,

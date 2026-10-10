@@ -18,6 +18,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -25,7 +26,7 @@ import SendIcon from "@mui/icons-material/Send";
 import StopIcon from "@mui/icons-material/Stop";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CloseIcon from "@mui/icons-material/Close";
-import { rget, rpost } from "../api";
+import { rget, rpost, fetchWithAuth } from "../api";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -50,10 +51,19 @@ interface Msg {
   created_at: string;
 }
 
+interface DatasetOption {
+  dataset_id: string;
+  name: string;
+  row_count: number;
+}
+
 interface Provider {
   id: string;
   name: string;
   models: string[];
+  available?: boolean;
+  configured?: boolean;
+  default_model?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,15 +80,15 @@ async function fetchConversation(id: string): Promise<any> {
 }
 
 async function createConversation(title?: string, model?: string, provider?: string) {
-  return rpost<any>("/ai/conversations", { title: title ?? "New conversation", model, provider });
+  const body: Record<string, string> = { title: title ?? "New conversation" };
+  if (model) body.model = model;
+  if (provider) body.provider = provider;
+  return rpost<any>("/ai/conversations", body);
 }
 
 async function deleteConversation(id: string) {
-  const token = localStorage.getItem("bi_token") || "";
-  await fetch(`/api/v1/ai/conversations/${id}`, {
-    method: "DELETE",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const res = await fetchWithAuth(`/api/v1/ai/conversations/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 }
 
 async function fetchProviders(): Promise<Provider[]> {
@@ -90,20 +100,30 @@ async function fetchProviders(): Promise<Provider[]> {
 /* ------------------------------------------------------------------ */
 
 function MarkdownContent({ content }: { content: string }) {
+  const theme = useTheme();
+  const dark = theme.palette.mode === "dark";
+  // Keep code/pre/table surfaces readable in BOTH modes: dark grey on light
+  // mode text is what made the chat unreadable before.
+  const surface = dark ? "grey.900" : "grey.200";
+  const inlineSurface = dark ? "grey.800" : "grey.300";
+  const headSurface = dark ? "grey.800" : "grey.200";
   return (
     <Box
       sx={{
+        color: "text.primary",
         "& pre": {
-          bg: "grey.900",
+          bgcolor: surface,
+          color: "text.primary",
           p: 2,
           borderRadius: 1,
           overflow: "auto",
           fontSize: "0.85rem",
           my: 1,
         },
-        "& code": { fontSize: "0.85rem" },
+        "& code": { fontSize: "0.85rem", color: "text.primary" },
         "& :not(pre) > code": {
-          bg: "grey.800",
+          bgcolor: inlineSurface,
+          color: "text.primary",
           px: 0.6,
           py: 0.2,
           borderRadius: 0.5,
@@ -122,9 +142,10 @@ function MarkdownContent({ content }: { content: string }) {
           py: 0.5,
           textAlign: "left",
         },
-        "& th": { bgcolor: "grey.800", fontWeight: 600 },
+        "& th": { bgcolor: headSurface, color: "text.primary", fontWeight: 600 },
         "& ul, & ol": { pl: 3, my: 0.5 },
         "& p": { my: 0.5 },
+        "& a": { color: dark ? "secondary.light" : "secondary.main" },
         lineHeight: 1.6,
       }}
     >
@@ -244,6 +265,8 @@ function SettingsPanel({
   if (!open) return null;
   const currentProvider = providers.find((p) => p.id === provider);
   const models = currentProvider?.models ?? [];
+  // Keep the select controlled even before the list loads / after a switch.
+  const modelOptions = model && !models.includes(model) ? [model, ...models] : models;
 
   return (
     <Box
@@ -269,36 +292,49 @@ function SettingsPanel({
       <Typography variant="caption" color="text.secondary">
         Provider
       </Typography>
-      <Select
-        size="small"
-        fullWidth
-        value={provider}
-        onChange={(e) => onProviderChange(e.target.value)}
-        sx={{ mb: 2 }}
-      >
-        {providers.map((p) => (
-          <MenuItem key={p.id} value={p.id}>
-            {p.name}
-          </MenuItem>
-        ))}
-      </Select>
+      {providers.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Loading providers…
+        </Typography>
+      ) : (
+        <Select
+          size="small"
+          fullWidth
+          value={providers.some((p) => p.id === provider) ? provider : ""}
+          onChange={(e) => onProviderChange(e.target.value)}
+          sx={{ mb: 2 }}
+        >
+          {providers.map((p) => (
+            <MenuItem key={p.id} value={p.id} disabled={p.available === false}>
+              {p.name}
+              {p.available === false ? " (unavailable)" : ""}
+            </MenuItem>
+          ))}
+        </Select>
+      )}
 
       <Typography variant="caption" color="text.secondary">
         Model
       </Typography>
-      <Select
-        size="small"
-        fullWidth
-        value={model}
-        onChange={(e) => onModelChange(e.target.value)}
-        sx={{ mb: 2 }}
-      >
-        {models.map((m) => (
-          <MenuItem key={m} value={m}>
-            {m}
-          </MenuItem>
-        ))}
-      </Select>
+      {modelOptions.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          No models available for this provider
+        </Typography>
+      ) : (
+        <Select
+          size="small"
+          fullWidth
+          value={modelOptions.includes(model) ? model : modelOptions[0]}
+          onChange={(e) => onModelChange(e.target.value)}
+          sx={{ mb: 2 }}
+        >
+          {modelOptions.map((m) => (
+            <MenuItem key={m} value={m}>
+              {m}
+            </MenuItem>
+          ))}
+        </Select>
+      )}
 
       <Typography variant="caption" color="text.secondary">
         Temperature: {temperature.toFixed(2)}
@@ -344,6 +380,8 @@ function SettingsPanel({
 
 function MessageBubble({ msg }: { msg: Msg }) {
   const isUser = msg.role === "user";
+  const theme = useTheme();
+  const dark = theme.palette.mode === "dark";
   return (
     <Box
       sx={{
@@ -358,8 +396,12 @@ function MessageBubble({ msg }: { msg: Msg }) {
           maxWidth: "75%",
           p: 1.5,
           borderRadius: 2,
-          bgcolor: isUser ? "primary.dark" : "grey.900",
+          bgcolor: isUser ? "primary.dark" : dark ? "grey.900" : "grey.50",
           borderColor: isUser ? "primary.dark" : "divider",
+          // Explicit colours: without them the assistant bubble was dark grey
+          // with dark text in light mode (unreadable).
+          color: isUser ? "#fff" : "text.primary",
+          "& .MuiTypography-root": { color: "inherit" },
         }}
       >
         {isUser ? (
@@ -386,13 +428,22 @@ export function AIChat() {
   const [streaming, setStreaming] = useState(false);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [model, setModel] = useState("gpt-4o-mini");
-  const [provider, setProvider] = useState("openai");
+  const [datasets, setDatasets] = useState<DatasetOption[]>([]);
+  /* Non-empty = answer questions from this dataset's actual rows. */
+  const [selectedDataset, setSelectedDataset] = useState("");
+  // Empty until the provider list loads: the backend decides the real default
+  // (configured provider + configured model), so the UI can never send a model
+  // the endpoint does not actually serve.
+  const [model, setModel] = useState("");
+  const [provider, setProvider] = useState("");
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(4096);
   const [tokenUsage, setTokenUsage] = useState({ prompt: 0, completion: 0, total: 0 });
 
   const abortRef = useRef<AbortController | null>(null);
+  /* State updates are async: a ref is the only way to stop a second send
+     (double Enter / double click) before `streaming` re-renders. */
+  const inFlightRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -407,13 +458,26 @@ export function AIChat() {
   /* Load conversations + providers on mount */
   useEffect(() => {
     fetchConversations().then(setConversations).catch(() => {});
+    rget<{ datasets: DatasetOption[] }>("/ai/de/datasets")
+      .then((res) => setDatasets(res.datasets || []))
+      .catch(() => {});
     fetchProviders()
       .then((p) => {
         setProviders(p);
-        if (p.length > 0) {
-          setProvider(p[0].id);
-          if (p[0].models.length > 0) setModel(p[0].models[0]);
-        }
+        if (p.length === 0) return;
+        // Prefer the provider the backend reports as configured/available.
+        const chosen =
+          p.find((x) => x.configured && x.available !== false) ??
+          p.find((x) => x.available !== false) ??
+          p[0];
+        setProvider(chosen.id);
+        const preferred =
+          chosen.configured && chosen.default_model
+            ? chosen.default_model
+            : chosen.available !== false
+              ? chosen.models[0]
+              : undefined;
+        if (preferred) setModel(preferred);
       })
       .catch(() => {});
   }, []);
@@ -458,16 +522,28 @@ export function AIChat() {
   /* Send message with SSE streaming */
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || streaming) return;
+    if (!text || streaming || inFlightRef.current) return;
+    inFlightRef.current = true;
 
     let convId = activeConvId;
-    if (!convId) {
+    if (!convId && !selectedDataset) {
       try {
         const conv = await createConversation(text.slice(0, 80), model, provider);
         convId = conv.id;
         setConversations((prev) => [conv, ...prev]);
         setActiveConvId(convId);
       } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            role: "assistant",
+            content: "Could not create a conversation. Check your connection and try again.",
+            token_count: 0,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        inFlightRef.current = false;
         return;
       }
     }
@@ -496,28 +572,56 @@ export function AIChat() {
     abortRef.current = abort;
 
     try {
-      const token = localStorage.getItem("bi_token") || "";
-      const res = await fetch("/api/v1/ai/chat", {
+      if (selectedDataset) {
+        /* Dataset-grounded answer: the backend reads the stored rows, so the
+           reply is computed from the data the user selected. */
+        const res = await rpost<{
+          answer: string;
+          confidence?: string;
+          evidence?: string[];
+        }>("/ai/de/chat", { dataset_id: selectedDataset, question: text });
+        const evidence = (res.evidence || []).map((e) => `- ${e}`).join("\n");
+        const content = evidence
+          ? `${res.answer}\n\n**Evidence (computed from the data):**\n${evidence}`
+          : res.answer;
+        setMessages((prev) => {
+          const idx = prev.length - 1;
+          const last = prev[idx];
+          if (!last || last.role !== "assistant") return prev;
+          const updated = [...prev];
+          updated[idx] = { ...last, content };
+          return updated;
+        });
+        return;
+      }
+
+      const body: Record<string, unknown> = {
+        message: text,
+        conversation_id: convId,
+        temperature,
+        max_tokens: maxTokens,
+        stream: true,
+      };
+      if (model) body.model = model;
+      if (provider) body.provider = provider;
+
+      const res = await fetchWithAuth("/api/v1/ai/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          message: text,
-          conversation_id: convId,
-          model,
-          provider,
-          temperature,
-          max_tokens: maxTokens,
-          stream: true,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
         signal: abort.signal,
       });
 
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err);
+        const raw = await res.text();
+        let detail = raw;
+        try {
+          const parsed = JSON.parse(raw);
+          detail = parsed.detail || parsed.error || raw;
+        } catch {
+          /* keep raw text */
+        }
+        throw new Error(detail.slice(0, 400));
       }
 
       const reader = res.body?.getReader();
@@ -542,23 +646,26 @@ export function AIChat() {
             const parsed = JSON.parse(data);
             if (parsed.error) {
               setMessages((prev) => {
+                const idx = prev.length - 1;
+                const last = prev[idx];
+                if (!last || last.role !== "assistant") return prev;
                 const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last && last.role === "assistant") {
-                  last.content = `Error: ${parsed.error}`;
-                }
+                updated[idx] = { ...last, content: `Error: ${parsed.error}` };
                 return updated;
               });
               break;
             }
             if (parsed.delta) {
+              /* StrictMode double-invokes state updaters in dev; mutating the
+                 previous state's message object here appended EVERY streamed
+                 chunk twice ("BusinessBusiness ..."). Pure updater instead. */
               setMessages((prev) => {
+                const idx = prev.length - 1;
+                const last = prev[idx];
+                if (!last || last.role !== "assistant") return prev;
                 const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last && last.role === "assistant") {
-                  last.content += parsed.delta;
-                }
-                return [...updated];
+                updated[idx] = { ...last, content: last.content + parsed.delta };
+                return updated;
               });
             }
             if (parsed.usage) {
@@ -580,21 +687,22 @@ export function AIChat() {
     } catch (err: any) {
       if (err.name !== "AbortError") {
         setMessages((prev) => {
+          const idx = prev.length - 1;
+          const last = prev[idx];
+          if (!last || last.role !== "assistant") return prev;
           const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last && last.role === "assistant") {
-            last.content = `Error: ${err.message}`;
-          }
-          return [...updated];
+          updated[idx] = { ...last, content: `Error: ${err.message}` };
+          return updated;
         });
       }
     } finally {
       setStreaming(false);
+      inFlightRef.current = false;
       abortRef.current = null;
       /* Refresh conversation list to get updated title */
       fetchConversations().then(setConversations).catch(() => {});
     }
-  }, [input, streaming, activeConvId, model, provider, temperature, maxTokens]);
+  }, [input, streaming, activeConvId, model, provider, temperature, maxTokens, selectedDataset]);
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
@@ -637,6 +745,23 @@ export function AIChat() {
           <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 600 }}>
             AI Assistant
           </Typography>
+          {datasets.length > 0 && (
+            <TextField
+              select
+              size="small"
+              value={selectedDataset}
+              onChange={(e) => setSelectedDataset(e.target.value)}
+              sx={{ minWidth: 200, mr: 1 }}
+              slotProps={{ htmlInput: { "aria-label": "Answer questions from dataset" } }}
+            >
+              <MenuItem value="">General assistant</MenuItem>
+              {datasets.map((d) => (
+                <MenuItem key={d.dataset_id} value={d.dataset_id}>
+                  {d.name} ({d.row_count.toLocaleString()} rows)
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
           <Tooltip title="Settings">
             <IconButton size="small" onClick={() => setSettingsOpen(!settingsOpen)}>
               <SettingsIcon fontSize="small" />

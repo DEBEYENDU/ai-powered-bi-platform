@@ -23,6 +23,10 @@ Rules:
 - Include specific numbers from the data when available
 - If there are multiple data sources, synthesize them
 - Cite which tool/steps provided each piece of information
+- The "Organization datasets" metadata comes from the platform database and is
+  authoritative for questions about which datasets exist, their names, and
+  their row/column counts — even when an SQL step returned no rows (uploaded
+  datasets are stored outside the SQL database)
 
 Respond with a JSON object:
 {
@@ -44,6 +48,7 @@ class ReasoningService:
         query: str,
         plan: ExecutionPlan,
         step_results: list[CopilotStepResult],
+        context: dict | None = None,
     ) -> dict:
         """Generate business reasoning from tool results."""
         provider = get_provider()
@@ -68,10 +73,20 @@ class ReasoningService:
             elif sr.status == "failed":
                 results_context.append(f"Step {sr.step_id} ({sr.tool_name}): FAILED - {sr.error}")
 
+        datasets_line = ""
+        if context and context.get("datasets"):
+            rows = "\n".join(
+                f"- {d.get('name')}: {d.get('row_count')} rows, {d.get('column_count')} columns"
+                for d in context["datasets"]
+                if isinstance(d, dict)
+            )
+            if rows:
+                datasets_line = f"\nOrganization datasets (authoritative metadata from the platform database):\n{rows}\n"
+
         user_prompt = f"""User request: {query}
 
 Execution plan goal: {plan.goal}
-
+{datasets_line}
 Tool results:
 {chr(10).join(results_context)}
 

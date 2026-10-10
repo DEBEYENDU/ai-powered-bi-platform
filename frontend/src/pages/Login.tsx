@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { ensureValidSession, getAuthStatus, onAuthChange, setSession } from "../api";
 
 type Mode = "login" | "register";
 
@@ -21,6 +22,15 @@ export function Login() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authed, setAuthed] = useState(getAuthStatus() === "authenticated");
+
+  // A user who already holds a valid session belongs in the application, not
+  // on the sign-in screen. An expired token is resolved via refresh first.
+  useEffect(() => onAuthChange((s) => setAuthed(s === "authenticated")), []);
+  useEffect(() => {
+    if (authed) navigate("/", { replace: true });
+    else if (getAuthStatus() === "unknown") void ensureValidSession();
+  }, [authed, navigate]);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -55,8 +65,7 @@ export function Login() {
         setError("Login response did not include a token");
         return;
       }
-      localStorage.setItem("bi_token", data.access_token);
-      if (data.refresh_token) localStorage.setItem("bi_refresh_token", data.refresh_token);
+      setSession(data.access_token, data.refresh_token);
       navigate("/", { replace: true });
     } catch {
       setError("Could not reach the server. Is the backend running?");
@@ -102,10 +111,7 @@ export function Login() {
       });
       const loginData = await loginRes.json().catch(() => ({}));
       if (loginRes.ok && loginData.access_token) {
-        localStorage.setItem("bi_token", loginData.access_token);
-        if (loginData.refresh_token) {
-          localStorage.setItem("bi_refresh_token", loginData.refresh_token);
-        }
+        setSession(loginData.access_token, loginData.refresh_token);
         navigate("/", { replace: true });
         return;
       }

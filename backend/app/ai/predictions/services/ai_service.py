@@ -14,6 +14,7 @@ from app.ai.predictions.prompts.templates import (
     WHATIF_PROMPT,
 )
 from app.ai.providers.registry import get_provider
+from app.ai.services.model_output import parse_json_reply
 
 
 def _get_llm() -> Any:
@@ -105,12 +106,8 @@ async def whatif_analysis(
             max_tokens=1500,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("{") else {"analysis": text}
-        except (json.JSONDecodeError, ValueError):
-            return {"analysis": text}
+        parsed = parse_json_reply(text)
+        return parsed if isinstance(parsed, dict) else {"analysis": text}
     except Exception as exc:
         return {"analysis": f"What-if analysis unavailable: {exc}"}
 
@@ -137,12 +134,8 @@ async def root_cause_analysis(
             max_tokens=1500,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("{") else {"analysis": text}
-        except (json.JSONDecodeError, ValueError):
-            return {"analysis": text}
+        parsed = parse_json_reply(text)
+        return parsed if isinstance(parsed, dict) else {"analysis": text}
     except Exception as exc:
         return {"analysis": f"Root cause analysis unavailable: {exc}"}
 
@@ -177,13 +170,19 @@ async def generate_business_recommendations(
             max_tokens=1500,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            parsed = json.loads(text)
-            return parsed if isinstance(parsed, list) else [parsed]
-        except (json.JSONDecodeError, ValueError):
-            return [{"recommendation": text}]
+        parsed = parse_json_reply(text)
+        if parsed is None:
+            return [{"recommendation": text.strip()[:500]}] if text.strip() else []
+        items = parsed if isinstance(parsed, list) else [parsed]
+        # Keep only items that carry an actual recommendation and normalize
+        # the remaining fields so downstream validation cannot crash.
+        out: list[dict[str, Any]] = []
+        for item in items:
+            if isinstance(item, dict) and str(item.get("recommendation", "")).strip():
+                out.append({k: item[k] for k in item if isinstance(k, str)})
+            elif isinstance(item, str) and item.strip():
+                out.append({"recommendation": item.strip()})
+        return out
     except Exception:
         return []
 
@@ -249,11 +248,7 @@ async def assess_risk_ai(
             max_tokens=1000,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("{") else {"assessment": text}
-        except (json.JSONDecodeError, ValueError):
-            return {"assessment": text}
+        parsed = parse_json_reply(text)
+        return parsed if isinstance(parsed, dict) else {"assessment": text}
     except Exception as exc:
         return {"assessment": f"Risk assessment unavailable: {exc}"}

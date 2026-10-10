@@ -11,6 +11,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.ai.data_engineering.models import DatasetRecord
 from app.ai.models.conversation import Conversation
 from app.ai.models.message import Message
 from app.ai.providers.base import ChatChunk, ChatMessage
@@ -24,6 +25,20 @@ SYSTEM_PROMPT_DEFAULT = (
     "Format your responses using Markdown for readability: use headings, bullet points, "
     "code blocks, and tables when appropriate. "
     "If you don't have sufficient data to answer a question, be explicit about the limitation."
+)
+
+_DATASET_INVENTORY_TAIL = (
+    "When the user asks about their own data — for example whether they have uploaded a "
+    "dataset, or asks for revenue, sales, customer, or product numbers — answer ONLY from "
+    "the inventory above. Never invent datasets, figures, columns, tables, or query results. "
+    "For calculations over the rows, tell the user to select that dataset in the AI Chat "
+    "header so the answer is computed from its actual data."
+)
+
+_NO_DATASET_TAIL = (
+    "The user has not uploaded any datasets yet. Never claim you have analyzed their "
+    "business data; if asked for specific business figures, say that a dataset first "
+    "needs to be uploaded from the Data Sources page and explain exactly what is missing."
 )
 
 
@@ -48,6 +63,56 @@ class ChatService:
 
     def _system_prompt(self, custom: str | None = None) -> str:
         return custom or SYSTEM_PROMPT_DEFAULT
+
+    def _dataset_inventory(self, organization_id: str | None) -> str:
+        """Metadata-only inventory of the organization's datasets.
+
+        Keeps the general chat grounded: questions like "Have I uploaded a
+        dataset?" are answered from actual records, not the model's guesses.
+        """
+        if not organization_id:
+            return ""
+        try:
+            rows = (
+                self.db.query(DatasetRecord)
+                .filter(DatasetRecord.organization_id == organization_id)
+                .filter(DatasetRecord.status.notin_(("draft", "failed")))
+                .filter(DatasetRecord.deleted_at.is_(None))
+                .order_by(DatasetRecord.created_at.desc())
+                .limit(20)
+                .all()
+            )
+        except Exception:  # noqa: BLE001 — grounding must never break chat
+            return ""
+        if not rows:
+            return ""
+        lines = []
+        for r in rows:
+            line = f"- {r.name} ({r.row_count} rows, {r.column_count} columns)"
+            info = r.schema_info if isinstance(r.schema_info, dict) else {}
+            cols = info.get("columns")
+            if isinstance(cols, list) and cols:
+                names = [
+                    str(c.get("name", "")) if isinstance(c, dict) else str(c)
+                    for c in cols[:8]
+                ]
+                names = [n for n in names if n]
+                if names:
+                    line += ": " + ", ".join(names)
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _grounded_system_prompt(
+        self, organization_id: str | None, custom: str | None = None
+    ) -> str:
+        base = self._system_prompt(custom)
+        inventory = self._dataset_inventory(organization_id)
+        if inventory:
+            return (
+                f"{base}\n\nDatasets actually uploaded by this organization:\n"
+                f"{inventory}\n{_DATASET_INVENTORY_TAIL}"
+            )
+        return f"{base}\n\n{_NO_DATASET_TAIL}"
 
     def create_conversation(
         self,
@@ -222,8 +287,13 @@ class ChatService:
         temp = temperature if temperature is not None else self._default_temperature()
         tokens = max_tokens or self._default_max_tokens()
 
-        if system_prompt:
-            history[0] = ChatMessage(role="system", content=self._system_prompt(system_prompt))
+        history[0] = ChatMessage(
+            role="system",
+            content=self._grounded_system_prompt(
+                conv.organization_id,
+                system_prompt if system_prompt is not None else conv.system_prompt,
+            ),
+        )
 
         t0 = time.time()
         response = await provider.chat(history, model=model, temperature=temp, max_tokens=tokens)
@@ -277,8 +347,13 @@ class ChatService:
         temp = temperature if temperature is not None else self._default_temperature()
         tokens = max_tokens or self._default_max_tokens()
 
-        if system_prompt:
-            history[0] = ChatMessage(role="system", content=self._system_prompt(system_prompt))
+        history[0] = ChatMessage(
+            role="system",
+            content=self._grounded_system_prompt(
+                conv.organization_id,
+                system_prompt if system_prompt is not None else conv.system_prompt,
+            ),
+        )
 
         full_content = ""
         total_tokens = 0

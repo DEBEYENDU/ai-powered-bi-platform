@@ -108,6 +108,8 @@ class Settings(_SettingsBase):  # type: ignore[misc]
     knowledge_max_upload_size: int = int(
         os.getenv("KNOWLEDGE_MAX_UPLOAD_SIZE", str(50 * 1024 * 1024))
     )  # 50MB
+    # Dataset (data engineering) upload limit
+    data_max_upload_size: int = int(os.getenv("DATA_MAX_UPLOAD_SIZE", str(50 * 1024 * 1024)))
     knowledge_chunk_size: int = int(os.getenv("KNOWLEDGE_CHUNK_SIZE", "500"))
     knowledge_chunk_overlap: int = int(os.getenv("KNOWLEDGE_CHUNK_OVERLAP", "100"))
     knowledge_default_top_k: int = int(os.getenv("KNOWLEDGE_DEFAULT_TOP_K", "10"))

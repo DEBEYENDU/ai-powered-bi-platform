@@ -16,6 +16,7 @@ from app.ai.data_engineering.prompts.templates import (
     TRANSFORM_PROMPT,
 )
 from app.ai.providers.registry import get_provider
+from app.ai.services.model_output import parse_json_reply
 
 
 def _get_llm() -> Any:
@@ -44,21 +45,60 @@ def _extract_text(response: Any) -> str:
     return str(response)
 
 
+def _parse_json(text: str) -> Any | None:
+    """Parse JSON out of a model reply (tolerates ```json fences)."""
+    return parse_json_reply(text)
+
+
+def _flatten(payload: Any, prefix: str = "") -> list[str]:
+    """Turn parsed JSON into readable one-line insights."""
+    lines: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            label = f"{prefix}{key}"
+            if isinstance(value, list):
+                for item in value[:5]:
+                    lines.append(f"{label}: {_scalar(item)}")
+            elif isinstance(value, dict):
+                lines.extend(_flatten(value, prefix=f"{label}."))
+            else:
+                lines.append(f"{label}: {_scalar(value)}")
+    elif isinstance(payload, list):
+        lines.extend(_flatten({"insight": payload}, prefix=prefix))
+    else:
+        lines.append(_scalar(payload))
+    return [ln[:500] for ln in lines if ln.strip()]
+
+
+def _scalar(value: Any) -> str:
+    if isinstance(value, dict):
+        return "; ".join(f"{k}={v}" for k, v in value.items())
+    return str(value)
+
+
 async def chat(
     question: str,
     dataset_context: str,
     profile_summary: str = "",
     conversation_history: list[dict[str, str]] | None = None,
+    data_sample: str = "",
+    data_summary: str = "",
+    dataset_name: str = "",
 ) -> dict[str, Any]:
     """Chat with the AI about a specific dataset."""
+    name = dataset_name or (
+        dataset_context.split("\n")[0] if dataset_context else "dataset"
+    )
     messages: list[dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
             "content": DATASET_CHAT_PROMPT.format(
-                name=dataset_context.split("\n")[0] if dataset_context else "dataset",
+                name=name,
                 schema=dataset_context,
-                profile_summary=profile_summary,
+                profile_summary=profile_summary or "(no profile available)",
+                data_summary=data_summary or "(no aggregates available)",
+                data_sample=data_sample or "(no rows available)",
                 question=question,
             ),
         },
@@ -71,15 +111,20 @@ async def chat(
         llm = _get_llm()
         raw = await llm.chat_completion(messages=messages, temperature=0.3, max_tokens=1500)
         answer = _extract_text(raw)
+        # Evidence is the real, computed aggregates — not model prose.
+        evidence = [line for line in data_summary.split("\n") if line.strip()][:5]
         return {
             "answer": answer,
-            "confidence": "high",
-            "evidence": [],
+            "confidence": "high" if answer.strip() else "low",
+            "evidence": evidence,
             "suggested_actions": [],
         }
     except Exception as exc:
         return {
-            "answer": f"I encountered an error processing your question: {exc}",
+            "answer": (
+                "I could not answer that because the AI provider call failed: "
+                f"{exc}. Check Settings → AI provider configuration and retry."
+            ),
             "confidence": "low",
             "evidence": [],
             "suggested_actions": ["Check AI provider configuration"],
@@ -111,8 +156,11 @@ async def get_dataset_insights(
             max_tokens=1500,
         )
         text = _extract_text(raw)
-        # Split into individual insight lines
-        lines = [line.strip("- ").strip() for line in text.split("\n") if line.strip()]
+        parsed = _parse_json(text)
+        if parsed is not None:
+            lines = _flatten(parsed)
+        else:
+            lines = [line.strip("- ").strip() for line in text.split("\n") if line.strip()]
         return lines[:10] if lines else [text]
     except Exception:
         return ["AI insights unavailable — check provider configuration"]
@@ -168,13 +216,12 @@ async def get_cleaning_suggestions_ai(
             max_tokens=1000,
         )
         text = _extract_text(raw)
-        # Try to parse as JSON
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("[") else [{"description": text}]
-        except (json.JSONDecodeError, ValueError):
-            return [{"description": text}]
+        parsed = _parse_json(text)
+        if isinstance(parsed, list):
+            return parsed
+        if isinstance(parsed, dict):
+            return [parsed]
+        return [{"description": text}]
     except Exception:
         return []
 
@@ -196,12 +243,12 @@ async def get_relationship_insights(
             max_tokens=1000,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("{") else [{"insight": text}]
-        except (json.JSONDecodeError, ValueError):
-            return [{"insight": text}]
+        parsed = _parse_json(text)
+        if isinstance(parsed, dict):
+            return [parsed]
+        if isinstance(parsed, list):
+            return parsed
+        return [{"insight": text}]
     except Exception:
         return []
 
@@ -224,13 +271,12 @@ async def get_transform_recommendations(
             max_tokens=1500,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            parsed = json.loads(text)
-            return parsed if isinstance(parsed, list) else [parsed]
-        except (json.JSONDecodeError, ValueError):
-            return [{"transform_type": "unknown", "description": text}]
+        parsed = _parse_json(text)
+        if isinstance(parsed, list):
+            return parsed
+        if isinstance(parsed, dict):
+            return [parsed]
+        return [{"transform_type": "unknown", "description": text}]
     except Exception:
         return []
 
@@ -253,11 +299,11 @@ async def infer_column_types_ai(
             max_tokens=1000,
         )
         text = _extract_text(raw)
-        import json
-
-        try:
-            return json.loads(text) if text.startswith("[") else []
-        except (json.JSONDecodeError, ValueError):
-            return []
+        parsed = _parse_json(text)
+        if isinstance(parsed, list):
+            return [p for p in parsed if isinstance(p, dict)]
+        if isinstance(parsed, dict):
+            return [parsed]
+        return []
     except Exception:
         return []

@@ -105,6 +105,12 @@ def create_app() -> FastAPI:
         try:
             import redis  # type: ignore
 
+            from app.core.net import tcp_reachable
+
+            # Fail fast when nothing is listening (redis-py would retry ~4s).
+            reachable, where = tcp_reachable(settings.redis_url, 0.3)
+            if not reachable:
+                return {"status": "degraded", "redis": where}
             client = redis.Redis.from_url(settings.redis_url, socket_connect_timeout=2)
             client.ping()
             return {"status": "ok", "redis": "reachable"}

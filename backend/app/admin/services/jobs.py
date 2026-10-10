@@ -17,6 +17,22 @@ class JobMonitor:
 
             if celery_app is None:
                 raise RuntimeError("celery not installed")
+            broker = str(getattr(celery_app.conf, "broker_url", "") or "")
+            # kombu retries a dead broker for ~4s per inspect call; probe the
+            # socket first so a down broker reports "unreachable" immediately.
+            from app.core.net import endpoint_of, tcp_reachable
+
+            if broker and endpoint_of(broker) is not None:
+                reachable, where = tcp_reachable(broker, 0.5)
+                if not reachable:
+                    return {
+                        "broker": "unreachable",
+                        "workers": [],
+                        "running": 0,
+                        "scheduled": 0,
+                        "reserved": 0,
+                        "detail": f"broker {where}",
+                    }
             inspect = celery_app.control.inspect()
             if inspect is None:
                 raise RuntimeError("no inspect response")

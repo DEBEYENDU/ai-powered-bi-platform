@@ -174,10 +174,10 @@ class Explainability(BaseModel):
 
 
 class BusinessRecommendation(BaseModel):
-    category: str
+    category: str = "general"
     recommendation: str
-    impact: str
-    confidence: str
+    impact: str = "medium"
+    confidence: str = "medium"
     priority: str = "medium"
 
 
@@ -224,10 +224,12 @@ class ModelInfo(BaseModel):
 class PredictionResult(BaseModel):
     prediction_id: str = ""
     dataset_id: str = ""
-    target: str
-    model_used: str
-    model_type: str
-    horizon: str
+    # Set by the orchestrator right after construction; optional so the
+    # forecast/regression builders can construct the result first.
+    target: str = ""
+    model_used: str = ""
+    model_type: str = ""
+    horizon: str = "30_days"
     predictions: list[ForecastPoint] = Field(default_factory=list)
     overall_confidence: float = 0.0
     trend: str = "stable"

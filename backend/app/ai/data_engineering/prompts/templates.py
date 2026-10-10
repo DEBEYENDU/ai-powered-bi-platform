@@ -136,10 +136,21 @@ SCHEMA:
 PROFILE SUMMARY:
 {profile_summary}
 
+AGGREGATES COMPUTED FROM THE DATA:
+{data_summary}
+
+SAMPLE ROWS (actual data):
+{data_sample}
+
 QUESTION: {question}
 
+RULES:
+- Answer using ONLY the schema, aggregates and sample rows above.
+- Quote exact numbers from the aggregates or sample when answering.
+- If the sample and aggregates are not sufficient to answer, say exactly what
+  is missing instead of guessing.
+
 TASK:
-Answer the question using the dataset metadata and profile.
 Provide:
 1. Clear answer
 2. Supporting evidence from the data

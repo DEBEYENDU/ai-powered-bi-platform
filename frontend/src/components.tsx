@@ -25,7 +25,7 @@ import {
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { TOKEN_KEY, REFRESH_KEY } from "./api";
+import { clearSession } from "./api";
 import { useColorMode } from "./theme";
 
 const NAV: Array<[string, string]> = [
@@ -92,16 +92,26 @@ function MaintenanceBanner() {
   const [mode, setMode] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    fetch("/api/v1/admin/maintenance")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (live && d && d.mode && d.mode !== "off") {
-          setMode(d.mode);
-        }
-      })
-      .catch(() => {});
+    const load = () =>
+      fetch("/api/v1/admin/maintenance")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!live) return;
+          setMode(d && d.mode && d.mode !== "off" ? d.mode : null);
+        })
+        .catch(() => {});
+    load();
+    // Settings dispatches this right after changing the mode, so the banner
+    // never reports a stale READONLY while the backend is already "off".
+    const onChanged = () => load();
+    window.addEventListener("maintenance-changed", onChanged);
+    // Re-check periodically so the banner disappears when the backend
+    // returns to normal mode (readonly/maintenance -> off).
+    const id = setInterval(load, 30_000);
     return () => {
       live = false;
+      clearInterval(id);
+      window.removeEventListener("maintenance-changed", onChanged);
     };
   }, []);
   if (!mode) return null;
@@ -135,8 +145,7 @@ export function Layout({ children }: { children: ReactNode }) {
             color="inherit"
             aria-label="logout"
             onClick={() => {
-              localStorage.removeItem(TOKEN_KEY);
-              localStorage.removeItem(REFRESH_KEY);
+              clearSession();
               window.location.href = "/login";
             }}
           >

@@ -76,6 +76,7 @@ def load_from_file(path: str | Path, source_type: str = "csv", **kwargs: Any) ->
     """Dispatch to the appropriate loader based on source_type."""
     loaders = {
         "csv": load_csv,
+        "txt": load_csv,
         "excel": load_excel,
         "xlsx": load_excel,
         "json": load_json,
@@ -85,12 +86,57 @@ def load_from_file(path: str | Path, source_type: str = "csv", **kwargs: Any) ->
     return loader(path, **kwargs)
 
 
+SUPPORTED_SOURCE_TYPES = {"csv", "txt", "excel", "xlsx", "json", "parquet"}
+
+
+def validate_source_type(source_type: str) -> str:
+    """Reject unknown file types instead of silently parsing them as CSV."""
+    t = (source_type or "csv").lower()
+    if t not in SUPPORTED_SOURCE_TYPES:
+        raise ValueError(
+            f"Unsupported file type '{source_type}'. Supported types: csv, xlsx, json, parquet"
+        )
+    return t
+
+
+def _check_size(file_content: bytes) -> None:
+    """Enforce the configured dataset upload size limit before touching disk."""
+    limit = int(getattr(get_settings(), "data_max_upload_size", 50 * 1024 * 1024))
+    if len(file_content) > limit:
+        raise ValueError(
+            f"File size ({len(file_content) / (1024 * 1024):.1f} MB) exceeds the "
+            f"{limit // (1024 * 1024)} MB dataset upload limit"
+        )
+
+
+def _reject_binary(file_content: bytes, source_type: str) -> None:
+    """Refuse binary payloads for text formats before pandas sees them.
+
+    ``pandas.read_csv`` happily accepts binary junk as a one-column table, so
+    without this check a broken upload is reported as a successful dataset.
+    """
+    if source_type.lower() not in {"csv", "json", "txt"}:
+        return
+    if not file_content.strip():
+        raise ValueError("Uploaded file is empty")
+    try:
+        text = file_content.decode("utf-8")
+    except UnicodeDecodeError:
+        text = file_content.decode("latin-1")
+    control = [ch for ch in text if ord(ch) < 32 and ch not in "\t\r\n"]
+    if control:
+        raise ValueError("File contains binary data and is not a readable table")
+
+
 def load_from_upload(
     file_content: bytes,
     filename: str,
     source_type: str = "csv",
 ) -> tuple[pd.DataFrame, str, int]:
     """Persist uploaded file to storage and return (df, dataset_id, file_size)."""
+    validate_source_type(source_type)
+    _check_size(file_content)
+    _reject_binary(file_content, source_type)
     dataset_id = generate_dataset_id()
     safe_name = _sanitize_filename(filename)
     root = _storage_root()
@@ -98,7 +144,15 @@ def load_from_upload(
     dest.write_bytes(file_content)
     file_size = len(file_content)
 
-    df = load_from_file(dest, source_type)
+    try:
+        df = load_from_file(dest, source_type)
+    except Exception:
+        # Never leave a rejected upload behind on disk.
+        dest.unlink(missing_ok=True)
+        raise
+    if df.empty:
+        dest.unlink(missing_ok=True)
+        raise ValueError("The uploaded file contains no data rows")
     return df, dataset_id, file_size
 
 
@@ -113,6 +167,34 @@ def save_dataframe(
     dest = root / fname
     df.to_parquet(dest, index=False)
     return str(dest)
+
+
+def store_upload(
+    dataset_id: str,
+    file_content: bytes,
+    filename: str,
+    source_type: str = "csv",
+) -> tuple[pd.DataFrame, int]:
+    """Persist an uploaded file under an existing dataset id and parse it.
+
+    Used by flows where the dataset record is created before the file arrives
+    (``POST /api/v1/datasets/{id}/upload``).
+    """
+    validate_source_type(source_type)
+    _check_size(file_content)
+    _reject_binary(file_content, source_type)
+    safe_name = _sanitize_filename(filename)
+    dest = _storage_root() / f"{dataset_id}_{safe_name}"
+    dest.write_bytes(file_content)
+    try:
+        df = load_from_file(dest, source_type)
+    except Exception:
+        dest.unlink(missing_ok=True)
+        raise
+    if df.empty:
+        dest.unlink(missing_ok=True)
+        raise ValueError("The uploaded file contains no data rows")
+    return df, len(file_content)
 
 
 def load_stored_dataset(dataset_id: str, suffix: str = "") -> pd.DataFrame:

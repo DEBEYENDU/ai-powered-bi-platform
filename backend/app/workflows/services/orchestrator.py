@@ -34,7 +34,7 @@ class WorkflowOrchestrator:
         if errors:
             return {"success": False, "error": "; ".join(errors)}
 
-        workflow_id = str(uuid.uuid4())[:12]
+        workflow_id = str(uuid.uuid4())
 
         from app.db.session import get_db_session
         from app.workflows.models import WorkflowRecord
@@ -307,7 +307,7 @@ class WorkflowOrchestrator:
         steps = [StepDefinition(**s) for s in steps_raw]
 
         # Create execution record
-        execution_id = str(uuid.uuid4())[:12]
+        execution_id = str(uuid.uuid4())
         idempotency_key = f"{workflow_id}:{trigger_type}:{int(time.time())}"
 
         with get_db_session() as db:

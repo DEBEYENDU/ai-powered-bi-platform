@@ -59,6 +59,13 @@ class CacheService:
         try:
             import redis  # type: ignore
 
+            from app.core.net import tcp_reachable
+
+            # Skip the ~4s redis-py retry loop when nothing is listening.
+            reachable, where = tcp_reachable(get_settings().redis_url, 0.3)
+            if not reachable:
+                log.warning("redis_unavailable_fallback_memory", error=where)
+                return
             client = redis.Redis.from_url(
                 get_settings().redis_url, socket_connect_timeout=2, decode_responses=True
             )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -7,6 +8,13 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 
 log = get_logger("copilot.context")
+
+
+def _as_uuid(value: object) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return None
 
 
 class ContextService:
@@ -53,6 +61,35 @@ class ContextService:
             ]
         except Exception:
             context["datasets"] = []
+
+        # Uploaded datasets live in the de_datasets registry; without them the
+        # copilot claims no data exists even right after a successful upload.
+        try:
+            from sqlalchemy import select
+
+            from app.ai.data_engineering.models import DatasetRecord
+
+            org_uuid = _as_uuid(organization_id)
+            if org_uuid is not None:
+                stmt = (
+                    select(DatasetRecord)
+                    .where(DatasetRecord.organization_id == org_uuid)
+                    .where(DatasetRecord.deleted_at.is_(None))
+                    .limit(20)
+                )
+                de_rows = list(self.db.scalars(stmt).all())
+                context["datasets"] = context.get("datasets") or []
+                context["datasets"].extend(
+                    {
+                        "id": str(r.id),
+                        "name": r.name,
+                        "row_count": r.row_count,
+                        "column_count": r.column_count,
+                    }
+                    for r in de_rows
+                )
+        except Exception:
+            pass
 
         try:
             from sqlalchemy import select

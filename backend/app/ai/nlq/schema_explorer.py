@@ -20,7 +20,10 @@ class SchemaExplorer:
         if self._cache is not None and not force_refresh:
             return self._cache
 
-        inspector = sa_inspect(self.engine)
+        # _LazyEngine proxies forward attributes but cannot pass SQLAlchemy's
+        # inspect() type check — unwrap to the real engine first.
+        engine = self.engine.unwrap() if hasattr(self.engine, "unwrap") else self.engine
+        inspector = sa_inspect(engine)
         schema: dict[str, Any] = {
             "database": str(self.engine.url.database),
             "tables": {},

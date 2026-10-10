@@ -5,17 +5,52 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.ai.agents.schemas import AgentRunRequest
 from app.ai.agents.services import orchestrator
+from app.db.session import get_db
 from app.dependencies.deps import get_current_user, require_organization
 
 agents_router = APIRouter(prefix="/ai/agents", tags=["AI Multi-Agent Platform"])
 
 
+def _dataset_context(db: Session, organization_id: str) -> dict[str, Any]:
+    """Real dataset inventory for the agent context, so agents answer from
+    the organization's actual data instead of claiming none exists."""
+    try:
+        from app.ai.data_engineering.services.dataset_store import list_datasets
+
+        records = list_datasets(db, organization_id)
+        listing = "\n".join(
+            f"- {r.name}: {r.row_count} rows, {r.column_count} columns"
+            for r in records[:20]
+        )
+        return {
+            "datasets": [
+                {
+                    "id": str(r.id),
+                    "name": r.name,
+                    "rows": r.row_count,
+                    "columns": r.column_count,
+                }
+                for r in records[:20]
+            ],
+            "data_summary": listing or "No datasets uploaded yet for this organization.",
+        }
+    except Exception:  # noqa: BLE001 — grounding is best-effort
+        return {}
+
+
 @agents_router.post("/run", response_model=dict[str, Any])
-async def run_task(request: AgentRunRequest = Body(...), user: dict = Depends(get_current_user), organization_id: str = Depends(require_organization)) -> dict[str, Any]:
+async def run_task(
+    request: AgentRunRequest = Body(...),
+    user: dict = Depends(get_current_user),
+    organization_id: str = Depends(require_organization),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     """Execute a task using the multi-agent system."""
+    request.context = {**_dataset_context(db, organization_id), **(request.context or {})}
     try:
         result = await orchestrator.run_agent_task(request)
         return result.model_dump()

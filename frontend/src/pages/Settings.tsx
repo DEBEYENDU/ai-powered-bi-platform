@@ -32,6 +32,8 @@ export function Settings() {
       () => post<any>("/maintenance", { mode }),
       `Maintenance mode is now "${mode}".`
     );
+    // Tell the (sticky) maintenance banner to re-read the state immediately.
+    window.dispatchEvent(new Event("maintenance-changed"));
   }
   async function saveSetting() {
     let value: unknown = editValue;

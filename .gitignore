@@ -35,3 +35,7 @@ terraform.tfstate*
 
 # Runtime server logs
 *-server.log
+
+# Runtime data (uploads, generated reports)
+storage/
+reports/

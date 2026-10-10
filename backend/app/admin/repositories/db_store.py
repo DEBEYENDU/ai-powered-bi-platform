@@ -63,14 +63,47 @@ def db_available() -> bool:
     return _db_available
 
 
+def _is_connectivity_error(exc: BaseException) -> bool:
+    """True only for errors that mean "the database itself is unreachable".
+
+    Business-level failures (duplicate slug, invalid payload, constraint
+    violations) are raised from inside the session body too; poisoning the
+    availability cache with those would silently drop the whole platform into
+    memory-mode for 30s after every validation error.
+    """
+    if isinstance(exc, (ValueError, KeyError, TypeError, AttributeError, AssertionError, RuntimeError)):
+        return False
+    if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
+        return True
+    try:
+        from sqlalchemy import exc as sa_exc
+
+        if isinstance(
+            exc,
+            (sa_exc.OperationalError, sa_exc.InterfaceError, sa_exc.DisconnectionError, sa_exc.TimeoutError),
+        ):
+            return True
+        if isinstance(exc, sa_exc.DBAPIError):
+            orig = getattr(exc, "orig", None)
+            if isinstance(orig, (ConnectionError, OSError)):
+                return True
+            if isinstance(orig, TimeoutError):
+                return True
+    except Exception:
+        pass
+    # Driver-level errors (psycopg.OperationalError, asyncpg errors, ...)
+    return type(exc).__name__ in {"OperationalError", "InterfaceError", "PoolTimeout"}
+
+
 @contextmanager
 def session_scope() -> Iterator[Any | None]:
     """Yield a Session, or None when the database is unreachable.
 
-    A failed body marks the database unavailable (fast-fail for subsequent
-    calls) and re-raises: callers decide fallback via suppress/except.
-    Exactly one yield per path — yielding twice is illegal and raises
-    RuntimeError("generator didn't stop").
+    A failed body that indicates the database itself is down marks it
+    unavailable (fast-fail for subsequent calls) and re-raises: callers decide
+    fallback via suppress/except. Validation/business errors re-raise without
+    touching availability. Exactly one yield per path — yielding twice is
+    illegal and raises RuntimeError("generator didn't stop").
     """
     global _db_available, _db_checked_at
     if not db_available():
@@ -82,11 +115,12 @@ def session_scope() -> Iterator[Any | None]:
         with get_db_session() as session:
             yield session
     except Exception as exc:
-        _db_available = False
-        _db_checked_at = time.time()
-        from app.core.logging import get_logger
+        if _is_connectivity_error(exc):
+            _db_available = False
+            _db_checked_at = time.time()
+            from app.core.logging import get_logger
 
-        get_logger(__name__).warning("db_session_failed_marking_unavailable", error=str(exc))
+            get_logger(__name__).warning("db_session_failed_marking_unavailable", error=str(exc))
         raise
 
 

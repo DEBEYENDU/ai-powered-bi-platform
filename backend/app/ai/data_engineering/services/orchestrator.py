@@ -23,7 +23,7 @@ from app.ai.data_engineering.schemas import (
     ValidateDatasetRequest,
     ValidationResponse,
 )
-from app.ai.data_engineering.services import ai_service, data_loader
+from app.ai.data_engineering.services import ai_service, data_loader, dataset_store
 from app.ai.data_engineering.transformations.engine import apply_transforms
 from app.ai.data_engineering.validation.validator import validate_dataset
 
@@ -38,15 +38,42 @@ async def upload_dataset(
     name: str,
     description: str = "",
     source_type: str = "csv",
+    db: Any = None,
     organization_id: str = "",
+    owner_id: str = "",
 ) -> DatasetUploadResponse:
     """Upload and persist a dataset, returning metadata + preview."""
     try:
         df, dataset_id, file_size = data_loader.load_from_upload(
             file_content, filename, source_type
         )
+        if df.empty:
+            raise ValueError("The uploaded file contains no data rows")
         # Store as parquet for fast reload
-        data_loader.save_dataframe(df, dataset_id, "v1")
+        storage_path = data_loader.save_dataframe(df, dataset_id, "v1")
+
+        if db is not None:
+            # Registered so listing/authorization use the database instead of
+            # guessing ownership from the storage directory.
+            dataset_store.register_dataset(
+                db,
+                dataset_id=dataset_id,
+                organization_id=organization_id,
+                owner_id=owner_id,
+                name=name,
+                description=description,
+                source_type=source_type,
+                storage_path=storage_path,
+                row_count=len(df),
+                column_count=len(df.columns),
+                file_size=file_size,
+                status="ready",
+                schema_info={
+                    "columns": [
+                        {"name": str(c), "dtype": str(df[c].dtype)} for c in df.columns
+                    ]
+                },
+            )
 
         preview = df.head(5).to_dict(orient="records")
 
@@ -58,6 +85,7 @@ async def upload_dataset(
             column_count=len(df.columns),
             file_size=file_size,
             preview=preview,
+            status="ready",
         )
     except Exception as exc:
         return DatasetUploadResponse(
@@ -78,10 +106,11 @@ async def profile_single_dataset(request: ProfileDatasetRequest) -> ProfileRespo
         df = data_loader.load_stored_dataset(request.dataset_id, "v1")
         result = profile_dataset(df)
         result["dataset_id"] = request.dataset_id
+        result["success"] = True
 
         # Get AI insights
         col_summary = "\n".join(
-            f"- {c['name']}: {c['inferred_type']} (nulls={c['null_pct']}%)"
+            f"- {_col(c, 'name')}: {_col(c, 'inferred_type')} (nulls={_col(c, 'null_pct')}%)"
             for c in result["columns"]
         )
         insights = await ai_service.get_dataset_insights(
@@ -265,18 +294,25 @@ async def apply_dataset_transforms(request: TransformRequest) -> TransformRespon
 # ---------------------------------------------------------------------------
 
 
-async def dataset_chat(request: DatasetChatRequest) -> dict[str, Any]:
-    """Chat with AI about a specific dataset."""
+async def dataset_chat(
+    request: DatasetChatRequest, dataset_name: str = ""
+) -> dict[str, Any]:
+    """Chat with AI about a specific dataset.
+
+    The prompt is grounded in the real file: schema, profile, a sample of the
+    actual rows, and aggregates computed from the data — never canned text.
+    """
     try:
         df = data_loader.load_stored_dataset(request.dataset_id, "v1")
         profile = profile_dataset(df)
 
         # Build context
-        schema_text = f"Table: {request.dataset_id}\n"
+        title = dataset_name or request.dataset_id
+        schema_text = f"Table: {title}\n"
         for col in profile["columns"]:
             schema_text += (
-                f"  {col['name']}: {col['inferred_type']} "
-                f"(nulls={col['null_pct']}%, unique={col['unique_pct']}%)\n"
+                f"  {_col(col, 'name')}: {_col(col, 'inferred_type')} "
+                f"(nulls={_col(col, 'null_pct')}%, unique={_col(col, 'unique_pct')}%)\n"
             )
 
         profile_summary = (
@@ -290,6 +326,9 @@ async def dataset_chat(request: DatasetChatRequest) -> dict[str, Any]:
             question=request.question,
             dataset_context=schema_text,
             profile_summary=profile_summary,
+            data_sample=_data_sample(df),
+            data_summary=_aggregates(df),
+            dataset_name=title,
         )
     except FileNotFoundError:
         return {
@@ -305,6 +344,49 @@ async def dataset_chat(request: DatasetChatRequest) -> dict[str, Any]:
             "evidence": [],
             "suggested_actions": [],
         }
+
+
+def _data_sample(df: Any, max_rows: int = 20, max_cols: int = 20) -> str:
+    """CSV sample of the actual rows (computed from the file)."""
+    head = df.head(max_rows).iloc[:, :max_cols]
+    text = head.to_csv(index=False)
+    return text[:6000]
+
+
+def _aggregates(df: Any, max_cols: int = 15) -> str:
+    """Numeric aggregates and top categories, computed from the real data."""
+    lines: list[str] = []
+    numeric = df.select_dtypes(include="number")
+    for col in list(numeric.columns)[:max_cols]:
+        series = numeric[col].dropna()
+        if series.empty:
+            continue
+        lines.append(
+            f"{col}: sum={_round(series.sum())}, mean={_round(series.mean())}, "
+            f"min={_round(series.min())}, max={_round(series.max())}"
+        )
+    categorical = df.select_dtypes(exclude=["number"])
+    for col in list(categorical.columns)[:max_cols]:
+        counts = categorical[col].dropna().astype(str).value_counts().head(5)
+        if counts.empty:
+            continue
+        top = ", ".join(f"{k} ({v})" for k, v in counts.items())
+        lines.append(f"{col}: top values — {top}")
+    return "\n".join(lines)[:6000]
+
+
+def _col(profile: Any, key: str, default: Any = "") -> Any:
+    """Read a column-profile field from either a ``ColumnProfile`` model or a dict."""
+    if isinstance(profile, dict):
+        return profile.get(key, default)
+    return getattr(profile, key, default)
+
+
+def _round(value: Any) -> Any:
+    try:
+        return round(float(value), 4)
+    except (TypeError, ValueError):
+        return value
 
 
 # ---------------------------------------------------------------------------

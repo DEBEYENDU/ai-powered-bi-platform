@@ -37,7 +37,7 @@ class WorkflowEngine:
         organization_id: str = "",
     ) -> dict[str, Any]:
         """Execute a complete workflow and return the execution result."""
-        execution_id = str(uuid.uuid4())[:12]
+        execution_id = str(uuid.uuid4())
         start = time.perf_counter()
         results: dict[str, Any] = {}
         step_executions: list[dict[str, Any]] = []

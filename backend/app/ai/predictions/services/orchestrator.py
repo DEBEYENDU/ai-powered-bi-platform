@@ -32,9 +32,9 @@ from app.ai.predictions.schemas import (
     ModelMetrics,
     MonitorRequest,
     MonitorResponse,
+    PredictionResponse,
     PredictionResult,
     PredictRequest,
-    PredictionResponse,
     TrainModelRequest,
     TrainResponse,
 )
@@ -138,7 +138,18 @@ async def _forecast_time_series(df: pd.DataFrame, request: PredictRequest) -> Pr
         forecast_summary=forecast_summary,
         top_factors="historical trend, seasonality, recent values",
     )
-    recommendations = [BusinessRecommendation(**r) for r in ai_recs]
+    recommendations = []
+    for r in ai_recs:
+        if isinstance(r, dict) and r.get("recommendation"):
+            recommendations.append(
+                BusinessRecommendation(
+                    category=str(r.get("category", "general")),
+                    recommendation=str(r["recommendation"]),
+                    impact=str(r.get("impact", "medium")),
+                    confidence=str(r.get("confidence", "medium")),
+                    priority=str(r.get("priority", "medium")),
+                )
+            )
 
     return PredictionResult(
         prediction_id=str(uuid.uuid4())[:12],

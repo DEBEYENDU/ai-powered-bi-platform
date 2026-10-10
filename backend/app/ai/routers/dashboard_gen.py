@@ -40,7 +40,10 @@ async def generate_dashboard(
         )
         return result
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Unable to generate dashboard.") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to generate dashboard: {type(exc).__name__}: {str(exc)[:200]}",
+        ) from exc
 
 
 @dashboard_gen_router.post("/improve", response_model=dict[str, Any])

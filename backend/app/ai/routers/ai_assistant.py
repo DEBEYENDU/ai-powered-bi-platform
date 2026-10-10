@@ -18,14 +18,65 @@ from app.ai.schemas.chat import (
     ConversationUpdate,
 )
 from app.ai.services.chat_service import ChatService
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.dependencies.deps import get_current_user, require_organization
 
 ai_router = APIRouter(prefix="/ai", tags=["AI Assistant"])
+logger = get_logger(__name__)
 
 
 def _get_chat_service(db: Session = Depends(get_db)) -> ChatService:
     return ChatService(db)
+
+
+def _describe_provider_error(exc: Exception, provider: str, model: str) -> str:
+    """Turn a raw provider exception into an actionable message for the UI."""
+    import httpx
+
+    def body_of(resp: Any) -> str:
+        # Streaming responses are not read yet; .text would raise ResponseNotRead.
+        try:
+            return (resp.text or "").strip()[:300]
+        except Exception:  # noqa: BLE001
+            return ""
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        body = body_of(exc.response)
+        if status == 404 or (status == 400 and "model" in body.lower()):
+            return (
+                f"Provider '{provider}' could not use model '{model}' (HTTP {status}). "
+                f"Pick a different model in Settings. {body}"
+            )
+        return f"Provider '{provider}' returned HTTP {status}: {body}"
+    if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.TimeoutException)):
+        return (
+            f"Could not reach AI provider '{provider}' ({exc.__class__.__name__}). "
+            "Check the provider base URL and that the service is running."
+        )
+    if isinstance(exc, httpx.HTTPError):
+        return f"AI provider '{provider}' request failed: {exc}"
+    return f"AI provider '{provider}' failed for model '{model}': {exc}"
+
+
+async def _run_chat(service: ChatService, request: ChatRequest, user: dict, organization_id: str):
+    """Shared conversation resolution + non-streaming chat call."""
+    conv_id = request.conversation_id
+    if conv_id:
+        conv = service.get_conversation(conv_id, organization_id)
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    else:
+        conv = service.create_conversation(
+            model=request.model,
+            provider=request.provider,
+            system_prompt=request.system_prompt,
+            user_id=user.get("sub"),
+            organization_id=organization_id,
+        )
+        conv_id = conv.id
+    return conv_id
 
 
 # ---------------------------------------------------------------------------
@@ -41,21 +92,7 @@ async def chat(
     organization_id: str = Depends(require_organization),
 ) -> dict[str, Any]:
     """Send a message and get a response (non-streaming or streaming via SSE)."""
-    # Resolve or create conversation
-    conv_id = request.conversation_id
-    if conv_id:
-        conv = service.get_conversation(conv_id, organization_id)
-        if not conv:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-    else:
-        conv = service.create_conversation(
-            model=request.model,
-            provider=request.provider,
-            system_prompt=request.system_prompt,
-            user_id=user.get("sub"),
-            organization_id=organization_id,
-        )
-        conv_id = conv.id
+    conv_id = await _run_chat(service, request, user, organization_id)
 
     if request.stream:
         return StreamingResponse(
@@ -67,20 +104,33 @@ async def chat(
             },
         )
 
-    result = await service.send_message(
-        conversation_id=conv_id,
-        message=request.message,
-        model=request.model,
-        provider_name=request.provider,
-        temperature=request.temperature,
-        max_tokens=request.max_tokens,
-        system_prompt=request.system_prompt,
-    )
+    try:
+        result = await service.send_message(
+            conversation_id=conv_id,
+            message=request.message,
+            model=request.model,
+            provider_name=request.provider,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            system_prompt=request.system_prompt,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        conv = service.get_conversation(conv_id, organization_id)
+        provider = request.provider or (conv.provider if conv else "")
+        model = request.model or (conv.model if conv else "")
+        detail = _describe_provider_error(exc, provider, model)
+        logger.error("ai_chat_failed", provider=provider, model=model, error=str(exc))
+        raise HTTPException(status_code=502, detail=detail) from exc
     return result
 
 
 async def _stream_response(service: ChatService, conv_id: str, request: ChatRequest):
     """Generate SSE events from streaming response."""
+    conv = service.get_conversation(conv_id)
+    provider = request.provider or (conv.provider if conv else "")
+    model = request.model or (conv.model if conv else "")
     try:
         async for chunk in service.send_message_stream(
             conversation_id=conv_id,
@@ -99,10 +149,17 @@ async def _stream_response(service: ChatService, conv_id: str, request: ChatRequ
             if chunk.usage:
                 event_data["usage"] = chunk.usage
             yield f"data: {json.dumps(event_data)}\n\n"
-    except ValueError:
-        yield f"data: {json.dumps({'error': 'Invalid request parameters'})}\n\n"
-    except Exception:  # noqa: BLE001
-        yield f"data: {json.dumps({'error': 'An unexpected error occurred'})}\n\n"
+    except ValueError as exc:
+        yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+    except Exception as exc:  # noqa: BLE001
+        try:
+            detail = _describe_provider_error(exc, provider, model)
+        except Exception:  # noqa: BLE001
+            detail = f"AI provider '{provider}' failed: {exc}"
+        logger.error(
+            "ai_chat_stream_failed", provider=provider, model=model, error=str(exc)
+        )
+        yield f"data: {json.dumps({'error': detail})}\n\n"
     yield "data: [DONE]\n\n"
 
 
